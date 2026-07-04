@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=64.0.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "delta-security"
+version = "1.0.0"
+description = "Delta - AI-Powered Cyber Security Assessment CLI"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "HackerAI", email = "dev@hackerai.co"},
+]
+keywords = ["security", "penetration-testing", "audit", "cli", "ai"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: System :: Networking",
+]
+
+[project.urls]
+Homepage = "https://hackerai.co/delta"
+Repository = "https://github.com/hackerai/delta"
+Documentation = "https://docs.hackerai.co/delta"
+
+[project.optional-dependencies]
+rich = ["rich>=13.0.0"]
+prompt = ["prompt-toolkit>=3.0.0"]
+all = ["delta-security[rich,prompt]"]
+
+[project.scripts]
+delta = "delta.main:main"
+
+[tool.setuptools.packages.find]
+include = ["delta*"]

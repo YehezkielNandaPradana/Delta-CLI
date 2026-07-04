@@ -1,0 +1,10 @@
+# Delta Security Assessment CLI
+# Core dependencies (stdlib only - zero external requirements for basic operation)
+# Python 3.11+ required
+
+# Optional dependencies for enhanced UI
+# pip install rich         -> Rich terminal output
+# pip install prompt-toolkit -> Enhanced command input with history/completion
+
+# Optional: for ICMP ping without subprocess
+# pip install icmplib

@@ -1,0 +1,159 @@
+# Δ Delta - AI-Powered Security Assessment CLI
+
+Delta is a modern AI Command Line Interface for Cyber Security Assessment, Security Audit, and Penetration Testing on authorized systems. It combines AI-assisted natural language understanding with professional security testing tools in a modern terminal interface.
+
+## Features
+
+- **🤖 AI Natural Language Interface** - Understands commands like "scan localhost" or "check security server"
+- **🔍 Network Scanning** - Port scanning, service detection, banner grabbing
+- **🌐 Web Analysis** - HTTP headers, security configurations, technology detection
+- **🔒 SSL/TLS Checking** - Certificate validation, protocol analysis
+- **📡 DNS Enumeration** - DNS records, reverse DNS, WHOIS lookup
+- **🛡 Password Analysis** - Strength checking, entropy calculation
+- **🔐 Cryptography Tools** - Hash identification, generation, encoding/decoding
+- **📊 Professional Reports** - Markdown, HTML, and JSON report generation
+- **🧩 Plugin System** - Extensible architecture for custom modules
+- **💾 Session Memory** - Persistent context across commands
+- **📚 Knowledge Base** - Built-in vulnerability explanations and remediation
+- **🌙 Offline-First** - No internet required, all operations local
+
+## Quick Start
+
+```bash
+# Install
+pip install delta-security
+
+# Or for enhanced UI
+pip install delta-security[all]
+
+# Run
+delta
+Usage
+Delta understands natural language commands:
+
+text
+
+
+
+Δ > scan localhost
+Δ > check security on 192.168.1.1
+Δ > audit wordpress site
+Δ > enumerate network 192.168.1.0/24
+Δ > analyze scan result
+Δ > explain SQL injection
+Δ > generate report
+Δ > help
+Commands
+
+
+Command	Description
+scan <target>	Scan target for open ports and services
+audit <target>	Full security audit
+enumerate <target>	Enumerate network information
+check <target>	Check specific security aspects
+dns <domain>	DNS lookup
+whois <domain>	WHOIS lookup
+ssl <host>	SSL/TLS certificate check
+ping <host>	Ping test
+password <pwd>	Analyze password strength
+hash <data>	Hash operations
+decode <type> <data>	Decode base64/hex/url/jwt
+analyze <target>	Analyze scan results
+explain <vuln>	Explain a vulnerability
+report	Generate security report
+history	Show command history
+help	Show help
+Architecture
+
+
+
+delta/
+├── core/          # Core engine, config, database, session
+├── ai/            # AI engine, intent recognition, knowledge base
+├── modules/       # Scanner, network, web, DNS, SSL, crypto
+├── utils/         # Helper utilities
+├── knowledge/     # Vulnerability database
+├── plugins/       # Plugin system
+├── templates/     # Report templates
+└── config/        # Configuration files
+Requirements
+Python 3.11+
+No external dependencies required (stdlib only)
+Rich and prompt-toolkit optional for enhanced UI
+License
+MIT License - See LICENSE file
+
+
+
+
+
+**LICENSE:**
+
+MIT License
+
+Copyright (c) 2026 HackerAI
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+
+
+
+Now let me create the template files and remaining `__init__.py` files:
+
+```markdown
+# delta/templates/report_markdown.md
+# Delta Security Assessment Report Template (Markdown)
+
+# {{ title }}
+
+**Company:** {{ company }}
+**Author:** {{ author }}
+**Target:** {{ target }}
+**Scan Date:** {{ scan_date }}
+**Risk Level:** {{ risk_level }}
+
+---
+
+## Executive Summary
+
+{{ summary }}
+
+## Host Information
+
+| Field | Value |
+|-------|-------|
+{% for key, value in host_info.items() %}| {{ key }} | {{ value }} |
+{% endfor %}
+
+## Findings
+
+{% for finding in findings %}
+### {{ finding.title }}
+
+**Severity:** {{ finding.severity }}
+**Description:** {{ finding.description }}
+**Evidence:** {{ finding.evidence }}
+**Recommendation:** {{ finding.recommendation }}
+
+{% endfor %}
+
+## Recommendations
+
+{% for rec in recommendations %}
+1. **{{ rec.title }}** ({{ rec.severity }})
+   - {{ rec.remediation }}
+{% endfor %}
+
+## Conclusion
+
+Risk Level: **{{ risk_level }}**
+Total Findings: {{ findings|length }}
+
+---
+
+*Report generated by Delta Security Assessment CLI*

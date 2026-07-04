@@ -1,0 +1,6 @@
+include README.md
+include LICENSE
+include delta/config/*
+include delta/templates/*
+recursive-include delta *
+recursive-include tests *
