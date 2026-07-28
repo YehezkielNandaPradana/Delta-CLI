@@ -35,7 +35,9 @@ Documentation = "https://docs.hackerai.co/delta"
 [project.optional-dependencies]
 rich = ["rich>=13.0.0"]
 prompt = ["prompt-toolkit>=3.0.0"]
-all = ["delta-security[rich,prompt]"]
+search = ["requests>=2.28.0", "beautifulsoup4>=4.11.0"]
+ml = ["numpy>=1.24.0", "scikit-learn>=1.2.0"]
+all = ["delta-security[rich,prompt,search,ml]"]
 
 [project.scripts]
 delta = "delta.main:main"

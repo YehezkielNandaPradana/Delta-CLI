@@ -56,6 +56,12 @@ class IntentType(Enum):
     ALERTS = auto()
     BRUTE_FORCE = auto()
     BANNER = auto()
+    WEB_SEARCH = auto()
+    FETCH = auto()
+    ML_PREDICT = auto()
+    ML_TRAIN = auto()
+    ML_STATUS = auto()
+    CVE_LOOKUP = auto()
     UNKNOWN = auto()
 
 
@@ -264,6 +270,34 @@ class IntentEngine:
                 {"patterns": [r"\bbanner\b"], "weight": 2.0},
                 {"keywords": ["show banner", "display banner", "logo"], "weight": 1.5},
             ],
+            IntentType.WEB_SEARCH: [
+                {"patterns": [r"\bsearch\s+(web|internet|for|google|duckduckgo)\b", r"\bgoogle\b", r"\bfind\s+info\b"], "weight": 2.0},
+                {"patterns": [r"\blookup\s+(online|web)\b", r"\binternet\s+search\b"], "weight": 1.5},
+                {"keywords": ["search internet", "web search", "google search", "duckduckgo", "browse"], "weight": 1.5},
+            ],
+            IntentType.FETCH: [
+                {"patterns": [r"\bfetch\b", r"\bget\s+url\b", r"\bopen\s+url\b"], "weight": 2.0},
+                {"patterns": [r"\bdownload\s+page\b", r"\bvisit\s+site\b"], "weight": 1.5},
+                {"keywords": ["fetch url", "get page", "web page", "http get"], "weight": 1.5},
+            ],
+            IntentType.ML_PREDICT: [
+                {"patterns": [r"\bml\s+predict\b", r"\bpredict\s+threat\b", r"\bclassify\b", r"\bml\s+analyze\b"], "weight": 2.0},
+                {"patterns": [r"\bai\s+predict\b", r"\bmachine.learning\s+predict\b", r"\bthreat.prediction\b"], "weight": 1.5},
+                {"keywords": ["ml predict", "predict threat", "classify", "threat level"], "weight": 1.5},
+            ],
+            IntentType.ML_TRAIN: [
+                {"patterns": [r"\bml\s+train\b", r"\btrain\s+ml\b", r"\btrain\s+the\s+model\b", r"\btrain\s+model\b", r"\btrain\s+ai\b"], "weight": 2.0},
+                {"patterns": [r"\blearn\s+from\s+data\b", r"\bfit\s+model\b"], "weight": 1.5},
+                {"keywords": ["train model", "train ml", "train ai", "machine learning train", "learn data", "train the model"], "weight": 1.5},
+            ],
+            IntentType.ML_STATUS: [
+                {"patterns": [r"\bml\s+status\b", r"\bai\s+status\b", r"\bmodel\s+status\b"], "weight": 2.0},
+                {"keywords": ["ml status", "model status", "ai status", "machine learning status"], "weight": 1.5},
+            ],
+            IntentType.CVE_LOOKUP: [
+                {"patterns": [r"\bcve\b", r"\blookup\s+cve\b", r"\bcve.search\b"], "weight": 2.0},
+                {"keywords": ["cve lookup", "cve search", "vulnerability lookup", "cve detail"], "weight": 1.5},
+            ],
         }
 
     def process(self, text: str, context: Any = None) -> Optional[IntentResult]:
@@ -344,6 +378,11 @@ class IntentEngine:
             "benchmark": IntentType.BENCHMARK, "bench": IntentType.BENCHMARK,
             "alerts": IntentType.ALERTS,
             "banner": IntentType.BANNER,
+            "searchweb": IntentType.WEB_SEARCH,
+            "google": IntentType.WEB_SEARCH,
+            "duckduckgo": IntentType.WEB_SEARCH,
+            "fetch": IntentType.FETCH,
+            "cve": IntentType.CVE_LOOKUP,
         }
         if text in direct:
             return IntentResult(

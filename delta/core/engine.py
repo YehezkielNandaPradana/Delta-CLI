@@ -82,6 +82,8 @@ class DeltaEngine:
             "tip": "tips", "note": "notes", "todo": "notes",
             "bench": "benchmark", "time": "timer",
             "crack": "brute", "hydra": "brute",
+            "web": "searchweb",
+            "googleit": "searchweb", "ddg": "searchweb",
         }
 
         # Security tips database
@@ -177,6 +179,12 @@ class DeltaEngine:
             "banner": self._cmd_banner,
             "brute": self._cmd_brute,
             "bruteforce": self._cmd_brute,
+            "searchweb": self._cmd_searchweb,
+            "google": self._cmd_searchweb,
+            "duckduckgo": self._cmd_searchweb,
+            "fetch": self._cmd_fetch,
+            "cve": self._cmd_cve,
+            "ml": self._cmd_ml,
         }
         self._builtin_commands.update(commands)
 
@@ -464,6 +472,23 @@ class DeltaEngine:
                 ("brute http-basic example.com --ssl --path /admin", "HTTP Basic Auth"),
                 ("brute ssh 192.168.1.1 -u admin,root -w pass123,admin", "Specific credentials"),
                 ("crack ssh 192.168.1.1", "Alias for brute force"),
+            ],
+            "🌐 Internet": [
+                ("searchweb <query>", "Search the internet (DuckDuckGo)"),
+                ("google <query>", "Alias for internet search"),
+                ("duckduckgo <query>", "Alias for internet search"),
+                ("fetch <url>", "Fetch and display web page content"),
+                ("cve <CVE-ID>", "Lookup CVE vulnerability details"),
+                ("cve CVE-2021-44228", "Search Log4j CVE details"),
+                ("cve CVE-2024-3094", "Search XZ Utils backdoor CVE"),
+            ],
+            "🧠 Machine Learning": [
+                ("ml status", "Show ML model status"),
+                ("ml train", "Train ML models with security data"),
+                ("ml predict", "Predict threat level from scan data"),
+                ("ml predict 8 3 2 3 0 0 4", "Predict with custom features"),
+                ("ml insights", "Show ML insights and recommendations"),
+                ("ml export [path]", "Export ML model data to JSON"),
             ],
             "🔧 Tools": [
                 ("echo <text>", "Echo back text"),
@@ -1401,6 +1426,191 @@ class DeltaEngine:
             result_summary=f"Brute force {service} on {target}: {len(summary.successful)} found",
         )
         self.session.save()
+
+    def _cmd_searchweb(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        from delta.modules.websearch import WebSearchModule
+        query = " ".join(args) if args else (intent.target if intent else "")
+        if not query:
+            self.display.warning("Usage: searchweb <query>")
+            self.display.info("Aliases: google, duckduckgo")
+            return
+        self.display.info(f"Searching: {query}")
+        wb = WebSearchModule()
+        results = wb.search_duckduckgo(query)
+        if results:
+            self.display.section(f"Web Results for: {query}")
+            for i, r in enumerate(results, 1):
+                self.display.print(f"  {ANSI.BOLD}{i}. {r.title}{ANSI.RESET}")
+                self.display.print(f"     {ANSI.CYAN}{r.url[:80]}{ANSI.RESET}")
+                if r.snippet:
+                    self.display.print(f"     {ANSI.DIM}{r.snippet[:120]}{ANSI.RESET}")
+                self.display.print()
+        else:
+            self.display.warning("No results found or search failed")
+            self.display.info("Tip: Install 'requests' and 'beautifulsoup4' for better results")
+
+    def _cmd_fetch(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        from delta.modules.websearch import WebSearchModule
+        url = " ".join(args) if args else (intent.target if intent else "")
+        if not url:
+            self.display.warning("Usage: fetch <url>")
+            return
+        if not url.startswith("http"):
+            url = "https://" + url
+        wb = WebSearchModule()
+        self.display.info(f"Fetching: {url}")
+        page = wb.fetch_page(url)
+        if page.error:
+            self.display.error(f"Failed: {page.error}")
+            return
+        self.display.section(f"Page: {page.title or url}")
+        self.display.info(f"Status: {page.status_code}")
+        self.display.info(f"Type: {page.content_type}")
+        self.display.print()
+        text = re.sub(r'<[^>]+>', ' ', page.content)
+        text = re.sub(r'\s+', ' ', text).strip()
+        if text:
+            for chunk in [text[i:i+200] for i in range(0, len(text), 200)]:
+                self.display.print(chunk)
+
+    def _cmd_cve(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        from delta.modules.websearch import WebSearchModule
+        cve_id = " ".join(args) if args else (intent.target if intent else "")
+        if not cve_id:
+            self.display.warning("Usage: cve <CVE-ID>")
+            self.display.info("Example: cve CVE-2021-44228")
+            return
+        cve_id = cve_id.upper().strip()
+        if not cve_id.startswith("CVE-"):
+            cve_id = "CVE-" + cve_id
+        self.display.info(f"Looking up: {cve_id}")
+        wb = WebSearchModule()
+        result = wb.search_cve(cve_id)
+        if result:
+            self.display.section(f"CVE Information: {cve_id}")
+            self.display.print(f"  {ANSI.BOLD}{result.title}{ANSI.RESET}")
+            self.display.print(f"  {ANSI.CYAN}{result.url}{ANSI.RESET}")
+            if result.snippet:
+                self.display.print(f"\n  {result.snippet}")
+        else:
+            self.display.warning(f"No results found for {cve_id}")
+            self.display.info("Try: searchweb CVE-XXXX-XXXX vulnerability")
+
+    def _cmd_ml(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        subcmd = args[0].lower() if args else "status"
+        if subcmd in ("predict", "analyze", "classify"):
+            self._ml_predict(args[1:] if len(args) > 1 else [])
+        elif subcmd in ("train", "learn", "fit"):
+            self._ml_train(args[1:] if len(args) > 1 else [])
+        elif subcmd in ("status", "info", "show"):
+            self._ml_status()
+        elif subcmd in ("insights", "insight"):
+            self._ml_insights()
+        elif subcmd == "export":
+            self._ml_export(args[1] if len(args) > 1 else "")
+        elif subcmd in ("help", "--help", "-h"):
+            self._ml_help()
+        else:
+            self._ml_status()
+
+    def _ml_predict(self, args: List[str]) -> None:
+        from delta.ml.engine import MLEngine
+        ml = MLEngine(self.config.data_dir)
+        if not args:
+            host = self.session.get_host()
+            if host and self.session.get_scan_result(host):
+                scan_data = self.session.get_scan_result(host)
+                result = ml.analyze_scan_data(scan_data)
+                self.display.section("ML Threat Analysis")
+                self.display.info(f"Target: {host}")
+                self.display.info(f"Prediction: {ANSI.BOLD}{result.label.upper()}{ANSI.RESET}")
+                self.display.info(f"Confidence: {result.confidence:.1%}")
+                if result.probabilities:
+                    self.display.print()
+                    for cls, prob in sorted(result.probabilities.items(), key=lambda x: -x[1]):
+                        bar = "█" * int(prob * 20)
+                        self.display.print(f"  {cls:<10} {bar} {prob:.1%}")
+                self.display.print()
+                self.display.info(result.explanation)
+            else:
+                self.display.warning("No scan data available. Run a scan first, or provide features.")
+                self.display.info("Usage: ml predict <feature1 feature2 ...>")
+            return
+        try:
+            features = [float(x) for x in args]
+            result = ml.predict_threat(features)
+            self.display.section("ML Prediction Result")
+            self.display.info(f"Classification: {ANSI.BOLD}{result.label.upper()}{ANSI.RESET}")
+            self.display.info(f"Confidence: {result.confidence:.1%}")
+            self.display.info(result.explanation)
+        except ValueError:
+            self.display.warning("Features must be numeric. Example: ml predict 5 2 3 1 0 0 2")
+
+    def _ml_train(self, args: List[str]) -> None:
+        from delta.ml.engine import MLEngine
+        from delta.ml.pipeline import MLPipeline
+        ml = MLEngine(self.config.data_dir)
+        pipeline = MLPipeline(ml)
+        self.display.info("Training ML models with synthetic data...")
+        result = pipeline.auto_train([])
+        self.display.success("ML models trained successfully")
+        if "classifier" in result:
+            self.display.info(f"  Classifier:  {result['classifier']['accuracy']}")
+        if "knn" in result:
+            self.display.info(f"  KNN:         {result['knn']['accuracy']}")
+        if "anomaly" in result:
+            self.display.info(f"  Anomaly:     {result['anomaly']['samples']} samples trained")
+
+    def _ml_status(self) -> None:
+        from delta.ml.engine import MLEngine
+        ml = MLEngine(self.config.data_dir)
+        status = ml.get_status()
+        if status:
+            self.display.section("ML Model Status")
+            for name, info in status.items():
+                self.display.print(f"  {ANSI.BOLD}{name}{ANSI.RESET}")
+                for key, val in info.items():
+                    self.display.print(f"    {key}: {val}")
+                self.display.print()
+        else:
+            self.display.warning("No ML models trained")
+            self.display.info("Use 'ml train' to train models with synthetic data")
+
+    def _ml_insights(self) -> None:
+        from delta.ml.engine import MLEngine
+        from delta.ml.pipeline import MLPipeline
+        ml = MLEngine(self.config.data_dir)
+        pipeline = MLPipeline(ml)
+        insights = pipeline.get_insights()
+        self.display.section("ML Insights")
+        for insight in insights:
+            self.display.info(insight)
+
+    def _ml_export(self, path: str = "") -> None:
+        from delta.ml.engine import MLEngine
+        from delta.ml.pipeline import MLPipeline
+        ml = MLEngine(self.config.data_dir)
+        pipeline = MLPipeline(ml)
+        if not path:
+            path = os.path.join(os.getcwd(), "delta_ml_export.json")
+        result = pipeline.export_model_data(path)
+        self.display.success(f"ML data exported to: {result}")
+
+    def _ml_help(self) -> None:
+        self.display.section("ML Command Usage")
+        commands = [
+            ("ml status", "Show ML model status"),
+            ("ml train", "Train ML models with synthetic security data"),
+            ("ml predict [features]", "Predict threat level (or use current scan data)"),
+            ("ml analyze", "Alias for ml predict"),
+            ("ml insights", "Show ML insights and recommendations"),
+            ("ml export [path]", "Export ML model data to JSON"),
+        ]
+        for cmd, desc in commands:
+            self.display.print(f"  {ANSI.CYAN}{cmd:<30}{ANSI.RESET} {desc}")
+        self.display.print()
+        self.display.info("Features: [open_ports dangerous_ports vulns missing_headers expired_ssl self_signed_ssl services]")
+        self.display.info("Example: ml predict 8 3 2 3 0 0 4")
 
     def _cmd_banner(self, args: List[str] = None, intent: IntentResult = None) -> None:
         """Display the Delta banner again."""

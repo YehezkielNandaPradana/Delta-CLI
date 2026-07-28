@@ -216,7 +216,7 @@ class DisplayManager:
             info_text.append("Authorized Security Testing Only", style="green")
             info_text.append("  |  ", style="dim white")
             info_text.append("[~] ", style="yellow")
-            info_text.append("Offline Mode", style="cyan")
+            info_text.append("Online/Offline Mode", style="cyan")
             self.console.print(info_text)
             self.console.print()
         else:
@@ -224,7 +224,7 @@ class DisplayManager:
                 print(ANSI.BRIGHT_CYAN + banner + ANSI.RESET)
                 print(ANSI.BOLD + ANSI.YELLOW + "=" * 60 + ANSI.RESET)
                 print(ANSI.GREEN + "  Delta v1.0.0 - AI-Powered Security Assessment CLI" + ANSI.RESET)
-                print(ANSI.CYAN + "  Authorized Security Testing Only | Offline Mode" + ANSI.RESET)
+                print(ANSI.CYAN + "  Authorized Security Testing Only | Online/Offline Mode" + ANSI.RESET)
                 print(ANSI.YELLOW + "=" * 60 + ANSI.RESET)
                 print()
             except UnicodeEncodeError:
@@ -232,7 +232,7 @@ class DisplayManager:
                 print(ANSI.BRIGHT_CYAN + ascii_banner + ANSI.RESET)
                 print(ANSI.BOLD + ANSI.YELLOW + "=" * 60 + ANSI.RESET)
                 print(ANSI.GREEN + "  Delta v1.0.0 - AI-Powered Security Assessment CLI" + ANSI.RESET)
-                print(ANSI.CYAN + "  Authorized Security Testing Only | Offline Mode" + ANSI.RESET)
+                print(ANSI.CYAN + "  Authorized Security Testing Only | Online/Offline Mode" + ANSI.RESET)
                 print(ANSI.YELLOW + "=" * 60 + ANSI.RESET)
                 print()
 
