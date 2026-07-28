@@ -13,6 +13,7 @@ from delta.modules.ssl import SSLModule
 from delta.modules.web import WebModule
 from delta.modules.network import NetworkModule
 from delta.modules.report import ReportModule, ReportData
+from delta.modules.bruteforce import BruteForceModule, BruteForceResult, BruteForceSummary
 
 __all__ = [
     "ScannerModule",
@@ -26,4 +27,7 @@ __all__ = [
     "NetworkModule",
     "ReportModule",
     "ReportData",
+    "BruteForceModule",
+    "BruteForceResult",
+    "BruteForceSummary",
 ]

@@ -9,6 +9,10 @@ import sys
 import time
 import os
 import threading
+import io
+import random
+import shutil
+from datetime import datetime
 from typing import Any, Callable, List, Optional, Dict
 from dataclasses import dataclass, field
 
@@ -205,26 +209,35 @@ class DisplayManager:
 
             # Tool info
             info_text = Text()
-            info_text.append("  ⚡ ", style="yellow")
+            info_text.append("  >> ", style="yellow")
             info_text.append("Version 1.0.0", style="bold white")
             info_text.append("  |  ", style="dim white")
-            info_text.append("🔒 ", style="yellow")
+            info_text.append("[*] ", style="yellow")
             info_text.append("Authorized Security Testing Only", style="green")
             info_text.append("  |  ", style="dim white")
-            info_text.append("📡 ", style="yellow")
+            info_text.append("[~] ", style="yellow")
             info_text.append("Offline Mode", style="cyan")
             self.console.print(info_text)
             self.console.print()
         else:
-            print(ANSI.BRIGHT_CYAN + banner + ANSI.RESET)
-            print(ANSI.BOLD + ANSI.YELLOW + "=" * 60 + ANSI.RESET)
-            print(ANSI.GREEN + "  Delta v1.0.0 - AI-Powered Security Assessment CLI" + ANSI.RESET)
-            print(ANSI.CYAN + "  Authorized Security Testing Only | Offline Mode" + ANSI.RESET)
-            print(ANSI.YELLOW + "=" * 60 + ANSI.RESET)
-            print()
+            try:
+                print(ANSI.BRIGHT_CYAN + banner + ANSI.RESET)
+                print(ANSI.BOLD + ANSI.YELLOW + "=" * 60 + ANSI.RESET)
+                print(ANSI.GREEN + "  Delta v1.0.0 - AI-Powered Security Assessment CLI" + ANSI.RESET)
+                print(ANSI.CYAN + "  Authorized Security Testing Only | Offline Mode" + ANSI.RESET)
+                print(ANSI.YELLOW + "=" * 60 + ANSI.RESET)
+                print()
+            except UnicodeEncodeError:
+                ascii_banner = self._get_ascii_banner()
+                print(ANSI.BRIGHT_CYAN + ascii_banner + ANSI.RESET)
+                print(ANSI.BOLD + ANSI.YELLOW + "=" * 60 + ANSI.RESET)
+                print(ANSI.GREEN + "  Delta v1.0.0 - AI-Powered Security Assessment CLI" + ANSI.RESET)
+                print(ANSI.CYAN + "  Authorized Security Testing Only | Offline Mode" + ANSI.RESET)
+                print(ANSI.YELLOW + "=" * 60 + ANSI.RESET)
+                print()
 
     def _get_banner(self) -> str:
-        """Generate ASCII art banner."""
+        """Generate Unicode ASCII art banner."""
         return r"""
     ██████╗ ███████╗██╗  ████████╗ █████╗
     ██╔══██╗██╔════╝██║  ╚══██╔══╝██╔══██╗
@@ -232,6 +245,16 @@ class DisplayManager:
     ██║  ██║██╔══╝  ██║     ██║   ██╔══██║
     ██████╔╝███████╗███████╗██║   ██║  ██║
     ╚═════╝ ╚══════╝╚══════╝╚═╝   ╚═╝  ╚═╝
+    """
+
+    def _get_ascii_banner(self) -> str:
+        """Generate ASCII-only banner for terminals without Unicode support."""
+        return r"""
+    ######## ######## ##    ########  ######
+    ##    ## ##       ##     ##     ##    ##
+    ##    ## #####    ##     ##    ########
+    ##    ## ##       ##     ##    ##    ##
+    ######## ######## ###### ##    ##    ##
     """
 
     def print(self, text: str = "", style: Optional[str] = None, end: str = "\n") -> None:
@@ -254,29 +277,47 @@ class DisplayManager:
                 "magenta bold": ANSI.BOLD + ANSI.MAGENTA,
             }
             if style and style in color_map:
-                print(f"{color_map[style]}{text}{ANSI.RESET}", end=end)
+                out = f"{color_map[style]}{text}{ANSI.RESET}"
             else:
-                print(text, end=end)
+                out = text
+            try:
+                print(out, end=end)
+            except UnicodeEncodeError:
+                safe = out.encode('ascii', 'replace').decode('ascii')
+                print(safe, end=end)
+
+    def _safe_icon(self, text: str) -> str:
+        """Replace Unicode symbols with ASCII fallbacks if console can't handle them."""
+        try:
+            text.encode(sys.stdout.encoding or 'utf-8')
+            return text
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            replacements = {
+                "ℹ": "[i]", "✔": "[+]", "⚠": "[!]", "✘": "[-]", "🔍": "[*]",
+            }
+            for orig, repl in replacements.items():
+                text = text.replace(orig, repl)
+            return text
 
     def info(self, message: str) -> None:
         """Print info message."""
-        self.print(f"ℹ  {message}", style="cyan")
+        self.print(f"{self._safe_icon('ℹ')}  {message}", style="cyan")
 
     def success(self, message: str) -> None:
         """Print success message."""
-        self.print(f"✔  {message}", style="green")
+        self.print(f"{self._safe_icon('✔')}  {message}", style="green")
 
     def warning(self, message: str) -> None:
         """Print warning message."""
-        self.print(f"⚠  {message}", style="yellow")
+        self.print(f"{self._safe_icon('⚠')}  {message}", style="yellow")
 
     def error(self, message: str) -> None:
         """Print error message."""
-        self.print(f"✘  {message}", style="red")
+        self.print(f"{self._safe_icon('✘')}  {message}", style="red")
 
     def debug(self, message: str) -> None:
         """Print debug message."""
-        self.print(f"🔍 {message}", style="gray")
+        self.print(f"{self._safe_icon('🔍')} {message}", style="gray")
 
     def section(self, title: str) -> None:
         """Print section header."""
@@ -284,7 +325,10 @@ class DisplayManager:
             from rich.panel import Panel
             self.console.print(Panel(title, border_style="blue", padding=(0, 2)))
         else:
-            print(f"\n{ANSI.BOLD}{ANSI.BLUE}─── {title} ───{ANSI.RESET}\n")
+            try:
+                print(f"\n{ANSI.BOLD}{ANSI.BLUE}--- {title} ---{ANSI.RESET}\n")
+            except UnicodeEncodeError:
+                print(f"\n[{title}]\n")
 
     def panel(self, title: str, content: str, style: str = "blue") -> None:
         """Display content in a panel."""
@@ -305,13 +349,20 @@ class DisplayManager:
             }
             border = border_styles.get(style, ANSI.BLUE)
             width = 60
-            print(f"\n{border}╔{'═' * width}╗{ANSI.RESET}")
-            print(f"{border}║{ANSI.RESET} {ANSI.BOLD}{title}{ANSI.RESET}{' ' * (width - len(title) - 1)}{border}║{ANSI.RESET}")
-            print(f"{border}╠{'═' * width}╣{ANSI.RESET}")
-            for line in content.split("\n"):
-                line = line[:width]
-                print(f"{border}║{ANSI.RESET} {line}{' ' * (width - len(line) - 1)}{border}║{ANSI.RESET}")
-            print(f"{border}╚{'═' * width}╝{ANSI.RESET}\n")
+            try:
+                print(f"\n{border}╔{'═' * width}╗{ANSI.RESET}")
+                print(f"{border}║{ANSI.RESET} {ANSI.BOLD}{title}{ANSI.RESET}{' ' * (width - len(title) - 1)}{border}║{ANSI.RESET}")
+                print(f"{border}╠{'═' * width}╣{ANSI.RESET}")
+                for line in content.split("\n"):
+                    line = line[:width]
+                    print(f"{border}║{ANSI.RESET} {line}{' ' * (width - len(line) - 1)}{border}║{ANSI.RESET}")
+                print(f"{border}╚{'═' * width}╝{ANSI.RESET}\n")
+            except UnicodeEncodeError:
+                print(f"\n[{border}{title}{ANSI.RESET}]")
+                print(f"{border}{'=' * (width + 2)}{ANSI.RESET}")
+                for line in content.split("\n"):
+                    print(f"  {line}")
+                print(f"{border}{'=' * (width + 2)}{ANSI.RESET}\n")
 
     def table(self, title: str, columns: List[str], rows: List[List[Any]]) -> None:
         """Display data in a table."""
@@ -332,25 +383,31 @@ class DisplayManager:
                     max_w = max(max_w, len(str(row[i] if i < len(row) else "")))
                 col_widths.append(min(max_w + 2, 40))
 
-            # Header
-            header = "│"
-            sep = "├"
-            for i, col in enumerate(columns):
-                header += f" {col:<{col_widths[i]-1}}│"
-                sep += "─" * col_widths[i] + "┼"
-            sep = sep[:-1] + "┤"
-            print(f"┌{'─' * (sum(col_widths) + len(columns) - 1)}┐")
-            print(f"│{ANSI.BOLD}{header[1:]}{ANSI.RESET}")
-            print(sep)
+            try:
+                header = "│"
+                sep = "├"
+                for i, col in enumerate(columns):
+                    header += f" {col:<{col_widths[i]-1}}│"
+                    sep += "─" * col_widths[i] + "┼"
+                sep = sep[:-1] + "┤"
+                print(f"┌{'─' * (sum(col_widths) + len(columns) - 1)}┐")
+                print(f"│{ANSI.BOLD}{header[1:]}{ANSI.RESET}")
+                print(sep)
 
-            # Rows
-            for row in rows:
-                row_str = "│"
-                for i, cell in enumerate(row):
-                    if i < len(col_widths):
-                        row_str += f" {str(cell):<{col_widths[i]-1}}│"
-                print(row_str)
-            print(f"└{'─' * (sum(col_widths) + len(columns) - 1)}┘\n")
+                for row in rows:
+                    row_str = "│"
+                    for i, cell in enumerate(row):
+                        if i < len(col_widths):
+                            row_str += f" {str(cell):<{col_widths[i]-1}}│"
+                    print(row_str)
+                print(f"└{'─' * (sum(col_widths) + len(columns) - 1)}┘\n")
+            except UnicodeEncodeError:
+                # Plain table fallback
+                print(f"  {ANSI.BOLD}{' | '.join(columns)}{ANSI.RESET}")
+                print(f"  {'-+-'.join('-' * len(c) for c in columns)}")
+                for row in rows:
+                    print(f"  {' | '.join(str(c) for c in row)}")
+                print()
 
     def tree(self, title: str, items: Dict[str, Any], indent: int = 0) -> None:
         """Display hierarchical tree structure."""
@@ -463,3 +520,135 @@ class DisplayManager:
         else:
             for item in items:
                 print(f"  {ANSI.CYAN}•{ANSI.RESET} {item}")
+
+    def status_bar(self, items: List[tuple]) -> None:
+        """Display a status bar with key-value pairs."""
+        sep = f" {ANSI.DIM}|{ANSI.RESET} "
+        parts = []
+        for key, val in items:
+            parts.append(f"{ANSI.BOLD}{key}{ANSI.RESET}={ANSI.GREEN}{val}{ANSI.RESET}")
+        print(sep.join(parts))
+
+    def dashboard(self, sections: Dict[str, List[tuple]]) -> None:
+        """Display an interactive session dashboard."""
+        width = shutil.get_terminal_size().columns if hasattr(shutil, 'get_terminal_size') else 80
+        inner = min(width - 4, 76)
+        eq = "="
+        dash = "-"
+
+        try:
+            print(f"\n{ANSI.BOLD}{ANSI.BLUE}{eq * inner}{ANSI.RESET}")
+            print(f"{ANSI.BOLD}{ANSI.CYAN}{' DELTA DASHBOARD ':_^{inner}}{ANSI.RESET}")
+            print(f"{ANSI.BOLD}{ANSI.BLUE}{eq * inner}{ANSI.RESET}")
+
+            for title, items in sections.items():
+                print(f"\n  {ANSI.BOLD}{ANSI.YELLOW}{title}{ANSI.RESET}")
+                print(f"  {ANSI.BLUE}{dash * (inner - 2)}{ANSI.RESET}")
+                for key, val in items:
+                    k = str(key).ljust(20)
+                    print(f"  {ANSI.CYAN}{k}{ANSI.RESET} {val}")
+
+            print(f"\n{ANSI.BOLD}{ANSI.BLUE}{eq * inner}{ANSI.RESET}\n")
+        except UnicodeEncodeError:
+            for title, items in sections.items():
+                print(f"\n  [{title}]")
+                for key, val in items:
+                    print(f"    {key}: {val}")
+            print()
+
+    def progress_task(self, iterable, label: str = "Working", total: Optional[int] = None):
+        """Progress bar with label for task processing."""
+        items = list(iterable)
+        total = total or len(items)
+        for i, item in enumerate(items):
+            pct = (i + 1) / total * 100
+            filled = int(30 * (i + 1) // total)
+            bar = "█" * filled + "─" * (30 - filled)
+            sys.stdout.write(f"\r{ANSI.CYAN}{label}{ANSI.RESET} |{ANSI.GREEN}{bar}{ANSI.RESET}| {ANSI.BOLD}{pct:3.0f}%{ANSI.RESET}")
+            sys.stdout.flush()
+            yield item
+        print()
+
+    def ask_input(self, prompt: str, default: str = "") -> str:
+        """Interactive input with a colored prompt."""
+        if default:
+            p = f"{ANSI.YELLOW}{prompt}{ANSI.RESET} [{ANSI.GREEN}{default}{ANSI.RESET}]: "
+        else:
+            p = f"{ANSI.YELLOW}{prompt}{ANSI.RESET}: "
+        try:
+            val = input(p).strip()
+            return val if val else default
+        except (KeyboardInterrupt, EOFError):
+            return default
+
+    def ask_confirm(self, prompt: str, default: bool = True) -> bool:
+        """Interactive yes/no confirmation."""
+        hint = f"({ANSI.GREEN}Y{ANSI.RESET}/{ANSI.RED}n{ANSI.RESET})" if default else f"({ANSI.RED}y{ANSI.RESET}/{ANSI.GREEN}N{ANSI.RESET})"
+        p = f"{ANSI.YELLOW}{prompt} {hint}{ANSI.RESET}: "
+        try:
+            val = input(p).strip().lower()
+            if not val:
+                return default
+            return val.startswith("y")
+        except (KeyboardInterrupt, EOFError):
+            return default
+
+    def ask_choice(self, prompt: str, options: List[str], default: int = 0) -> int:
+        """Interactive choice selection from a list."""
+        print(f"\n{ANSI.YELLOW}{prompt}{ANSI.RESET}")
+        for i, opt in enumerate(options):
+            marker = f"{ANSI.GREEN}»{ANSI.RESET}" if i == default else " "
+            print(f"  {marker} {ANSI.CYAN}[{i}]{ANSI.RESET} {opt}")
+        try:
+            val = input(f"{ANSI.YELLOW}Choice{ANSI.RESET} [{ANSI.GREEN}{default}{ANSI.RESET}]: ").strip()
+            if not val:
+                return default
+            idx = int(val)
+            return idx if 0 <= idx < len(options) else default
+        except (ValueError, KeyboardInterrupt, EOFError):
+            return default
+
+    def divider(self, char: str = "=", color: str = "blue") -> None:
+        """Print a divider line."""
+        width = shutil.get_terminal_size().columns if hasattr(shutil, 'get_terminal_size') else 60
+        colors = {"blue": ANSI.BLUE, "cyan": ANSI.CYAN, "green": ANSI.GREEN,
+                  "yellow": ANSI.YELLOW, "red": ANSI.RED, "gray": ANSI.GRAY}
+        c = colors.get(color, ANSI.BLUE)
+        try:
+            print(f"{c}{char * width}{ANSI.RESET}")
+        except UnicodeEncodeError:
+            print(f"{c}{'=' * width}{ANSI.RESET}")
+
+    def bullet_list(self, items: List[str], prefix: str = "•") -> None:
+        """Print a bulleted list."""
+        for item in items:
+            print(f"  {ANSI.CYAN}{prefix}{ANSI.RESET} {item}")
+
+    def colored_status(self, label: str, status: str) -> None:
+        """Print a status with color based on status value."""
+        color = ANSI.GREEN
+        if status.lower() in ("fail", "error", "critical", "down", "no"):
+            color = ANSI.RED
+        elif status.lower() in ("warn", "warning", "slow", "maybe"):
+            color = ANSI.YELLOW
+        elif status.lower() in ("info", "unknown"):
+            color = ANSI.CYAN
+        print(f"  {ANSI.BOLD}{label}{ANSI.RESET}: {color}{status}{ANSI.RESET}")
+
+    def key_value_table(self, title: str, items: Dict[str, Any]) -> None:
+        """Display key-value pairs as a compact table."""
+        if not items:
+            return
+        max_k = max(len(str(k)) for k in items.keys()) + 2
+        dash = "-"
+        try:
+            print(f"\n{ANSI.BOLD}{ANSI.CYAN}{title}{ANSI.RESET}")
+            print(f"  {ANSI.BLUE}{dash * (max_k + 40)}{ANSI.RESET}")
+            for k, v in items.items():
+                key = str(k).ljust(max_k)
+                print(f"  {ANSI.BOLD}{key}{ANSI.RESET} {v}")
+            print(f"  {ANSI.BLUE}{dash * (max_k + 40)}{ANSI.RESET}")
+        except UnicodeEncodeError:
+            print(f"\n[{title}]")
+            for k, v in items.items():
+                print(f"  {k}: {v}")

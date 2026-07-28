@@ -37,6 +37,25 @@ class IntentType(Enum):
     PLUGIN = auto()
     CLEAR = auto()
     EXIT = auto()
+    DASHBOARD = auto()
+    STATUS = auto()
+    ECHO = auto()
+    MOTD = auto()
+    SYSINFO = auto()
+    TIPS = auto()
+    QUOTE = auto()
+    SEARCH = auto()
+    REPEAT = auto()
+    EXPORT = auto()
+    NOTES = auto()
+    TIMER = auto()
+    SUGGEST = auto()
+    SHORTCUTS = auto()
+    TUTORIAL = auto()
+    BENCHMARK = auto()
+    ALERTS = auto()
+    BRUTE_FORCE = auto()
+    BANNER = auto()
     UNKNOWN = auto()
 
 
@@ -169,6 +188,82 @@ class IntentEngine:
                 {"patterns": [r"\bjwt\b", r"\bjson.web.token\b", r"\bjw(t|s)\b"], "weight": 2.0},
                 {"keywords": ["jwt decode", "jwt token", "token decode"], "weight": 1.5},
             ],
+            IntentType.DASHBOARD: [
+                {"patterns": [r"\bdashboard\b", r"\bdb\b"], "weight": 2.0},
+                {"keywords": ["session overview", "show dashboard", "dash"], "weight": 1.5},
+            ],
+            IntentType.STATUS: [
+                {"patterns": [r"\bstatus\b", r"\bstats\b"], "weight": 2.0},
+                {"keywords": ["session status", "current state"], "weight": 1.5},
+            ],
+            IntentType.ECHO: [
+                {"patterns": [r"\becho\b", r"\bsay\b", r"\bprint\b"], "weight": 2.0},
+            ],
+            IntentType.MOTD: [
+                {"patterns": [r"\bmotd\b", r"\bmessage\.of\.the\.day\b"], "weight": 2.0},
+                {"keywords": ["message of the day"], "weight": 1.5},
+            ],
+            IntentType.SYSINFO: [
+                {"patterns": [r"\bsysinfo\b", r"\bsystem.info\b", r"\bsys.info\b"], "weight": 2.0},
+                {"keywords": ["system info", "system information", "show system"], "weight": 1.5},
+            ],
+            IntentType.TIPS: [
+                {"patterns": [r"\btips?\b", r"\bsecurity.tips?\b"], "weight": 2.0},
+                {"keywords": ["security tip", "show tip", "advice", "suggestion"], "weight": 1.5},
+            ],
+            IntentType.QUOTE: [
+                {"patterns": [r"\bquote\b", r"\bsecurity.quote\b"], "weight": 2.0},
+                {"keywords": ["inspiration", "security quote", "famous quote"], "weight": 1.5},
+            ],
+            IntentType.SEARCH: [
+                {"patterns": [r"\bsearc?h\b", r"\bfind\s+in.history\b"], "weight": 2.0},
+                {"keywords": ["search history", "find command", "grep history"], "weight": 1.5},
+            ],
+            IntentType.REPEAT: [
+                {"patterns": [r"\brepeat\b", r"\bagain\b"], "weight": 2.0},
+                {"keywords": ["do again", "last command", "one more time"], "weight": 1.5},
+            ],
+            IntentType.EXPORT: [
+                {"patterns": [r"\bexport\b", r"\bexport.session\b"], "weight": 2.0},
+                {"keywords": ["save session", "download session", "backup session"], "weight": 1.5},
+            ],
+            IntentType.NOTES: [
+                {"patterns": [r"\bnotes?\b", r"\bnotepad\b"], "weight": 2.0},
+                {"keywords": ["take note", "add note", "memo"], "weight": 1.5},
+            ],
+            IntentType.TIMER: [
+                {"patterns": [r"\btimer\b", r"\bstopwatch\b"], "weight": 2.0},
+                {"keywords": ["count time", "measure time", "lap"], "weight": 1.5},
+            ],
+            IntentType.SUGGEST: [
+                {"patterns": [r"\bsuggest\b", r"\brecommend\b"], "weight": 2.0},
+                {"keywords": ["what next", "what to do", "command suggestion"], "weight": 1.5},
+            ],
+            IntentType.SHORTCUTS: [
+                {"patterns": [r"\bshortcuts?\b", r"\bkeyboard.shortcuts?\b"], "weight": 2.0},
+                {"keywords": ["hotkeys", "key bindings", "keys"], "weight": 1.5},
+            ],
+            IntentType.TUTORIAL: [
+                {"patterns": [r"\btutorial\b", r"\bwalkthrough\b", r"\bguide me\b"], "weight": 2.0},
+                {"keywords": ["learn", "getting started", "beginner", "how to use"], "weight": 1.5},
+            ],
+            IntentType.BENCHMARK: [
+                {"patterns": [r"\bbenchmark\b", r"\bbench\b", r"\bspeed.test\b"], "weight": 2.0},
+                {"keywords": ["performance test", "system test", "speed check"], "weight": 1.5},
+            ],
+            IntentType.ALERTS: [
+                {"patterns": [r"\balerts?\b", r"\bnotifications?\b"], "weight": 2.0},
+                {"keywords": ["security alert", "show alerts", "warnings"], "weight": 1.5},
+            ],
+            IntentType.BRUTE_FORCE: [
+                {"patterns": [r"\bbrute\b", r"\bbruteforce\b", r"\bcrack\b"], "weight": 2.0},
+                {"patterns": [r"\bpassword.crack\b", r"\blogin.crack\b", r"\bcredential.crack\b"], "weight": 1.5},
+                {"keywords": ["brute force", "password list", "wordlist", "dictionary attack", "hydra"], "weight": 1.5},
+            ],
+            IntentType.BANNER: [
+                {"patterns": [r"\bbanner\b"], "weight": 2.0},
+                {"keywords": ["show banner", "display banner", "logo"], "weight": 1.5},
+            ],
         }
 
     def process(self, text: str, context: Any = None) -> Optional[IntentResult]:
@@ -228,10 +323,27 @@ class IntentEngine:
             "exit": IntentType.EXIT, "quit": IntentType.EXIT, "q": IntentType.EXIT,
             "history": IntentType.HISTORY, "hist": IntentType.HISTORY,
             "session": IntentType.SESSION,
-            "version": IntentType.CONFIG, "ver": IntentType.CONFIG,
             "plugins": IntentType.PLUGIN,
             "config": IntentType.CONFIG,
             "report": IntentType.REPORT,
+            "dashboard": IntentType.DASHBOARD, "db": IntentType.DASHBOARD, "dash": IntentType.DASHBOARD,
+            "status": IntentType.STATUS,
+            "echo": IntentType.ECHO,
+            "motd": IntentType.MOTD,
+            "sysinfo": IntentType.SYSINFO,
+            "tips": IntentType.TIPS, "tip": IntentType.TIPS,
+            "quote": IntentType.QUOTE,
+            "search": IntentType.SEARCH,
+            "repeat": IntentType.REPEAT, "again": IntentType.REPEAT,
+            "export": IntentType.EXPORT,
+            "notes": IntentType.NOTES, "note": IntentType.NOTES,
+            "timer": IntentType.TIMER,
+            "suggest": IntentType.SUGGEST,
+            "shortcuts": IntentType.SHORTCUTS,
+            "tutorial": IntentType.TUTORIAL,
+            "benchmark": IntentType.BENCHMARK, "bench": IntentType.BENCHMARK,
+            "alerts": IntentType.ALERTS,
+            "banner": IntentType.BANNER,
         }
         if text in direct:
             return IntentResult(

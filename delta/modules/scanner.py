@@ -67,6 +67,7 @@ class ScannerModule:
         self.display.section(f"🔍 Scanning: {target}")
 
         result = ScanResult(target=target, ip="")
+        analysis = None
 
         step = 0
         for _ in self.display.progress([1, 2, 3, 4, 5], "Scanning..."):
@@ -317,8 +318,8 @@ class ScannerModule:
                     cert = ssock.getpeercert()
                     if cert:
                         ssl_info = {
-                            "subject": dict(cert.get("subject", [])),
-                            "issuer": dict(cert.get("issuer", [])),
+                            "subject": dict(x for row in cert.get("subject", []) for x in row),
+                            "issuer": dict(x for row in cert.get("issuer", []) for x in row),
                             "version": cert.get("version", ""),
                             "not_before": cert.get("notBefore", ""),
                             "not_after": cert.get("notAfter", ""),
@@ -327,18 +328,22 @@ class ScannerModule:
                         }
                         
                         # Check expiration
-                        from datetime import datetime as dt
                         not_after = cert.get("notAfter", "")
                         if not_after:
                             try:
-                                expiry = dt.strptime(not_after, "%b %d %H:%M:%S %Y %Z")
-                                ssl_info["expired"] = expiry < dt.now()
+                                expiry = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z")
+                                ssl_info["expired"] = expiry < datetime.now()
                             except:
                                 ssl_info["expired"] = False
                         
+                        # Check self-signed
+                        subject_cn = dict(x for row in cert.get("subject", []) for x in row).get("CN", "")
+                        issuer_cn = dict(x for row in cert.get("issuer", []) for x in row).get("CN", "")
+                        ssl_info["self_signed"] = subject_cn == issuer_cn
+
                         # Detect protocols
                         version = ssock.version()
-                        ssl_info["protocol"] = version
+                        ssl_info["protocols"] = [version] if version else []
                         weak_protocols = []
                         if version in ["SSLv2", "SSLv3", "TLSv1", "TLSv1.1"]:
                             weak_protocols.append(version)
@@ -351,7 +356,7 @@ class ScannerModule:
 
     # delta/modules/scanner.py (continued)
 
-    def _display_scan_results(self, result: ScanResult, analysis: Any) -> None:
+    def _display_scan_results(self, result: ScanResult, analysis: Any = None) -> None:
         """Display scan results in formatted output."""
         # Target info panel
         target_info = (
@@ -389,5 +394,6 @@ class ScannerModule:
                 self.display.print(f"  [{vuln['severity'].upper()}] {vuln['title']}", style=color)
 
         # Summary
-        self.display.section("Analysis Summary")
-        self.display.print(result.summary)
+        if analysis and result.summary:
+            self.display.section("Analysis Summary")
+            self.display.print(result.summary)

@@ -105,8 +105,12 @@ class ReasoningEngine:
         if "open_ports" in scan_data:
             findings.extend(self._analyze_ports(scan_data["open_ports"]))
         
-        # Analyze web headers
-        if "headers" in scan_data:
+        # Analyze web headers (only if web services present)
+        has_web = any(
+            p.get("port") in (80, 443, 8080, 8443) or "http" in p.get("service", "").lower()
+            for p in scan_data.get("open_ports", [])
+        )
+        if has_web and scan_data.get("headers"):
             findings.extend(self._analyze_headers(scan_data["headers"]))
         
         # Analyze services
