@@ -831,6 +831,7 @@ class DeltaEngine:
         
         if not target:
             self.display.warning("No target specified. Usage: analyze <target>")
+            self.display.info("Run a scan first: scan <target>")
             return
         
         kb = KnowledgeBase(self.database)
