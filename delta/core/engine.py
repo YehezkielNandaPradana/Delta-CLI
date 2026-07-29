@@ -791,11 +791,13 @@ class DeltaEngine:
         """Password analysis command."""
         from delta.modules.crypto import CryptoModule
         
-        if not args:
+        password = intent.target if intent and intent.target else (" ".join(args) if args else "")
+        
+        if not password:
             self.display.warning("Usage: password <password>")
+            self.display.info("Example: password P@ssw0rd123")
             return
         
-        password = " ".join(args)
         crypto = CryptoModule()
         result = crypto.analyze_password(password)
         
