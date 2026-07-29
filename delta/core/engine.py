@@ -679,13 +679,17 @@ class DeltaEngine:
             return
         self.display.info(f"Tracing route to {target}...")
         net = NetworkModule()
-        result = net.traceroute(target)
-        if result and result.hops:
-            self.display.section(f"Traceroute to {target}")
-            for hop in result.hops:
-                self.display.print(f"  {hop['ttl']:<4} {hop['host']:<40} {hop['rtt']}ms")
-        else:
-            self.display.warning("Traceroute failed or no response")
+        try:
+            result = net.traceroute(target)
+            if result and result.hops:
+                self.display.section(f"Traceroute to {target}")
+                for hop in result.hops:
+                    self.display.print(f"  {hop['ttl']:<4} {hop['host']:<40} {hop['rtt']}ms")
+            else:
+                self.display.warning("Traceroute failed or no response")
+        except PermissionError:
+            self.display.warning("Traceroute requires administrator/root privileges")
+            self.display.info("Run as administrator (Windows) or root (Linux/Mac)")
 
     def _cmd_encode(self, args: List[str], intent: IntentResult = None) -> None:
         """Encode data command."""
