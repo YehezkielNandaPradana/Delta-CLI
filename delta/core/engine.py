@@ -1538,14 +1538,13 @@ class DeltaEngine:
         target = intent.target if intent else (args[0] if args else None)
 
         if not target:
-            self.display.warning("No IP specified. Usage: geoip <ip> or geoip (uses local IP)")
-            if not args:
-                self.display.info("Looking up local machine...")
-                geo = GeoIPModule()
-                result = geo.lookup_local()
-                target = result.ip
-            else:
+            self.display.info("No IP specified. Looking up local machine...")
+            geo = GeoIPModule()
+            result = geo.lookup_local()
+            if not result.ip:
+                self.display.warning("Could not determine local IP. Usage: geoip <ip>")
                 return
+            target = result.ip
         else:
             geo = GeoIPModule()
             result = geo.lookup(target)
