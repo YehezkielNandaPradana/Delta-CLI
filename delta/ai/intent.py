@@ -62,6 +62,7 @@ class IntentType(Enum):
     ML_TRAIN = auto()
     ML_STATUS = auto()
     CVE_LOOKUP = auto()
+    GEOIP = auto()
     UNKNOWN = auto()
 
 
@@ -298,6 +299,10 @@ class IntentEngine:
                 {"patterns": [r"\bcve\b", r"\blookup\s+cve\b", r"\bcve.search\b"], "weight": 2.0},
                 {"keywords": ["cve lookup", "cve search", "vulnerability lookup", "cve detail"], "weight": 1.5},
             ],
+            IntentType.GEOIP: [
+                {"patterns": [r"\bgeoip\b", r"\bgeo.ip\b", r"\bip.lookup\b", r"\bgeolocat(e|ion)\b"], "weight": 2.0},
+                {"keywords": ["ip location", "ip geolocation", "ip info", "where is ip", "ip address location"], "weight": 1.5},
+            ],
         }
 
     def process(self, text: str, context: Any = None) -> Optional[IntentResult]:
@@ -383,6 +388,8 @@ class IntentEngine:
             "duckduckgo": IntentType.WEB_SEARCH,
             "fetch": IntentType.FETCH,
             "cve": IntentType.CVE_LOOKUP,
+            "geoip": IntentType.GEOIP,
+            "geolocate": IntentType.GEOIP,
         }
         if text in direct:
             return IntentResult(

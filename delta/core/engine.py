@@ -185,6 +185,8 @@ class DeltaEngine:
             "fetch": self._cmd_fetch,
             "cve": self._cmd_cve,
             "ml": self._cmd_ml,
+            "geoip": self._cmd_geoip,
+            "geolocate": self._cmd_geoip,
         }
         self._builtin_commands.update(commands)
 
@@ -1472,6 +1474,38 @@ class DeltaEngine:
         if text:
             for chunk in [text[i:i+200] for i in range(0, len(text), 200)]:
                 self.display.print(chunk)
+
+    def _cmd_geoip(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """IP geolocation lookup command."""
+        from delta.modules.geoip import GeoIPModule
+        target = intent.target if intent else (args[0] if args else None)
+
+        if not target:
+            self.display.warning("No IP specified. Usage: geoip <ip> or geoip (uses local IP)")
+            if not args:
+                self.display.info("Looking up local machine...")
+                geo = GeoIPModule()
+                result = geo.lookup_local()
+                target = result.ip
+            else:
+                return
+        else:
+            geo = GeoIPModule()
+            result = geo.lookup(target)
+
+        if result.success:
+            self.display.section(f"GeoIP: {result.ip}")
+            self.display.info(f"Country: {result.country} ({result.country_code})")
+            self.display.info(f"Region: {result.region}")
+            self.display.info(f"City: {result.city}")
+            self.display.info(f"ZIP: {result.zip_code}")
+            self.display.info(f"Coordinates: {result.lat}, {result.lon}")
+            self.display.info(f"Timezone: {result.timezone}")
+            self.display.info(f"ISP: {result.isp}")
+            self.display.info(f"Organization: {result.org}")
+            self.display.info(f"AS: {result.as_number}")
+        else:
+            self.display.warning(f"GeoIP lookup failed: {result.error}")
 
     def _cmd_cve(self, args: List[str] = None, intent: IntentResult = None) -> None:
         from delta.modules.websearch import WebSearchModule

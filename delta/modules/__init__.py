@@ -14,6 +14,7 @@ from delta.modules.web import WebModule
 from delta.modules.network import NetworkModule
 from delta.modules.report import ReportModule, ReportData
 from delta.modules.bruteforce import BruteForceModule, BruteForceResult, BruteForceSummary
+from delta.modules.geoip import GeoIPModule, GeoIPResult
 
 __all__ = [
     "ScannerModule",
@@ -30,4 +31,6 @@ __all__ = [
     "BruteForceModule",
     "BruteForceResult",
     "BruteForceSummary",
+    "GeoIPModule",
+    "GeoIPResult",
 ]
