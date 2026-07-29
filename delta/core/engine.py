@@ -981,9 +981,11 @@ class DeltaEngine:
 
     def _cmd_version(self, args: List[str] = None, intent: IntentResult = None) -> None:
         """Show version information."""
+        self.display.section("Delta CLI Version")
         self.display.info("Delta Security Assessment CLI v1.0.0")
         self.display.info("Author: HackerAI")
         self.display.info("License: MIT")
+        self.display.info(f"Session: {self.session.session_id[:16]}...")
 
     def _cmd_plugins(self, args: List[str] = None, intent: IntentResult = None) -> None:
         """List loaded plugins."""
