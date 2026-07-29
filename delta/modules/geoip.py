@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Optional
 from urllib.request import urlopen, Request
 from urllib.error import URLError
 
+__all__ = ["GeoIPModule", "GeoIPResult"]
+
 
 @dataclass
 class GeoIPResult:

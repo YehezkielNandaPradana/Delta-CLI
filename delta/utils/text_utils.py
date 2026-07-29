@@ -5,6 +5,8 @@ import hashlib
 from typing import Any, Dict, List, Optional, Set
 from urllib.parse import urlparse
 
+__all__ = ["TextUtils"]
+
 
 class TextUtils:
     """Text processing and analysis utilities."""
