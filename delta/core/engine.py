@@ -1501,19 +1501,22 @@ class DeltaEngine:
             self.display.info("Aliases: google, duckduckgo")
             return
         self.display.info(f"Searching: {query}")
-        wb = WebSearchModule()
-        results = wb.search_duckduckgo(query)
-        if results:
-            self.display.section(f"Web Results for: {query}")
-            for i, r in enumerate(results, 1):
-                self.display.print(f"  {ANSI.BOLD}{i}. {r.title}{ANSI.RESET}")
-                self.display.print(f"     {ANSI.CYAN}{r.url[:80]}{ANSI.RESET}")
-                if r.snippet:
-                    self.display.print(f"     {ANSI.DIM}{r.snippet[:120]}{ANSI.RESET}")
-                self.display.print()
-        else:
-            self.display.warning("No results found or search failed")
-            self.display.info("Tip: Install 'requests' and 'beautifulsoup4' for better results")
+        try:
+            wb = WebSearchModule()
+            results = wb.search_duckduckgo(query)
+            if results:
+                self.display.section(f"Web Results for: {query}")
+                for i, r in enumerate(results, 1):
+                    self.display.print(f"  {ANSI.BOLD}{i}. {r.title}{ANSI.RESET}")
+                    self.display.print(f"     {ANSI.CYAN}{r.url[:80]}{ANSI.RESET}")
+                    if r.snippet:
+                        self.display.print(f"     {ANSI.DIM}{r.snippet[:120]}{ANSI.RESET}")
+                    self.display.print()
+            else:
+                self.display.warning("No results found or search failed")
+                self.display.info("Tip: Install 'requests' and 'beautifulsoup4' for better results")
+        except Exception as e:
+            self.display.warning(f"Search failed: {e}")
 
     def _cmd_fetch(self, args: List[str] = None, intent: IntentResult = None) -> None:
         from delta.modules.websearch import WebSearchModule
