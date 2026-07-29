@@ -39,7 +39,7 @@ class DeltaConfig:
     color_enabled: bool = True
     animation_enabled: bool = True
     typing_speed: float = 0.02
-    prompt_symbol: str = "Δ"
+    prompt_symbol: str = "D"
 
     # Report settings
     report_company: str = "Delta Security"
