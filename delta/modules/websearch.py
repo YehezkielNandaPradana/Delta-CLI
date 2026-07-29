@@ -39,14 +39,17 @@ class WebPageInfo:
 
 
 class WebSearchModule:
-    def __init__(self):
+    def __init__(self, timeout: int = 15):
         self.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Delta-Security-CLI/1.0"
-        self.timeout = 15
+        self.timeout = timeout
 
     def search_duckduckgo(self, query: str, max_results: int = 10) -> List[SearchResult]:
         if HAS_REQUESTS and HAS_BS4:
             return self._search_ddg_requests(query, max_results)
         return self._search_ddg_urllib(query, max_results)
+
+    def search(self, query: str, max_results: int = 10) -> List[SearchResult]:
+        return self.search_duckduckgo(query, max_results)
 
     def _search_ddg_requests(self, query: str, max_results: int = 10) -> List[SearchResult]:
         try:
