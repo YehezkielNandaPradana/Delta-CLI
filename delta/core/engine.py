@@ -728,16 +728,21 @@ class DeltaEngine:
         
         if not args:
             self.display.warning("Usage: hash <type> <data>")
+            self.display.info("  hash <hash_value>          - Identify hash type")
+            self.display.info("  hash -g <algo> <data>      - Generate hash")
+            self.display.info("  hash <algo> <data>         - Generate hash (short form)")
             return
         
         crypto = CryptoModule()
         
-        if len(args) == 1:
-            result = crypto.identify_hash(args[0])
+        if args[0] == "-g" and len(args) >= 3:
+            algo = args[1].lower()
+            data = " ".join(args[2:])
+            result = crypto.generate_hash(data, algo)
             if result.matches:
-                self.display.info(f"Possible types: {', '.join(result.possible_types)}")
+                self.display.success(f"{result.hash_type}: {result.generated}")
             else:
-                self.display.warning("Could not identify hash type")
+                self.display.error(result.generated)
         elif len(args) >= 2:
             algo = args[0].lower()
             data = " ".join(args[1:])
@@ -746,6 +751,12 @@ class DeltaEngine:
                 self.display.success(f"{result.hash_type}: {result.generated}")
             else:
                 self.display.error(result.generated)
+        elif len(args) == 1:
+            result = crypto.identify_hash(args[0])
+            if result.matches:
+                self.display.info(f"Possible types: {', '.join(result.possible_types)}")
+            else:
+                self.display.warning("Could not identify hash type")
 
     def _cmd_password(self, args: List[str], intent: IntentResult = None) -> None:
         """Password analysis command."""
