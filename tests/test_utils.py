@@ -170,5 +170,101 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(Helpers.format_bytes(1073741824), "1.0 GB")
 
 
+
+class TestTextUtils(unittest.TestCase):
+    """Test text utility functions."""
+
+    def setUp(self):
+        from delta.utils.text_utils import TextUtils
+        self.text_utils = TextUtils
+
+    def test_slugify(self):
+        """Test slug generation."""
+        self.assertEqual(self.text_utils.slugify("Hello World"), "hello-world")
+        self.assertEqual(self.text_utils.slugify("  Test  "), "test")
+        self.assertEqual(self.text_utils.slugify("Hello! World?"), "hello-world")
+
+    def test_word_count(self):
+        """Test word counting."""
+        self.assertEqual(self.text_utils.word_count(""), 0)
+        self.assertEqual(self.text_utils.word_count("hello"), 1)
+        self.assertEqual(self.text_utils.word_count("one two three"), 3)
+
+    def test_char_count(self):
+        """Test character counting."""
+        self.assertEqual(self.text_utils.char_count("hello"), 5)
+        self.assertEqual(self.text_utils.char_count("he llo"), 6)
+        self.assertEqual(self.text_utils.char_count("he llo", include_spaces=False), 5)
+
+    def test_extract_urls(self):
+        """Test URL extraction."""
+        text = "Visit https://example.com and http://test.org/path"
+        urls = self.text_utils.extract_urls(text)
+        self.assertEqual(len(urls), 2)
+        self.assertIn("https://example.com", urls)
+
+    def test_extract_emails(self):
+        """Test email extraction."""
+        text = "Contact admin@example.com or support@test.org"
+        emails = self.text_utils.extract_emails(text)
+        self.assertEqual(len(emails), 2)
+        self.assertIn("admin@example.com", emails)
+
+    def test_extract_hashes(self):
+        """Test hash extraction."""
+        text = "md5: d41d8cd98f00b204e9800998ecf8427e sha1: da39a3ee5e6b4b0d3255bfef95601890afd80709"
+        hashes = self.text_utils.extract_hashes(text)
+        self.assertIn("md5", hashes)
+        self.assertIn("sha1", hashes)
+
+    def test_obfuscate_email(self):
+        """Test email obfuscation."""
+        result = self.text_utils.obfuscate_email("john.doe@example.com")
+        self.assertIn("@example.com", result)
+        self.assertNotIn("john", result)
+
+    def test_obfuscate_ip(self):
+        """Test IP obfuscation."""
+        result = self.text_utils.obfuscate_ip("192.168.1.100")
+        self.assertEqual(result, "192.168.*.*")
+
+    def test_detect_language(self):
+        """Test language detection."""
+        en = self.text_utils.detect_language("The quick brown fox")
+        id_result = self.text_utils.detect_language("Halo apa kabar dan dimana")
+        self.assertEqual(en, "en")
+        self.assertEqual(id_result, "id")
+
+    def test_is_palindrome(self):
+        """Test palindrome detection."""
+        self.assertTrue(self.text_utils.is_palindrome("racecar"))
+        self.assertTrue(self.text_utils.is_palindrome("A man a plan a canal Panama"))
+        self.assertFalse(self.text_utils.is_palindrome("hello"))
+
+    def test_word_frequency(self):
+        """Test word frequency analysis."""
+        text = "apple banana apple cherry banana apple"
+        freq = self.text_utils.word_frequency(text, top_n=2)
+        self.assertEqual(freq[0][0], "apple")
+        self.assertEqual(freq[0][1], 3)
+
+    def test_count_sentences(self):
+        """Test sentence counting."""
+        self.assertEqual(self.text_utils.count_sentences("Hello. World!"), 2)
+        self.assertEqual(self.text_utils.count_sentences(""), 0)
+
+    def test_average_word_length(self):
+        """Test average word length."""
+        avg = self.text_utils.average_word_length("a bb ccc")
+        self.assertAlmostEqual(avg, 2.0)
+        self.assertEqual(self.text_utils.average_word_length(""), 0.0)
+
+    def test_readability(self):
+        """Test readability score."""
+        score = self.text_utils.calculate_readability("The cat sat on the mat.")
+        self.assertGreater(score, 0)
+        self.assertLessEqual(score, 100)
+
+
 if __name__ == "__main__":
     unittest.main()
