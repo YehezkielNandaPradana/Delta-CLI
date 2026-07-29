@@ -622,8 +622,15 @@ class DeltaEngine:
             self.display.warning("No target specified. Usage: ssl <host>")
             return
         
+        port = 443
+        if ":" in target:
+            parts = target.rsplit(":", 1)
+            if parts[1].isdigit():
+                port = int(parts[1])
+                target = parts[0]
+        
         ssl_mod = SSLModule()
-        info = ssl_mod.check(target)
+        info = ssl_mod.check(target, port)
         
         if info.valid:
             self.display.info(f"Subject: {info.subject}")
