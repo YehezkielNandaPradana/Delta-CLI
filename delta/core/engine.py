@@ -852,6 +852,7 @@ class DeltaEngine:
         
         if not query:
             self.display.warning("Usage: explain <vulnerability>")
+            self.display.info("Example: explain SQL Injection, explain XSS, explain CVE-2021-44228")
             return
         
         kb = KnowledgeBase(self.database)
