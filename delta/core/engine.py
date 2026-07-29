@@ -1148,11 +1148,11 @@ class DeltaEngine:
 
     def _cmd_repeat(self, args: List[str] = None, intent: IntentResult = None) -> None:
         """Repeat the last command."""
-        if not self.last_command:
+        cmd = self.session.context.last_command or self.last_command
+        if not cmd:
             self.display.warning("No previous command to repeat")
             return
-        cmd = self.last_command
-        if self.last_command.lower().startswith(("repeat", "again")):
+        if cmd.lower().startswith(("repeat", "again")):
             self.display.warning("Cannot repeat the repeat command")
             return
         self.display.info(f"Repeating: {cmd}")
