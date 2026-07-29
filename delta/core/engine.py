@@ -591,6 +591,7 @@ class DeltaEngine:
         """Clear the screen."""
         os.system("clear" if os.name != "nt" else "cls")
         self.display.print("Screen cleared")
+
     def _cmd_dns(self, args: List[str], intent: IntentResult = None) -> None:
         """DNS lookup command."""
         from delta.modules.dns import DNSModule
