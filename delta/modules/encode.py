@@ -30,14 +30,16 @@ class EncodeModule:
     def decode_base64(self, data: str) -> EncodeResult:
         """Decode Base64 encoded data."""
         result = EncodeResult(input_text=data, operation="decode", format="base64")
+        if not data:
+            result.error = "No input data provided"
+            return result
         try:
-            # Add padding if needed
             padding = 4 - len(data) % 4
             if padding != 4:
                 data_padded = data + "=" * padding
             else:
                 data_padded = data
-            
+
             decoded = base64.b64decode(data_padded)
             result.result = decoded.decode("utf-8", errors="replace")
             result.success = True

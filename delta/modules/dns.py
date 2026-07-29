@@ -36,7 +36,9 @@ class DNSModule:
     def lookup(self, domain: str) -> DNSResult:
         """Perform comprehensive DNS lookup."""
         result = DNSResult(domain=domain)
-        
+        if not domain or not domain.strip():
+            return result
+
         # A record
         try:
             result.ip = socket.gethostbyname(domain)
@@ -104,9 +106,11 @@ class DNSModule:
 
     def reverse_lookup(self, ip: str) -> str:
         """Reverse DNS lookup."""
+        if not ip or not ip.strip():
+            return ""
         try:
             return socket.gethostbyaddr(ip)[0]
-        except:
+        except socket.error:
             return ""
 
     def get_all_dns(self, domain: str) -> DNSResult:

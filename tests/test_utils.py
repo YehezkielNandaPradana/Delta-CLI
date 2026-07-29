@@ -53,6 +53,45 @@ class TestValidators(unittest.TestCase):
         self.assertFalse(Validators._is_valid_ip("999.999.999.999"))
         self.assertFalse(Validators._is_valid_ip("not.an.ip"))
 
+    def test_validate_email(self):
+        """Test email validation."""
+        self.assertEqual(Validators.validate_email("test@example.com"), "test@example.com")
+        self.assertIsNone(Validators.validate_email("invalid"))
+        self.assertIsNone(Validators.validate_email(""))
+        self.assertIsNone(Validators.validate_email(None))
+
+    def test_validate_domain(self):
+        """Test domain validation."""
+        self.assertEqual(Validators.validate_domain("example.com"), "example.com")
+        self.assertIsNone(Validators.validate_domain("invalid"))
+        self.assertIsNone(Validators.validate_domain(""))
+
+    def test_sanitize_html(self):
+        """Test HTML sanitization."""
+        self.assertIn("&lt;", Validators.sanitize_html("<script>"))
+        self.assertEqual(Validators.sanitize_html("hello"), "hello")
+
+    def test_is_strong_password(self):
+        """Test password strength checker."""
+        weak = Validators.is_strong_password("short")
+        self.assertFalse(weak["valid"])
+        strong = Validators.is_strong_password("Str0ng!Pass#2024")
+        self.assertTrue(strong["valid"])
+        empty = Validators.is_strong_password("")
+        self.assertFalse(empty["valid"])
+
+    def test_validate_ip_range(self):
+        """Test IP range validation."""
+        self.assertIsNotNone(Validators.validate_ip_range("192.168.1.0/24"))
+        self.assertIsNotNone(Validators.validate_ip_range("192.168.1.1-192.168.1.10"))
+        self.assertIsNone(Validators.validate_ip_range("invalid"))
+
+    def test_validate_url(self):
+        """Test URL validation."""
+        self.assertIsNotNone(Validators.validate_url("https://example.com"))
+        self.assertIsNotNone(Validators.validate_url("example.com"))
+        self.assertIsNone(Validators.validate_url(""))
+
 
 class TestNetworkUtils(unittest.TestCase):
     """Test network utility functions."""
