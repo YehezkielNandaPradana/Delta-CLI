@@ -925,7 +925,27 @@ class DeltaEngine:
                     if line.strip():
                         self.display.print(line)
             else:
-                self.display.warning("whois command not found on this system")
+                self.display.info("whois command not found, trying whois-servers.net...")
+                import socket
+                try:
+                    whois_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    whois_socket.settimeout(10)
+                    ext = target.split(".")[-1]
+                    whois_socket.connect((f"whois.{ext}", 43))
+                    whois_socket.send(f"{target}\r\n".encode())
+                    data = b""
+                    while True:
+                        chunk = whois_socket.recv(4096)
+                        if not chunk:
+                            break
+                        data += chunk
+                    whois_socket.close()
+                    text = data.decode("utf-8", errors="replace")
+                    for line in text.split("\n")[:25]:
+                        if line.strip() and ":" in line:
+                            self.display.print(line.strip())
+                except Exception as e2:
+                    self.display.warning(f"WHOIS lookup failed: {e2}")
         except Exception as e:
             self.display.error(f"WHOIS lookup failed: {e}")
 
