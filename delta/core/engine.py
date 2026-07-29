@@ -709,8 +709,11 @@ class DeltaEngine:
             result = enc.encode_hex(data)
         elif enc_type == "url":
             result = enc.encode_url(data)
+        elif enc_type in ("json", "format-json"):
+            result = enc.format_json(data)
         else:
             self.display.warning(f"Unknown encode type: {enc_type}")
+            self.display.info("Supported types: base64, hex, url, json")
             return
         
         if result.success:
@@ -736,8 +739,11 @@ class DeltaEngine:
             result = enc.decode_hex(data)
         elif dec_type == "url":
             result = enc.decode_url(data)
+        elif dec_type in ("json", "format-json"):
+            result = enc.format_json(data)
         else:
             self.display.warning(f"Unknown decode type: {dec_type}")
+            self.display.info("Supported types: base64, hex, url, json")
             return
         
         if result.success:
