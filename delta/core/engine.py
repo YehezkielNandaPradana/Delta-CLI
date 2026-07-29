@@ -1083,7 +1083,15 @@ class DeltaEngine:
 
     def _cmd_motd(self, args: List[str] = None, intent: IntentResult = None) -> None:
         """Show message of the day."""
-        self.display.panel("Message of the Day", "Stay secure, stay vigilant.\nDelta is your AI-powered security assessment tool.\nAlways ensure you have proper authorization before testing.", style="info")
+        from datetime import date
+        today = date.today().strftime("%B %d, %Y")
+        msg = (
+            f"Welcome to Delta on {today}.\n"
+            "Stay secure, stay vigilant.\n"
+            "Delta is your AI-powered security assessment tool.\n"
+            "Always ensure you have proper authorization before testing."
+        )
+        self.display.panel("Message of the Day", msg, style="info")
 
     def _cmd_sysinfo(self, args: List[str] = None, intent: IntentResult = None) -> None:
         """Show system information."""
