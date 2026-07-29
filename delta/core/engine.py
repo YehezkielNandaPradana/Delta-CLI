@@ -5,10 +5,12 @@ Main Delta engine - REPL loop, command dispatch, and AI integration.
 
 import sys
 import os
+import re
 import shlex
 import time
 import random
 import shutil
+import traceback
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
