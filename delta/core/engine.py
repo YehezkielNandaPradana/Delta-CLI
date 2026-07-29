@@ -1587,17 +1587,20 @@ class DeltaEngine:
         if not cve_id.startswith("CVE-"):
             cve_id = "CVE-" + cve_id
         self.display.info(f"Looking up: {cve_id}")
-        wb = WebSearchModule()
-        result = wb.search_cve(cve_id)
-        if result:
-            self.display.section(f"CVE Information: {cve_id}")
-            self.display.print(f"  {ANSI.BOLD}{result.title}{ANSI.RESET}")
-            self.display.print(f"  {ANSI.CYAN}{result.url}{ANSI.RESET}")
-            if result.snippet:
-                self.display.print(f"\n  {result.snippet}")
-        else:
-            self.display.warning(f"No results found for {cve_id}")
-            self.display.info("Try: searchweb CVE-XXXX-XXXX vulnerability")
+        try:
+            wb = WebSearchModule()
+            result = wb.search_cve(cve_id)
+            if result:
+                self.display.section(f"CVE Information: {cve_id}")
+                self.display.print(f"  {ANSI.BOLD}{result.title}{ANSI.RESET}")
+                self.display.print(f"  {ANSI.CYAN}{result.url}{ANSI.RESET}")
+                if result.snippet:
+                    self.display.print(f"\n  {result.snippet}")
+            else:
+                self.display.warning(f"No results found for {cve_id}")
+                self.display.info("Try: searchweb CVE-XXXX-XXXX vulnerability")
+        except Exception as e:
+            self.display.warning(f"CVE lookup failed: {e}")
 
     def _cmd_ml(self, args: List[str] = None, intent: IntentResult = None) -> None:
         subcmd = args[0].lower() if args else "status"
