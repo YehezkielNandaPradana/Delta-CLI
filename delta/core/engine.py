@@ -604,14 +604,21 @@ class DeltaEngine:
         dns = DNSModule()
         result = dns.get_all_dns(target)
         
+        self.display.section(f"DNS Records for: {target}")
         if result.ip:
-            self.display.info(f"IP: {result.ip}")
+            self.display.info(f"IP Address: {result.ip}")
         if result.a_records:
             self.display.info(f"A Records: {', '.join(result.a_records)}")
         if result.mx_records:
             self.display.info(f"MX Records: {', '.join(result.mx_records)}")
         if result.ns_records:
             self.display.info(f"NS Records: {', '.join(result.ns_records)}")
+        if result.txt_records:
+            self.display.info(f"TXT Records: {', '.join(result.txt_records)}")
+        if result.cname_records:
+            self.display.info(f"CNAME: {', '.join(result.cname_records)}")
+        if result.reverse_dns:
+            self.display.info(f"Reverse DNS: {result.reverse_dns}")
 
     def _cmd_ssl(self, args: List[str], intent: IntentResult = None) -> None:
         """SSL certificate check command."""
