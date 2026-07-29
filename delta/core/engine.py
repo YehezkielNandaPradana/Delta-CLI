@@ -651,6 +651,18 @@ class DeltaEngine:
             return
         
         net = NetworkModule()
+        
+        if "/" in target or "-" in target:
+            self.display.info(f"Ping sweeping {target}...")
+            results = net.ping_sweep(target, timeout=1.0)
+            if results:
+                self.display.success(f"Found {len(results)} alive host(s):")
+                for r in results:
+                    self.display.print(f"  {r.ip:<16} {r.rtt_ms:.1f}ms")
+            else:
+                self.display.warning("No alive hosts found")
+            return
+        
         result = net.ping(target)
         
         if result.alive:
