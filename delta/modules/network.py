@@ -51,7 +51,8 @@ class NetworkModule:
 
         # Use system ping command
         try:
-            if platform.system().lower() == "windows":
+            is_win = platform.system().lower() == "windows"
+            if is_win:
                 param = "-n"
                 timeout_flag = "-w"
                 timeout_val = str(int(timeout * 1000))
