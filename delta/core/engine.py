@@ -917,8 +917,11 @@ class DeltaEngine:
         if args and len(args) > 1:
             fmt = args[1]
         generated = report.generate(data, format=fmt)
+        if not generated:
+            self.display.warning("No report generated. Check format parameter.")
+            return
         for fmt_name, path in generated.items():
-            self.display.success(f"Report saved: {path}")
+            self.display.success(f"Report saved ({fmt_name}): {path}")
 
     def _cmd_session(self, args: List[str] = None, intent: IntentResult = None) -> None:
         """Show session information."""
