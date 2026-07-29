@@ -1528,19 +1528,22 @@ class DeltaEngine:
             url = "https://" + url
         wb = WebSearchModule()
         self.display.info(f"Fetching: {url}")
-        page = wb.fetch_page(url)
-        if page.error:
-            self.display.error(f"Failed: {page.error}")
-            return
-        self.display.section(f"Page: {page.title or url}")
-        self.display.info(f"Status: {page.status_code}")
-        self.display.info(f"Type: {page.content_type}")
-        self.display.print()
-        text = re.sub(r'<[^>]+>', ' ', page.content)
-        text = re.sub(r'\s+', ' ', text).strip()
-        if text:
-            for chunk in [text[i:i+200] for i in range(0, len(text), 200)]:
-                self.display.print(chunk)
+        try:
+            page = wb.fetch_page(url)
+            if page.error:
+                self.display.error(f"Failed: {page.error}")
+                return
+            self.display.section(f"Page: {page.title or url}")
+            self.display.info(f"Status: {page.status_code}")
+            self.display.info(f"Type: {page.content_type}")
+            self.display.print()
+            text = re.sub(r'<[^>]+>', ' ', page.content)
+            text = re.sub(r'\s+', ' ', text).strip()
+            if text:
+                for chunk in [text[i:i+200] for i in range(0, len(text), 200)]:
+                    self.display.print(chunk)
+        except Exception as e:
+            self.display.warning(f"Failed to fetch page: {e}")
 
     def _cmd_geoip(self, args: List[str] = None, intent: IntentResult = None) -> None:
         """IP geolocation lookup command."""
