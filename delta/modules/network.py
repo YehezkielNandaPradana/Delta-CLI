@@ -51,8 +51,15 @@ class NetworkModule:
 
         # Use system ping command
         try:
-            param = "-n" if platform.system().lower() == "windows" else "-c"
-            cmd = ["ping", param, str(count), "-W", str(int(timeout)), host]
+            if platform.system().lower() == "windows":
+                param = "-n"
+                timeout_flag = "-w"
+                timeout_val = str(int(timeout * 1000))
+            else:
+                param = "-c"
+                timeout_flag = "-W"
+                timeout_val = str(int(timeout))
+            cmd = ["ping", param, str(count), timeout_flag, timeout_val, host]
             
             import subprocess
             p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 2)
