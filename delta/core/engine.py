@@ -803,11 +803,12 @@ class DeltaEngine:
         """JWT decode command."""
         from delta.modules.encode import EncodeModule
         
-        if not args:
+        token = intent.target if intent and intent.target else (" ".join(args) if args else "")
+        
+        if not token:
             self.display.warning("Usage: jwt <token>")
             return
         
-        token = " ".join(args)
         enc = EncodeModule()
         result = enc.decode_jwt(token)
         
