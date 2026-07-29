@@ -289,11 +289,17 @@ class DisplayManager:
     def _safe_icon(self, text: str) -> str:
         """Replace Unicode symbols with ASCII fallbacks if console can't handle them."""
         try:
-            text.encode(sys.stdout.encoding or 'utf-8')
+            test = text.encode(sys.stdout.encoding or 'utf-8')
             return text
         except (UnicodeEncodeError, UnicodeDecodeError):
             replacements = {
                 "ℹ": "[i]", "✔": "[+]", "⚠": "[!]", "✘": "[-]", "🔍": "[*]",
+                "Δ": "D", "▬": "-", "►": ">", "◄": "<", "•": "*",
+                "─": "-", "═": "=", "╔": "+", "╗": "+", "╚": "+", "╝": "+",
+                "║": "|", "╠": "+", "╣": "+", "╬": "+", "╦": "+", "╩": "+",
+                "╧": "+", "╤": "+", "╪": "+", "█": "#", "┌": "+", "┐": "+",
+                "└": "+", "┘": "+", "├": "+", "┤": "+", "│": "|", "─": "-",
+                "┼": "+", "┬": "+", "┴": "+", "○": "o", "●": "O",
             }
             for orig, repl in replacements.items():
                 text = text.replace(orig, repl)
