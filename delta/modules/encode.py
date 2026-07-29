@@ -31,7 +31,8 @@ class EncodeModule:
         """Decode Base64 encoded data."""
         result = EncodeResult(input_text=data, operation="decode", format="base64")
         if not data:
-            result.error = "No input data provided"
+            result.result = ""
+            result.success = True
             return result
         try:
             padding = 4 - len(data) % 4
