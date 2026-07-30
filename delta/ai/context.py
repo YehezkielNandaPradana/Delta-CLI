@@ -60,8 +60,9 @@ class ContextManager:
         return result
 
     def clear(self) -> None:
-        """Clear all context."""
+        """Clear all context and history."""
         self._entries.clear()
+        self._history.clear()
 
     def _is_expired(self, entry: ContextEntry) -> bool:
         """Check if entry is expired."""
