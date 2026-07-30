@@ -104,6 +104,23 @@ class EncodeModule:
             result.error = f"URL encode error: {e}"
         return result
 
+    def decode_base64_raw(self, data: str) -> EncodeResult:
+        """Decode raw Base64 data (no UTF-8 conversion)."""
+        result = EncodeResult(input_text=data, operation="decode", format="base64")
+        try:
+            if not data:
+                result.error = "Empty input"
+                return result
+            missing = len(data) % 4
+            if missing:
+                data += "=" * (4 - missing)
+            decoded = base64.b64decode(data)
+            result.result = decoded.hex()
+            result.success = True
+        except Exception as e:
+            result.error = str(e)
+        return result
+
     def decode_jwt(self, token: str) -> EncodeResult:
         """Decode JWT token without verification."""
         result = EncodeResult(input_text=token[:50] + "...", operation="decode", format="jwt")
