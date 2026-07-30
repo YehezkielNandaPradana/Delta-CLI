@@ -1,3 +1,8 @@
+"""
+ML Pipeline - Orchestrates training, prediction, and analysis workflows.
+Coordinates between classifier, KNN, and anomaly detector models.
+"""
+
 import json
 import os
 from datetime import datetime
