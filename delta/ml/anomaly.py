@@ -1,3 +1,8 @@
+"""
+Anomaly detection using Mahalanobis distance for identifying unusual security patterns.
+Performs offline statistical anomaly detection without external dependencies.
+"""
+
 import math
 from typing import List, Tuple
 
