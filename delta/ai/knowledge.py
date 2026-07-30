@@ -47,6 +47,14 @@ class KnowledgeBase:
         self._init_vulnerabilities()
         self._init_concepts()
 
+    @property
+    def vulnerability_count(self) -> int:
+        return len(self._vulnerabilities)
+
+    @property
+    def concept_count(self) -> int:
+        return len(self._concepts)
+
     def _init_vulnerabilities(self) -> None:
         """Initialize vulnerability knowledge base."""
         vulns = [
