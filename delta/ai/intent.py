@@ -88,6 +88,12 @@ class IntentResult:
     parameters: Dict[str, str] = field(default_factory=dict)
     sub_intents: List['IntentResult'] = field(default_factory=list)
 
+    def __repr__(self) -> str:
+        return (
+            f"IntentResult(intent={self.intent.name}, "
+            f"target={self.target!r}, confidence={self.confidence:.2f})"
+        )
+
 
 class IntentEngine:
     """
