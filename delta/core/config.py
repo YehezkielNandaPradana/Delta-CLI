@@ -35,6 +35,12 @@ class DeltaConfig:
     context_memory_size: int = 100
     auto_suggest: bool = True
 
+    # LLM settings
+    llm_api_key: str = ""
+    llm_api_base_url: str = ""
+    llm_model: str = ""
+    llm_enabled: bool = False
+
     # Display settings
     color_enabled: bool = True
     animation_enabled: bool = True
@@ -97,6 +103,17 @@ class DeltaConfig:
                         setattr(self, key, value)
         except (json.JSONDecodeError, IOError) as e:
             print(f"[!] Warning: Could not load config: {e}")
+
+        # Override with environment variables if set
+        env_map = {
+            "DELTA_API_KEY": "llm_api_key",
+            "DELTA_API_BASE_URL": "llm_api_base_url",
+            "DELTA_LLM_MODEL": "llm_model",
+        }
+        for env_key, config_key in env_map.items():
+            env_val = os.environ.get(env_key)
+            if env_val and hasattr(self, config_key):
+                setattr(self, config_key, env_val)
 
         # Ensure all directories exist
         for d in [self.data_dir, self.config_dir, self.plugin_dir,
