@@ -18,9 +18,10 @@ from dataclasses import dataclass
 from delta.core.config import DeltaConfig
 from delta.core.database import Database
 from delta.core.session import SessionManager
-from delta.core.display import DisplayManager, ANSI
+from delta.core.display import DisplayManager, ANSI, Spinner
 from delta.core.plugin import PluginManager, PluginBase
 from delta.ai.intent import IntentEngine, IntentResult
+from delta.ai.llm import LLMEngine, parse_command_from_response, strip_command_tags
 
 
 # Try to import prompt_toolkit for enhanced input
@@ -49,6 +50,7 @@ class DeltaEngine:
         intent_engine: IntentEngine,
         plugin_manager: PluginManager,
         display: DisplayManager,
+        llm_engine: Optional[LLMEngine] = None,
     ):
         """
         Initialize Delta engine.
@@ -60,6 +62,7 @@ class DeltaEngine:
             intent_engine: AI intent recognition engine
             plugin_manager: Plugin manager
             display: Display manager
+            llm_engine: Optional LLM engine for AI-powered responses
         """
         self.config = config
         self.database = database
@@ -67,10 +70,12 @@ class DeltaEngine:
         self.intent_engine = intent_engine
         self.plugin_manager = plugin_manager
         self.display = display
+        self.llm_engine = llm_engine
         self.running = False
 
         self.last_result: Any = None
         self.last_command: str = ""
+        self.last_llm_response: str = ""
         self.session_start = datetime.now()
         self._timer_start: Optional[float] = None
 
@@ -189,6 +194,8 @@ class DeltaEngine:
             "ml": self._cmd_ml,
             "geoip": self._cmd_geoip,
             "geolocate": self._cmd_geoip,
+            "ai": self._cmd_ai,
+            "llm": self._cmd_ai,
         }
         self._builtin_commands.update(commands)
 
@@ -224,7 +231,13 @@ class DeltaEngine:
         self.display.success("Delta AI Engine initialized successfully")
         self.display.info("Type 'help' for available commands, 'exit' to quit")
         self.display.info(f"Session: {self.session.session_id}")
-        self.display.info("Tip: Type 'tutorial' for an interactive walkthrough")
+
+        if self.llm_engine and self.llm_engine.is_configured and self.config.llm_enabled:
+            self.display.success("AI LLM Mode: ACTIVE")
+            self.display.info("Chat naturally or use commands. Try 'ai help' for options.")
+        else:
+            self.display.info("Tip: Type 'tutorial' for an interactive walkthrough")
+
         self.display.print()
 
         while self.running:
@@ -294,6 +307,11 @@ class DeltaEngine:
         # Add to conversation
         self.session.add_conversation("user", user_input)
 
+        # If LLM is enabled and configured, use it for processing
+        if self.llm_engine and self.llm_engine.is_configured and self.config.llm_enabled:
+            self._process_with_llm(user_input)
+            return
+
         # Process through AI intent engine
         intent = self.intent_engine.process(user_input, self.session.context)
 
@@ -303,6 +321,42 @@ class DeltaEngine:
         else:
             # Try direct command dispatch
             self._dispatch_command(user_input)
+
+    def _process_with_llm(self, user_input: str) -> None:
+        """
+        Process user input using the LLM engine for AI-powered responses.
+        The LLM can either respond conversationally or execute Delta commands.
+        """
+        host = self.session.get_host()
+        context_info = f"Current session target: {host or 'none'}"
+        self.llm_engine.add_system_context(context_info)
+
+        spinner = Spinner("Delta AI is thinking...")
+        spinner.start()
+        try:
+            response = self.llm_engine.chat(user_input)
+        finally:
+            spinner.stop()
+
+        if response.startswith("ERROR"):
+            self.display.error(response)
+            self.display.info("Falling back to standard command processing...")
+            self._dispatch_command(user_input)
+            return
+
+        command = parse_command_from_response(response)
+        clean_response = strip_command_tags(response)
+
+        if command:
+            self.last_llm_response = clean_response
+            if clean_response:
+                self.display.markdown(clean_response)
+                self.display.print()
+            self.display.info(f"Executing: {command}")
+            self._dispatch_command(command)
+        else:
+            if response:
+                self.display.markdown(response)
 
     def _execute_with_ai(self, intent: IntentResult, raw_input: str) -> None:
         """
@@ -368,6 +422,10 @@ class DeltaEngine:
                 })
                 self.display.success(result)
         else:
+            # Try LLM for unknown commands if available and enabled
+            if self.llm_engine and self.llm_engine.is_configured and self.config.llm_enabled:
+                self._process_with_llm(raw)
+                return
             # Try AI to interpret
             intent = self.intent_engine.process(raw, self.session.context)
             if intent and intent.confidence > 0.5:
@@ -485,6 +543,16 @@ class DeltaEngine:
                 ("cve <CVE-ID>", "Lookup CVE vulnerability details"),
                 ("cve CVE-2021-44228", "Search Log4j CVE details"),
                 ("cve CVE-2024-3094", "Search XZ Utils backdoor CVE"),
+            ],
+            "🤖 AI LLM": [
+                ("ai on", "Enable AI LLM chat mode"),
+                ("ai off", "Disable AI LLM mode"),
+                ("ai status", "Show AI LLM status"),
+                ("ai reset", "Reset conversation history"),
+                ("ai key <key>", "Set API key"),
+                ("ai model <name>", "Set model name"),
+                ("ai url <url>", "Set API base URL"),
+                ("ai help", "Show AI LLM commands"),
             ],
             "🧠 Machine Learning": [
                 ("ml status", "Show ML model status"),
@@ -1015,7 +1083,11 @@ class DeltaEngine:
             self.display.section("Current Configuration")
             config_dict = {k: v for k, v in self.config.__dict__.items() if not k.startswith("_")}
             for key, value in config_dict.items():
-                self.display.print(f"  {key}: {value}")
+                if "key" in key.lower() and value:
+                    display_value = value[:8] + "..." if len(value) > 12 else "***"
+                else:
+                    display_value = value
+                self.display.print(f"  {key}: {display_value}")
         else:
             if len(args) >= 2:
                 key = args[0]
@@ -1741,6 +1813,82 @@ class DeltaEngine:
         self.display.print()
         self.display.info("Features: [open_ports dangerous_ports vulns missing_headers expired_ssl self_signed_ssl services]")
         self.display.info("Example: ml predict 8 3 2 3 0 0 4")
+
+    def _cmd_ai(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Manage AI LLM integration."""
+        subcmd = args[0].lower() if args else "status"
+
+        if subcmd in ("on", "enable", "start"):
+            if not self.llm_engine:
+                self.display.error("LLM engine not initialized")
+                return
+            if not self.llm_engine.is_configured:
+                self.display.error("API key not configured. Set DELTA_API_KEY env var or llm_api_key in config")
+                return
+            self.config.llm_enabled = True
+            self.config.save()
+            self.display.success("AI LLM mode enabled")
+            self.display.info("You can now chat with Delta AI or run security commands naturally")
+
+        elif subcmd in ("off", "disable", "stop"):
+            self.config.llm_enabled = False
+            self.config.save()
+            self.display.success("AI LLM mode disabled")
+            self.display.info("Delta will use standard command processing")
+
+        elif subcmd in ("reset", "clear", "new"):
+            if self.llm_engine:
+                self.llm_engine.reset_conversation()
+                self.display.success("Conversation reset")
+
+        elif subcmd in ("status", "info", "show"):
+            self.display.section("AI LLM Status")
+            self.display.info(f"Enabled: {self.config.llm_enabled}")
+            self.display.info(f"Configured: {bool(self.llm_engine and self.llm_engine.is_configured)}")
+            if self.llm_engine:
+                self.display.info(f"Model: {self.llm_engine.model}")
+                self.display.info(f"Base URL: {self.llm_engine.base_url}")
+                self.display.info(f"API Key: {'*' * 8 + self.llm_engine.api_key[-4:] if self.llm_engine.api_key else 'Not set'}")
+            else:
+                self.display.info("Engine: Not initialized")
+
+        elif subcmd in ("help", "--help", "-h"):
+            self.display.section("AI LLM Commands")
+            cmds = [
+                ("ai on", "Enable AI LLM mode"),
+                ("ai off", "Disable AI LLM mode"),
+                ("ai status", "Show AI LLM status"),
+                ("ai reset", "Reset conversation history"),
+                ("ai key <key>", "Set API key"),
+                ("ai model <model>", "Set model name"),
+                ("ai url <url>", "Set API base URL"),
+            ]
+            for cmd, desc in cmds:
+                self.display.print(f"  {ANSI.CYAN}{cmd:<25}{ANSI.RESET} {desc}")
+
+        elif subcmd == "key" and len(args) >= 2:
+            if self.llm_engine:
+                self.llm_engine.api_key = args[1]
+                self.config.llm_api_key = args[1]
+                self.config.save()
+                self.display.success("API key updated")
+
+        elif subcmd == "model" and len(args) >= 2:
+            if self.llm_engine:
+                self.llm_engine.model = args[1]
+                self.config.llm_model = args[1]
+                self.config.save()
+                self.display.success(f"Model set to: {args[1]}")
+
+        elif subcmd == "url" and len(args) >= 2:
+            if self.llm_engine:
+                self.llm_engine.base_url = args[1]
+                self.config.llm_api_base_url = args[1]
+                self.config.save()
+                self.display.success(f"Base URL set to: {args[1]}")
+
+        else:
+            self.display.warning("Usage: ai [on|off|status|reset|key|model|url|help]")
 
     def _cmd_banner(self, args: List[str] = None, intent: IntentResult = None) -> None:
         """Display the Delta banner again."""
