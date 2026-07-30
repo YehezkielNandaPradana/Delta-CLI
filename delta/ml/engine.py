@@ -1,3 +1,8 @@
+"""
+ML Engine - Machine learning models for threat prediction and anomaly detection.
+Provides offline classification, anomaly detection, and model management.
+"""
+
 import json
 import os
 import math
