@@ -29,11 +29,13 @@ class AnalysisResult:
     risk_level: str
     findings: List[Finding] = field(default_factory=list)
     score: float = 0.0
+    risk_score: float = 0.0
     total_findings: int = 0
     critical_count: int = 0
     high_count: int = 0
     medium_count: int = 0
     low_count: int = 0
+    info_count: int = 0
 
 
 class ReasoningEngine:
