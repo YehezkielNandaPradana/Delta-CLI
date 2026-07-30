@@ -1,3 +1,8 @@
+"""
+Brute Force Module - SSH, FTP, and HTTP basic authentication brute forcing.
+Supports dictionary-based attacks with configurable concurrency.
+"""
+
 import socket
 import time
 import threading
