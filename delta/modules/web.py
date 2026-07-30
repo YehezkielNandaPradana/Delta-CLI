@@ -53,13 +53,25 @@ class WebModule:
         
         return WebAnalysisResult(url=f"http://{target}")
 
+    USER_AGENTS = [
+        "Mozilla/5.0 (compatible; Delta-Scanner/1.0)",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/120.0",
+        "Delta-CLI/1.0 (+https://github.com/YehezkielNandaPradana/Delta-CLI)",
+    ]
+
+    def _get_user_agent(self) -> str:
+        """Rotate through user agents."""
+        import random
+        return random.choice(self.USER_AGENTS)
+
     def _analyze_url(self, url: str) -> WebAnalysisResult:
         """Analyze a single URL."""
         result = WebAnalysisResult(url=url)
         
         try:
             req = Request(url, method="GET", headers={
-                "User-Agent": "Mozilla/5.0 (compatible; Delta-Scanner/1.0)",
+                "User-Agent": self._get_user_agent(),
                 "Accept": "text/html,application/xhtml+xml",
             })
             
