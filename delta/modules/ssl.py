@@ -39,6 +39,7 @@ class SSLModule:
 
     def __init__(self):
         self.context = self._create_context()
+        self._timeout = 5
 
     def _create_context(self) -> ssl.SSLContext:
         """Create SSL context for checking."""
