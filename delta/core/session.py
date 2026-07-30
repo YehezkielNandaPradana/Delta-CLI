@@ -170,6 +170,9 @@ class SessionManager:
             parts.append(f"Last command: {self.context.last_command}")
         if self.context.scan_results:
             parts.append(f"Saved results: {len(self.context.scan_results)}")
+        conv_count = len(self.conversation)
+        if conv_count:
+            parts.append(f"Conversation: {conv_count} exchanges")
         return " | ".join(parts) if parts else "No active context"
 
     def get_history(self, limit: int = 20) -> List[Dict[str, Any]]:
