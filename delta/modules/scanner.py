@@ -25,7 +25,7 @@ from delta.ai.reasoning import ReasoningEngine
 
 @dataclass
 class ScanResult:
-    """Container for scan results."""
+    """Container for scan results with metadata."""
     target: str
     ip: str
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
