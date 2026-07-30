@@ -35,6 +35,8 @@ class ReportModule:
     Supports Markdown, HTML, and JSON output formats.
     """
 
+    SUPPORTED_FORMATS = ("markdown", "md", "html", "json", "all")
+
     def generate(self, data: ReportData, output_dir: str = "reports", format: str = "all") -> Dict[str, str]:
         """Generate reports in specified format(s)."""
         os.makedirs(output_dir, exist_ok=True)
