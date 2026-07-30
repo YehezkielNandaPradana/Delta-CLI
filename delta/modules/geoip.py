@@ -39,21 +39,28 @@ class GeoIPModule:
     """
 
     API_URL = "http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,region,city,zip,lat,lon,timezone,isp,org,as,query"
+    REQUEST_TIMEOUT = 10
+
+    def _validate_ip(self, ip: str) -> bool:
+        """Validate IP address format."""
+        try:
+            socket.inet_aton(ip)
+            return True
+        except socket.error:
+            return False
 
     def lookup(self, ip: str) -> GeoIPResult:
         """Look up geolocation for an IP address."""
         result = GeoIPResult(ip=ip)
 
-        try:
-            socket.inet_aton(ip)
-        except socket.error:
+        if not self._validate_ip(ip):
             result.error = f"Invalid IP address: {ip}"
             return result
 
         try:
             url = self.API_URL.format(ip=ip)
             req = Request(url, headers={"User-Agent": "Delta-CLI/1.0"})
-            response = urlopen(req, timeout=10)
+            response = urlopen(req, timeout=self.REQUEST_TIMEOUT)
             data = json.loads(response.read().decode())
 
             if data.get("status") == "success":
