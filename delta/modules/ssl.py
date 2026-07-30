@@ -47,12 +47,12 @@ class SSLModule:
         context.verify_mode = ssl.CERT_NONE
         return context
 
-    def check(self, host: str, port: int = 443) -> SSLCertificateInfo:
+    def check(self, host: str, port: int = 443, timeout: int = 5) -> SSLCertificateInfo:
         """Check SSL/TLS certificate for a host."""
         info = SSLCertificateInfo(host=host, port=port)
         
         try:
-            with socket.create_connection((host, port), timeout=5) as sock:
+            with socket.create_connection((host, port), timeout=timeout) as sock:
                 with self.context.wrap_socket(sock, server_hostname=host) as ssock:
                     cert = ssock.getpeercert()
                     info.protocol = ssock.version() or "unknown"
