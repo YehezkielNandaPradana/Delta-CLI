@@ -168,9 +168,8 @@ class Validators:
     @staticmethod
     def _is_valid_ip(ip: str) -> bool:
         """Check valid IP address."""
-        import socket
         try:
             socket.inet_aton(ip)
             return True
-        except socket.error:
+        except (socket.error, OSError):
             return False
