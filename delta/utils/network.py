@@ -36,9 +36,10 @@ class NetworkUtils:
 
     @staticmethod
     def extract_ips(text: str) -> List[str]:
-        """Extract IP addresses from text."""
+        """Extract valid IP addresses from text."""
         pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
-        return re.findall(pattern, text)
+        candidates = re.findall(pattern, text)
+        return [ip for ip in candidates if NetworkUtils.is_valid_ip(ip)]
 
     @staticmethod
     def extract_domains(text: str) -> List[str]:
