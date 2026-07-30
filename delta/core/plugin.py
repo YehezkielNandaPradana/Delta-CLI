@@ -250,6 +250,10 @@ class PluginManager:
         """Get list of all loaded plugins."""
         return list(self.plugins.values())
 
+    def get_plugin_info(self, name: str) -> Optional[PluginInfo]:
+        """Get plugin info by name."""
+        return self.plugins.get(name)
+
     def is_command_handled(self, command: str) -> bool:
         """Check if a command is handled by any plugin."""
         return command.lower() in self._command_map
