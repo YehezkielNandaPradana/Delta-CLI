@@ -26,11 +26,18 @@ class RecommendationEngine:
             if rec:
                 recommendations.append(rec)
 
-        # Sort by severity
         severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
         recommendations.sort(key=lambda r: severity_order.get(r["severity"], 99))
 
         return recommendations
+
+    def summary(self, recommendations: List[Dict[str, Any]]) -> Dict[str, int]:
+        """Get summary counts of recommendations by severity."""
+        counts: Dict[str, int] = {}
+        for rec in recommendations:
+            sev = rec.get("severity", "info")
+            counts[sev] = counts.get(sev, 0) + 1
+        return counts
 
     def _build_recommendation(self, finding: Finding) -> Dict[str, Any]:
         """Build a structured recommendation from a finding."""
