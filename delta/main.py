@@ -16,6 +16,7 @@ from delta.core.database import Database
 from delta.core.session import SessionManager
 from delta.core.display import DisplayManager
 from delta.ai.intent import IntentEngine
+from delta.ai.llm import LLMEngine
 from delta.core.plugin import PluginManager
 
 
@@ -67,6 +68,16 @@ def create_engine(config_path: Optional[str] = None) -> DeltaEngine:
 
     plugin_manager = PluginManager(config.plugin_dir)
 
+    llm_engine = LLMEngine(
+        api_key=config.llm_api_key,
+        base_url=config.llm_api_base_url or None,
+        model=config.llm_model or None,
+    )
+
+    if not config.llm_enabled and llm_engine.is_configured:
+        config.llm_enabled = True
+        config.save()
+
     engine = DeltaEngine(
         config=config,
         database=database,
@@ -74,6 +85,7 @@ def create_engine(config_path: Optional[str] = None) -> DeltaEngine:
         intent_engine=intent_engine,
         plugin_manager=plugin_manager,
         display=display,
+        llm_engine=llm_engine,
     )
 
     return engine
