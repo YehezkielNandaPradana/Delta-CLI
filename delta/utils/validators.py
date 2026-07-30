@@ -167,6 +167,17 @@ class Validators:
         return None
 
     @staticmethod
+    def validate_mac(mac: str) -> Optional[str]:
+        """Validate MAC address format (aa:bb:cc:dd:ee:ff)."""
+        if not mac or not mac.strip():
+            return None
+        mac = mac.strip().lower()
+        pattern = r'^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$'
+        if re.match(pattern, mac):
+            return mac
+        return None
+
+    @staticmethod
     def _is_valid_ip(ip: str) -> bool:
         """Check valid IP address."""
         try:
