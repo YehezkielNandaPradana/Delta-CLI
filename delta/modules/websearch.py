@@ -1,3 +1,8 @@
+"""
+Web Search Module - Web search, CVE lookup, and page fetching capabilities.
+Uses DuckDuckGo for privacy-respecting web searches.
+"""
+
 import re
 import json
 import urllib.parse
