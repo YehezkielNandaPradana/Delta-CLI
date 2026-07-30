@@ -1,3 +1,8 @@
+"""
+Naive Bayes and KNN classifiers for security threat prediction.
+All computation is done locally using pure Python math.
+"""
+
 import math
 from typing import Any, Dict, List, Optional, Tuple
 
