@@ -39,6 +39,10 @@ class NetworkModule:
     Provides ping, traceroute, and network scanning capabilities.
     """
 
+    PING_TIMEOUT = 2
+    PING_COUNT = 3
+    TRACEROUTE_MAX_HOPS = 30
+
     def ping(self, host: str, count: int = 3, timeout: float = 2.0) -> PingResult:
         """Ping a host using system ping command with fallback."""
         result = PingResult(host=host, ip="")
