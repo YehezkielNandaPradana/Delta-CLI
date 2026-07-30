@@ -20,7 +20,9 @@ class AnalysisModule:
         self.reasoning = ReasoningEngine(knowledge_base)
 
     def analyze(self, target: str, scan_data: Dict[str, Any]) -> AnalysisResult:
-        """Analyze scan data and generate findings."""
+        """Analyze scan data and generate findings with risk scoring."""
+        if not scan_data:
+            return AnalysisResult(target=target, risk_score=0.0)
         return self.reasoning.analyze_scan(target, scan_data)
 
     def explain_vulnerability(self, vuln_name: str) -> Optional[Dict[str, Any]]:
