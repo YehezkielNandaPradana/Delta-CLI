@@ -31,9 +31,14 @@ class PluginBase:
         return "1.0.0"
 
     @property
-    def description(self) -> str:
-        """Plugin description - override in subclass."""
+    def author(self) -> str:
+        """Plugin author - override in subclass."""
         return ""
+
+    @property
+    def commands(self) -> List[str]:
+        """List of commands this plugin handles - override in subclass."""
+        return []
 
     @property
     def author(self) -> str:
