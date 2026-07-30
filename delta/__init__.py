@@ -25,6 +25,7 @@ from delta.core.display import DisplayManager
 from delta.core.plugin import PluginManager
 from delta.ai.intent import IntentEngine, IntentResult
 from delta.ai.knowledge import KnowledgeBase
+from delta.ai.llm import LLMEngine
 from delta.ml.engine import MLEngine
 from delta.ml.pipeline import MLPipeline
 from delta.modules.websearch import WebSearchModule
@@ -39,6 +40,7 @@ __all__ = [
     "IntentEngine",
     "IntentResult",
     "KnowledgeBase",
+    "LLMEngine",
     "MLEngine",
     "MLPipeline",
     "WebSearchModule",
