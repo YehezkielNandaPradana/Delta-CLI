@@ -1,0 +1,7 @@
+{
+  "name": "performance-optimizer",
+  "description": "Optimasi performa: algoritma, caching, profiling, dan pengurangan latensi.",
+  "category": "Engineering",
+  "tags": ["performance", "optimization", "caching", "profiling", "algorithms", "latency"],
+  "version": "1.0.0"
+}

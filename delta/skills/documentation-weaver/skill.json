@@ -1,0 +1,7 @@
+{
+  "name": "documentation-weaver",
+  "description": "Dokumentasi teknis: README, arsitektur, API, dan dokumen yang hidup dan nyaman dipakai.",
+  "category": "Engineering",
+  "tags": ["documentation", "readme", "technical-writing", "architecture-docs", "api-docs"],
+  "version": "1.0.0"
+}

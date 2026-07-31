@@ -1,0 +1,7 @@
+{
+  "name": "system-designer",
+  "description": "Desain sistem skala besar: skalabilitas, performa, toleransi kegagalan, dan trade-off arsitektur.",
+  "category": "Architecture",
+  "tags": ["system-design", "scalability", "architecture", "distributed-systems", "concurrency"],
+  "version": "1.0.0"
+}

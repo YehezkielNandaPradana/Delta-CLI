@@ -1,0 +1,7 @@
+{
+  "name": "testing-guru",
+  "description": "Pakar testing: unit, integration, mocking, TDD, dan jaminan kualitas kode.",
+  "category": "Engineering",
+  "tags": ["testing", "tdd", "pytest", "jest", "mocking", "coverage", "quality"],
+  "version": "1.0.0"
+}

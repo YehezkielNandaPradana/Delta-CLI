@@ -1,0 +1,7 @@
+{
+  "name": "backend-master",
+  "description": "Backend & API kelas produksi: REST/GraphQL, validasi, error handling, keamanan, dan skalabilitas.",
+  "category": "Backend",
+  "tags": ["backend", "api", "rest", "graphql", "server", "microservices"],
+  "version": "1.0.0"
+}

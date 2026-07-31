@@ -171,6 +171,34 @@ class ProgressBar:
         self.update(self.total)
 
 
+class DynamicStream:
+    """Stream proxy that always writes to the *current* sys.stdout.
+    Lets the TUI capture output (by temporarily swapping sys.stdout)
+    even for writers that captured the stream at construction time (Rich)."""
+
+    def write(self, s: str) -> int:
+        return sys.stdout.write(s)
+
+    def flush(self) -> None:
+        sys.stdout.flush()
+
+    def isatty(self) -> bool:
+        return True
+
+    def fileno(self) -> int:
+        try:
+            return sys.stdout.fileno()
+        except Exception:
+            return -1
+
+    @property
+    def encoding(self) -> str:
+        return getattr(sys.stdout, "encoding", "utf-8")
+
+    def __getattr__(self, name: str):
+        return getattr(sys.stdout, name)
+
+
 class DisplayManager:
     """
     Central display manager for Delta.
@@ -181,7 +209,7 @@ class DisplayManager:
         """Initialize display manager."""
         self.rich = HAS_RICH
         if self.rich:
-            self.console = RichConsole(color_system="auto")
+            self.console = RichConsole(color_system="auto", file=DynamicStream())
         self._banner_shown = False
 
     def show_banner(self) -> None:
@@ -354,7 +382,11 @@ class DisplayManager:
                 "error": ANSI.RED, "critical": ANSI.BOLD + ANSI.RED,
             }
             border = border_styles.get(style, ANSI.BLUE)
-            width = 60
+            try:
+                cols = shutil.get_terminal_size().columns if hasattr(shutil, 'get_terminal_size') else 80
+            except Exception:
+                cols = 80
+            width = min(60, max(20, cols - 6))
             try:
                 print(f"\n{border}╔{'═' * width}╗{ANSI.RESET}")
                 print(f"{border}║{ANSI.RESET} {ANSI.BOLD}{title}{ANSI.RESET}{' ' * (width - len(title) - 1)}{border}║{ANSI.RESET}")
@@ -388,6 +420,15 @@ class DisplayManager:
                 for row in rows:
                     max_w = max(max_w, len(str(row[i] if i < len(row) else "")))
                 col_widths.append(min(max_w + 2, 40))
+
+            try:
+                cols = shutil.get_terminal_size().columns if hasattr(shutil, 'get_terminal_size') else 80
+            except Exception:
+                cols = 80
+            total_w = sum(col_widths) + len(columns) - 1
+            if total_w > cols - 2:
+                scale = max((cols - 2) / total_w, 0.3)
+                col_widths = [max(int(cw * scale), 4) for cw in col_widths]
 
             try:
                 header = "│"

@@ -17,7 +17,10 @@ from delta.core.session import SessionManager
 from delta.core.display import DisplayManager
 from delta.ai.intent import IntentEngine
 from delta.ai.llm import LLMEngine
+from delta.ai.memory import MemoryManager
 from delta.core.plugin import PluginManager
+from delta.core.auth import login_required
+from delta.core.tui import DeltaTUI
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -68,10 +71,16 @@ def create_engine(config_path: Optional[str] = None) -> DeltaEngine:
 
     plugin_manager = PluginManager(config.plugin_dir)
 
+    memory_dir = os.path.join(config.data_dir, "memory")
+    memory_manager = MemoryManager(memory_dir, max_sessions=config.max_sessions)
+
     llm_engine = LLMEngine(
         api_key=config.llm_api_key,
         base_url=config.llm_api_base_url or None,
         model=config.llm_model or None,
+        provider=config.llm_provider or None,
+        memory_manager=memory_manager,
+        memory_enabled=config.memory_enabled,
     )
 
     if not config.llm_enabled and llm_engine.is_configured:
@@ -88,7 +97,56 @@ def create_engine(config_path: Optional[str] = None) -> DeltaEngine:
         llm_engine=llm_engine,
     )
 
+    # First-run setup: prompt for API key if not configured
+    if config.first_run and not llm_engine.is_configured:
+        _first_run_setup(config, llm_engine, display)
+
     return engine
+
+
+def _first_run_setup(config: DeltaConfig, llm_engine: LLMEngine, display: DisplayManager) -> None:
+    display.section("First-Time Setup")
+    display.info("Welcome to Delta! Let's set up your AI provider.")
+
+    from delta.ai.llm import PROVIDERS
+    display.print()
+    display.print("Available providers:")
+    for name, info in PROVIDERS.items():
+        display.print(f"  {name:20} - {info['description']}")
+
+    provider = input(f"\nProvider [{config.llm_provider}]: ").strip() or config.llm_provider
+    if provider in PROVIDERS:
+        pinfo = PROVIDERS[provider]
+        config.llm_provider = provider
+        config.llm_api_base_url = pinfo["base_url"]
+        llm_engine.provider = provider
+        llm_engine.base_url = pinfo["base_url"]
+        if pinfo.get("default_model"):
+            config.llm_model = pinfo["default_model"]
+            llm_engine.model = pinfo["default_model"]
+
+    api_key = input("API Key: ").strip()
+    if api_key:
+        config.llm_api_key = api_key
+        llm_engine.api_key = api_key
+
+    owner = input("Nama panggilan [Tuan]: ").strip() or "Tuan"
+    config.set("owner_name", owner)
+    if llm_engine:
+        llm_engine.add_system_context(f"User adalah {owner}, pemilik dan tuan dari Delta.")
+
+    config.first_run = False
+    config.save()
+
+    if llm_engine.is_configured:
+        display.success("Setup complete! AI mode is ready.")
+        if not config.llm_enabled:
+            config.llm_enabled = True
+            config.save()
+            display.info("AI LLM mode enabled automatically")
+    else:
+        display.warning("Setup incomplete - no API key configured.")
+        display.info("Use /key <your-key> later to set it up.")
 
 
 def execute_direct(engine: DeltaEngine, cmd: str, cmd_args: list) -> None:
@@ -112,10 +170,17 @@ def main() -> None:
         # If no command provided, start interactive REPL
         if not args.command:
             engine = create_engine()
-            engine.display.show_banner()
-            engine.display.success("Delta AI Engine initialized successfully")
-            engine.display.info("Type 'help' for available commands, 'exit' to quit")
-            engine.run()
+            tui = DeltaTUI(engine)
+            # TODO(login): login gate disabled temporarily; re-enable with:
+            #   if not tui.show_login(engine.config):
+            #       print("\n[!] Access denied. Exiting.")
+            #       sys.exit(1)
+            welcome = "  Delta AI Engine initialized successfully"
+            if engine.llm_engine and engine.llm_engine.is_configured and engine.config.llm_enabled:
+                welcome += "  •  AI LLM Mode: ACTIVE"
+            if engine.policy and engine.policy.policy.get("enabled", True):
+                welcome += "\n  ⚖ Authorized security testing only — ketik 'policy' untuk batas kemampuan Delta"
+            tui.run(welcome)
             return
 
         # Direct command execution mode

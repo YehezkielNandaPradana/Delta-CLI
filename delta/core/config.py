@@ -8,7 +8,7 @@ import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -39,7 +39,24 @@ class DeltaConfig:
     llm_api_key: str = ""
     llm_api_base_url: str = ""
     llm_model: str = ""
+    llm_provider: str = ""  # empty = auto: local (Ollama) if no API key, else opencode-zen
     llm_enabled: bool = False
+
+    # Memory settings
+    memory_enabled: bool = True
+    max_sessions: int = 50
+
+    # Skill settings
+    active_skills: List[str] = field(default_factory=list)
+
+    # First run tracking
+    first_run: bool = True
+
+    # Auth settings
+    auth_enabled: bool = True
+    auth_username: str = ""
+    auth_password_salt: str = ""
+    auth_password_hash: str = ""
 
     # Display settings
     color_enabled: bool = True
@@ -82,6 +99,9 @@ class DeltaConfig:
         # Create data directory if it doesn't exist
         os.makedirs(self.data_dir, exist_ok=True)
 
+        # Try loading .env file first (always)
+        self._load_dotenv()
+
         # Search for config file
         if config_path is None:
             config_path = os.path.join(self.config_dir, "config.json")
@@ -90,30 +110,66 @@ class DeltaConfig:
         if not os.path.exists(config_path):
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
             self._save_default(config_path)
-            self._loaded = True
-            return self
 
-        # Load config
+        # Load config from file
         try:
-            with open(config_path, "r") as f:
-                raw = json.load(f)
-                self._raw_config = raw
-                for key, value in raw.items():
-                    if hasattr(self, key):
-                        setattr(self, key, value)
+            if os.path.exists(config_path):
+                with open(config_path, "r") as f:
+                    raw = json.load(f)
+                    self._raw_config = raw
+                    for key, value in raw.items():
+                        if hasattr(self, key):
+                            setattr(self, key, value)
         except (json.JSONDecodeError, IOError) as e:
             print(f"[!] Warning: Could not load config: {e}")
 
         # Override with environment variables if set
         env_map = {
             "DELTA_API_KEY": "llm_api_key",
+            "OPENCODE_API_KEY": "llm_api_key",
+            "DEEPSEEK_API_KEY": "llm_api_key",
+            "OPENAI_API_KEY": "llm_api_key",
             "DELTA_API_BASE_URL": "llm_api_base_url",
+            "OPENCODE_BASE_URL": "llm_api_base_url",
+            "DEEPSEEK_BASE_URL": "llm_api_base_url",
             "DELTA_LLM_MODEL": "llm_model",
+            "DEEPSEEK_MODEL": "llm_model",
+            "DELTA_PROVIDER": "llm_provider",
         }
         for env_key, config_key in env_map.items():
             env_val = os.environ.get(env_key)
             if env_val and hasattr(self, config_key):
                 setattr(self, config_key, env_val)
+
+        # Clean bad URLs from config
+        self._clean_bad_urls()
+
+    def _clean_bad_urls(self) -> None:
+        bad_urls = ["https://test.api.com/v1", "http://test.api.com/v1", "https://localhost:8080"]
+        if self.llm_api_base_url in bad_urls:
+            self.llm_api_base_url = ""
+        local_provider = self.llm_provider in ("local", "lmstudio")
+        if self.llm_api_base_url and ("test." in self.llm_api_base_url or "localhost" in self.llm_api_base_url):
+            if not local_provider and "opencode" not in self.llm_api_base_url and "deepseek" not in self.llm_api_base_url and "openai" not in self.llm_api_base_url:
+                self.llm_api_base_url = ""
+
+    def _load_dotenv(self) -> None:
+        for path in [".env", os.path.join(self.data_dir, ".env")]:
+            env_path = os.path.abspath(path)
+            if os.path.isfile(env_path):
+                try:
+                    with open(env_path, "r") as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line or line.startswith("#") or "=" not in line:
+                                continue
+                            key, _, val = line.partition("=")
+                            key = key.strip()
+                            val = val.strip().strip("\"'")
+                            if key not in os.environ:
+                                os.environ[key] = val
+                except IOError:
+                    pass
 
         # Ensure all directories exist
         for d in [self.data_dir, self.config_dir, self.plugin_dir,

@@ -73,16 +73,30 @@ class DeltaEngine:
         self.llm_engine = llm_engine
         self.running = False
 
+        from delta.modules.skills import SkillManager
+        self.skills = SkillManager(config)
+
+        from delta.core.policy import PolicyManager
+        self.policy = PolicyManager(config, display)
+
         self.last_result: Any = None
         self.last_command: str = ""
         self.last_llm_response: str = ""
         self.session_start = datetime.now()
         self._timer_start: Optional[float] = None
 
+        # Folder aktif untuk perintah file system (cd/ls/write/dst).
+        self.cwd = os.getcwd()
+
+        # True saat dijalankan di bawah DeltaTUI — _process_with_llm tidak
+        # mencetak ke stdout, melainkan mengembalikan hasil terstruktur
+        # agar TUI bisa merender respons AI dengan rapi.
+        self.tui_mode = False
+
         # Command aliases
         self._aliases: Dict[str, str] = {
             "q": "quit", "x": "exit", "h": "help", "?": "help",
-            "cls": "clear", "hist": "history", "ls": "history",
+            "cls": "clear", "hist": "history", "dir": "ls",
             "info": "session", "run": "scan", "start": "scan",
             "se": "search", "ag": "again", "again": "repeat",
             "sys": "sysinfo", "db": "dashboard", "dash": "dashboard",
@@ -196,6 +210,26 @@ class DeltaEngine:
             "geolocate": self._cmd_geoip,
             "ai": self._cmd_ai,
             "llm": self._cmd_ai,
+            "policy": self._cmd_policy,
+            # File system (auto-approved, tanpa konfirmasi)
+            "mkdir": self._cmd_mkdir,
+            "write": self._cmd_write,
+            "touch": self._cmd_touch,
+            "edit": self._cmd_edit,
+            "append": self._cmd_append,
+            "cat": self._cmd_cat,
+            "read": self._cmd_cat,
+            "view": self._cmd_cat,
+            "cd": self._cmd_cd,
+            "pwd": self._cmd_pwd,
+            "ls": self._cmd_ls,
+            "tree": self._cmd_tree,
+            "dirinfo": self._cmd_dirinfo,
+            "diraudit": self._cmd_dirinfo,
+            # Skills (coding mastery)
+            "skills": self._cmd_skills,
+            "skill": self._cmd_skill,
+            "unskill": self._cmd_skill,
         }
         self._builtin_commands.update(commands)
 
@@ -298,6 +332,11 @@ class DeltaEngine:
         """
         self.last_command = user_input
 
+        # Handle slash commands
+        if user_input.startswith("/"):
+            self._handle_slash_command(user_input)
+            return
+
         # Check aliases
         first_word = user_input.split()[0].lower() if user_input.split() else ""
         if first_word in self._aliases:
@@ -309,8 +348,7 @@ class DeltaEngine:
 
         # If LLM is enabled and configured, use it for processing
         if self.llm_engine and self.llm_engine.is_configured and self.config.llm_enabled:
-            self._process_with_llm(user_input)
-            return
+            return self._process_with_llm(user_input)
 
         # Process through AI intent engine
         intent = self.intent_engine.process(user_input, self.session.context)
@@ -322,41 +360,164 @@ class DeltaEngine:
             # Try direct command dispatch
             self._dispatch_command(user_input)
 
-    def _process_with_llm(self, user_input: str) -> None:
+    def _handle_slash_command(self, raw: str) -> None:
+        parts = shlex.split(raw)
+        cmd = parts[0].lower()
+        args = parts[1:]
+
+        if cmd == "/model":
+            if args:
+                model_name = args[0]
+                if self.llm_engine:
+                    if self.llm_engine.apply_preset(model_name):
+                        self.config.llm_model = self.llm_engine.model
+                        self.config.llm_api_base_url = self.llm_engine.base_url
+                        self.config.llm_provider = self.llm_engine.provider
+                        self.config.save()
+                        self.display.success(f"Model set to: {model_name}")
+                    else:
+                        self.llm_engine.model = model_name
+                        self.config.llm_model = model_name
+                        self.config.save()
+                        self.display.success(f"Model set to: {model_name}")
+            else:
+                from delta.ai.llm import MODEL_PRESETS
+                self.display.section("Available Models")
+                for name, info in MODEL_PRESETS.items():
+                    self.display.info(f"  /model {name}  - {info['description']}")
+
+        elif cmd == "/provider":
+            if args:
+                provider_name = args[0].lower()
+                from delta.ai.llm import PROVIDERS
+                if provider_name in PROVIDERS:
+                    self.config.llm_provider = provider_name
+                    if self.llm_engine:
+                        self.llm_engine.provider = provider_name
+                        self.llm_engine.base_url = PROVIDERS[provider_name]["base_url"]
+                        self.llm_engine.model = PROVIDERS[provider_name].get("default_model", self.llm_engine.model)
+                        self.config.llm_api_base_url = self.llm_engine.base_url
+                        self.config.llm_model = self.llm_engine.model
+                    self.config.save()
+                    self.display.success(f"Provider switched to: {PROVIDERS[provider_name]['description']}")
+                else:
+                    available = ", ".join(PROVIDERS.keys())
+                    self.display.error(f"Unknown provider: {provider_name}. Available: {available}")
+            else:
+                from delta.ai.llm import PROVIDERS
+                self.display.section("Available Providers")
+                for name, info in PROVIDERS.items():
+                    self.display.info(f"  /provider {name}  - {info['description']}")
+
+        elif cmd == "/key":
+            if args:
+                key = args[0]
+                if self.llm_engine:
+                    self.llm_engine.api_key = key
+                self.config.llm_api_key = key
+                self.config.save()
+                self.display.success("API key saved")
+            else:
+                self.display.info("Usage: /key <your-api-key>")
+
+        elif cmd in ("/clear", "/cls", "/clean"):
+            if self.llm_engine:
+                self.llm_engine.reset_conversation()
+            self.display.success("Chat dibersihkan")
+            self.display.info(f"Halo Tuan, percakapan sudah segar kembali. Ada yang bisa saya bantu?")
+
+        elif cmd == "/tuan":
+            name = " ".join(args).strip() if args else "Tuan"
+            if self.llm_engine:
+                self.llm_engine.add_system_context(f"User adalah {name}, pemilik dan tuan dari Delta.")
+            self.config.set("owner_name", name)
+            self.config.save()
+            self.display.success(f"Halo {name}, saya akan memanggil Anda Tuan.")
+
+        elif cmd in ("/skills", "/skill", "/unskill"):
+            if cmd == "/skills":
+                self._cmd_skills()
+            elif cmd == "/unskill":
+                if args:
+                    self.skills.deactivate(args[0])
+                    self.display.success(f"Skill '{args[0]}' dinonaktifkan.")
+                else:
+                    self.display.warning("Usage: /unskill <nama>")
+            else:
+                self._cmd_skill(args)
+
+        elif cmd in ("/help", "/?"):
+            self.display.section("Slash Commands")
+            cmds = [
+                ("/model [name]", "Set or list AI models"),
+                ("/provider [name]", "Set or list AI providers"),
+                ("/key <key>", "Set API key"),
+                ("/clear", "Bersihkan percakapan"),
+                ("/tuan [nama]", "Set nama panggilan Anda"),
+                ("/skills", "List semua skill coding"),
+                ("/skill <nama>", "Aktifkan skill coding"),
+                ("/unskill <nama>", "Nonaktifkan skill coding"),
+                ("/help", "Show this help"),
+            ]
+            for c, d in cmds:
+                self.display.print(f"  {ANSI.CYAN}{c:<25}{ANSI.RESET} {d}")
+
+        else:
+            self.display.warning(f"Unknown slash command: {cmd}. Try /help")
+
+    def _process_with_llm(self, user_input: str) -> Optional[Dict[str, Any]]:
         """
         Process user input using the LLM engine for AI-powered responses.
-        The LLM can either respond conversationally or execute Delta commands.
+
+        Di mode TUI (self.tui_mode=True) tidak mencetak apa pun ke stdout —
+        hasil dikembalikan sebagai dict {"response", "command", "error"} agar
+        TUI bisa merendernya dalam kotak yang rapi. Mode REPL tetap mencetak.
         """
         host = self.session.get_host()
-        context_info = f"Current session target: {host or 'none'}"
-        self.llm_engine.add_system_context(context_info)
+        owner = self.config.get("owner_name", "Tuan")
+        context_info = f"Current session target: {host or 'none'}. User adalah {owner}, pemilik Delta. Panggil dia Tuan."
+        skills_context = self.skills.build_context()
+        if skills_context:
+            context_info += "\n\n" + skills_context
+        self.llm_engine.set_system_context(context_info)
 
-        spinner = Spinner("Delta AI is thinking...")
-        spinner.start()
+        if not self.tui_mode:
+            self.display.print(f"{ANSI.MAGENTA}Δ AI{ANSI.RESET} {ANSI.GRAY}memikirkan jawaban...{ANSI.RESET}", end="\r")
         try:
             response = self.llm_engine.chat(user_input)
         finally:
-            spinner.stop()
+            if not self.tui_mode:
+                sys.stdout.write("\r" + " " * 50 + "\r")
+                sys.stdout.flush()
 
         if response.startswith("ERROR"):
-            self.display.error(response)
-            self.display.info("Falling back to standard command processing...")
+            if not self.tui_mode:
+                self.display.error(response)
+                self.display.info("Falling back to standard command processing...")
             self._dispatch_command(user_input)
-            return
+            return {"response": "", "command": "", "error": response}
 
         command = parse_command_from_response(response)
         clean_response = strip_command_tags(response)
-
-        if command:
+        if command or clean_response:
             self.last_llm_response = clean_response
+
+        if not self.tui_mode:
+            term_width = shutil.get_terminal_size().columns if hasattr(shutil, 'get_terminal_size') else 60
+            line = "▔" * min(term_width - 10, 50)
             if clean_response:
+                self.display.print(f"{ANSI.BRIGHT_MAGENTA}  Δ AI{ANSI.RESET} {ANSI.GRAY}→ {ANSI.BOLD}{owner}{ANSI.RESET}")
+                self.display.print(f"  {ANSI.DIM}{line}{ANSI.RESET}")
                 self.display.markdown(clean_response)
                 self.display.print()
-            self.display.info(f"Executing: {command}")
+            if command:
+                self.display.print(f"  {ANSI.CYAN}▸{ANSI.RESET} {ANSI.YELLOW}Menjalankan:{ANSI.RESET} {ANSI.BOLD}{command}{ANSI.RESET}")
+                self.display.print(f"  {ANSI.DIM}{'▔' * min(term_width - 10, 50)}{ANSI.RESET}")
+
+        if command:
             self._dispatch_command(command)
-        else:
-            if response:
-                self.display.markdown(response)
+
+        return {"response": clean_response, "command": command, "error": ""}
 
     def _execute_with_ai(self, intent: IntentResult, raw_input: str) -> None:
         """
@@ -409,6 +570,22 @@ class DeltaEngine:
 
         cmd = parts[0].lower()
         args = parts[1:]
+
+        # Resolve aliases so the policy sees the canonical command
+        cmd = self._aliases.get(cmd, cmd)
+
+        # Enforce security policy / capability limits
+        action, reason, suggestion = self.policy.check(
+            cmd, args, confirm=lambda prompt: self.display.ask_confirm(prompt, default=False)
+        )
+        if action == "block":
+            if reason:
+                self.display.error(reason)
+                if suggestion:
+                    self.display.info(suggestion)
+            return
+        if action == "confirm":
+            self.display.info(suggestion)
 
         # Check built-in commands
         if cmd in self._builtin_commands:
@@ -575,6 +752,26 @@ class DeltaEngine:
                 ("motd", "Show message of the day"),
                 ("banner", "Display Delta banner again"),
                 ("alerts", "Show security alerts/info"),
+            ],
+            "📁 File System": [
+                ("write <file> <isi>", "Buat/timpa file (tanpa konfirmasi)"),
+                ("touch <file>", "Buat file kosong"),
+                ("edit <file> <lama> <baru>", "Ganti teks di dalam file"),
+                ("append <file> <teks>", "Tambah teks ke akhir file"),
+                ("cat <file> [baris]", "Lihat isi file/dokumen"),
+                ("mkdir <folder> [-p]", "Buat folder"),
+                ("cd <folder>", "Pindah folder"),
+                ("pwd", "Tampilkan folder aktif"),
+                ("ls [folder]", "Daftar isi folder (-a tersembunyi, -l detail)"),
+                ("tree [folder]", "Tampilkan struktur folder"),
+                ("dirinfo [folder]", "Analisis folder/direktori"),
+            ],
+            "🧠 Skills": [
+                ("skills", "Daftar semua skill coding"),
+                ("skills <kata kunci>", "Cari skill berdasarkan kata kunci"),
+                ("skill <nama>", "Aktifkan skill coding"),
+                ("skill off <nama>", "Nonaktifkan skill"),
+                ("skill all / skill none", "Aktifkan / nonaktifkan semua"),
             ],
         }
 
@@ -1327,7 +1524,7 @@ class DeltaEngine:
         shortcuts = [
             ("Tab", "Auto-complete command"),
             ("Up/Down", "Navigate command history"),
-            ("Ctrl+C", "Cancel current input"),
+            ("Ctrl+C", "Copy transcript ke clipboard (atau cancel input saat mengetik)"),
             ("Ctrl+D", "Exit Delta"),
             ("Ctrl+L", "Clear screen"),
             ("Ctrl+A", "Go to beginning of line"),
@@ -1823,7 +2020,7 @@ class DeltaEngine:
                 self.display.error("LLM engine not initialized")
                 return
             if not self.llm_engine.is_configured:
-                self.display.error("API key not configured. Set DELTA_API_KEY env var or llm_api_key in config")
+                self.display.error("API key not configured. Set DELTA_API_KEY env var, llm_api_key in config, or use a local model with /provider local (Ollama) — no API key needed")
                 return
             self.config.llm_enabled = True
             self.config.save()
@@ -1846,8 +2043,11 @@ class DeltaEngine:
             self.display.info(f"Enabled: {self.config.llm_enabled}")
             self.display.info(f"Configured: {bool(self.llm_engine and self.llm_engine.is_configured)}")
             if self.llm_engine:
+                self.display.info(f"Provider: {self.llm_engine.provider}")
                 self.display.info(f"Model: {self.llm_engine.model}")
                 self.display.info(f"Base URL: {self.llm_engine.base_url}")
+                self.display.info(f"Memory: {'enabled' if self.llm_engine.memory_enabled else 'disabled'}")
+                self.display.info(f"Session: {self.llm_engine.session_id}")
                 self.display.info(f"API Key: {'*' * 8 + self.llm_engine.api_key[-4:] if self.llm_engine.api_key else 'Not set'}")
             else:
                 self.display.info("Engine: Not initialized")
@@ -1861,10 +2061,19 @@ class DeltaEngine:
                 ("ai reset", "Reset conversation history"),
                 ("ai key <key>", "Set API key"),
                 ("ai model <model>", "Set model name"),
+                ("ai provider [name]", "Set or list provider"),
                 ("ai url <url>", "Set API base URL"),
+                ("ai preset [name]", "Switch model/provider preset"),
+                ("ai memory on/off", "Toggle persistent memory"),
+                ("ai memory clear", "Clear all saved sessions"),
+                ("ai memory list", "List saved sessions"),
+                ("ai memory load <id>", "Load a saved session"),
+                ("ai memory delete <id>", "Delete a saved session"),
             ]
             for cmd, desc in cmds:
-                self.display.print(f"  {ANSI.CYAN}{cmd:<25}{ANSI.RESET} {desc}")
+                self.display.print(f"  {ANSI.CYAN}{cmd:<35}{ANSI.RESET} {desc}")
+            self.display.print()
+            self.display.info("Slash commands: /model, /provider, /key, /help")
 
         elif subcmd == "key" and len(args) >= 2:
             if self.llm_engine:
@@ -1874,11 +2083,43 @@ class DeltaEngine:
                 self.display.success("API key updated")
 
         elif subcmd == "model" and len(args) >= 2:
+            model_name = args[1]
             if self.llm_engine:
-                self.llm_engine.model = args[1]
-                self.config.llm_model = args[1]
+                from delta.ai.llm import MODEL_PRESETS
+                if model_name in MODEL_PRESETS:
+                    self.llm_engine.apply_preset(model_name)
+                    self.config.llm_model = self.llm_engine.model
+                    self.config.llm_api_base_url = self.llm_engine.base_url
+                    self.config.llm_provider = self.llm_engine.provider
+                else:
+                    self.llm_engine.model = model_name
+                    self.config.llm_model = model_name
                 self.config.save()
-                self.display.success(f"Model set to: {args[1]}")
+                self.display.success(f"Model set to: {self.llm_engine.model}")
+
+        elif subcmd == "provider" and len(args) >= 2:
+            provider_name = args[1].lower()
+            from delta.ai.llm import PROVIDERS
+            if provider_name in PROVIDERS:
+                pinfo = PROVIDERS[provider_name]
+                self.config.llm_provider = provider_name
+                if self.llm_engine:
+                    self.llm_engine.provider = provider_name
+                    self.llm_engine.base_url = pinfo["base_url"]
+                    self.llm_engine.model = pinfo.get("default_model", self.llm_engine.model)
+                    self.config.llm_api_base_url = self.llm_engine.base_url
+                    self.config.llm_model = self.llm_engine.model
+                self.config.save()
+                self.display.success(f"Provider: {pinfo['description']}")
+            else:
+                all_p = ", ".join(PROVIDERS.keys())
+                self.display.error(f"Unknown provider: {provider_name}. Available: {all_p}")
+
+        elif subcmd == "provider" and len(args) == 1:
+            from delta.ai.llm import PROVIDERS
+            self.display.section("Available Providers")
+            for name, info in PROVIDERS.items():
+                self.display.info(f"  {name}: {info['description']}")
 
         elif subcmd == "url" and len(args) >= 2:
             if self.llm_engine:
@@ -1887,9 +2128,451 @@ class DeltaEngine:
                 self.config.save()
                 self.display.success(f"Base URL set to: {args[1]}")
 
+        elif subcmd == "preset" and len(args) >= 2:
+            preset = args[1].lower()
+            from delta.ai.llm import MODEL_PRESETS, PROVIDERS
+            if preset in MODEL_PRESETS:
+                if self.llm_engine:
+                    self.llm_engine.apply_preset(preset)
+                    self.config.llm_model = self.llm_engine.model
+                    self.config.llm_api_base_url = self.llm_engine.base_url
+                    self.config.llm_provider = self.llm_engine.provider
+                    self.config.save()
+                    self.display.success(f"Switched to {MODEL_PRESETS[preset]['description']}")
+            elif preset in PROVIDERS:
+                info = PROVIDERS[preset]
+                if self.llm_engine:
+                    self.llm_engine.provider = preset
+                    self.llm_engine.base_url = info["base_url"]
+                    self.llm_engine.model = info.get("default_model", self.llm_engine.model)
+                    self.config.llm_provider = preset
+                    self.config.llm_api_base_url = info["base_url"]
+                    self.config.llm_model = self.llm_engine.model
+                    self.config.save()
+                    self.display.success(f"Switched to provider: {info['description']}")
+            else:
+                all_names = list(MODEL_PRESETS.keys()) + list(PROVIDERS.keys())
+                self.display.error(f"Unknown preset: {preset}. See /model for models, /provider for providers")
+
+        elif subcmd == "preset" and len(args) == 1:
+            from delta.ai.llm import MODEL_PRESETS, PROVIDERS
+            self.display.section("Available Presets")
+            self.display.info("Models:")
+            for name, info in MODEL_PRESETS.items():
+                self.display.info(f"  {name}: {info['description']}")
+            self.display.info("Providers:")
+            for name, info in PROVIDERS.items():
+                self.display.info(f"  {name}: {info['description']}")
+
+        elif subcmd == "memory" and len(args) >= 2:
+            action = args[1].lower()
+            if action == "on":
+                if self.llm_engine:
+                    self.llm_engine.memory_enabled = True
+                    self.config.memory_enabled = True
+                    self.config.save()
+                    self.display.success("Memory enabled")
+            elif action == "off":
+                if self.llm_engine:
+                    self.llm_engine.memory_enabled = False
+                    self.config.memory_enabled = False
+                    self.config.save()
+                    self.display.success("Memory disabled")
+            elif action == "clear":
+                if self.llm_engine and self.llm_engine.memory_manager:
+                    count = self.llm_engine.memory_manager.clear_all()
+                    self.display.success(f"Cleared {count} saved session(s)")
+            elif action == "list":
+                if self.llm_engine and self.llm_engine.memory_manager:
+                    sessions = self.llm_engine.memory_manager.list_sessions()
+                    if sessions:
+                        self.display.section("Saved Sessions")
+                        for s in sessions[:20]:
+                            self.display.info(f"  {s['session_id']} ({s['messages']} msgs, {s['updated_at']})")
+                    else:
+                        self.display.info("No saved sessions")
+            elif action == "load" and len(args) >= 3:
+                if self.llm_engine:
+                    self.llm_engine.set_session_id(args[2])
+                    self.display.success(f"Loaded session: {args[2]}")
+            elif action == "delete" and len(args) >= 3:
+                if self.llm_engine and self.llm_engine.memory_manager:
+                    if self.llm_engine.memory_manager.delete_session(args[2]):
+                        self.display.success(f"Deleted session: {args[2]}")
+                    else:
+                        self.display.error(f"Session not found: {args[2]}")
+            else:
+                self.display.warning("Usage: ai memory [on|off|clear|list|load <id>|delete <id>]")
+
         else:
-            self.display.warning("Usage: ai [on|off|status|reset|key|model|url|help]")
+            self.display.warning("Usage: ai [on|off|status|reset|key|model|provider|url|preset|memory|help]")
+
+    def _cmd_policy(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Manage Delta security policy & capability limits."""
+        subcmd = args[0].lower() if args else "status"
+
+        if subcmd in ("status", "info", "show"):
+            self.display.section("Delta Policy & Capability Limits")
+            for line in self.policy.status_lines():
+                self.display.info(line)
+            violations = self.policy.violations()
+            if violations:
+                self.display.print()
+                self.display.warning(f"{len(violations)} pelanggaran tercatat sesi ini:")
+                for v in violations:
+                    self.display.print(f"  {v['time']}  {v['command']}  →  {v['reason']}")
+
+        elif subcmd == "ethics":
+            self.display.section("Ethics of Delta")
+            self.display.panel("Security Ethics", self.policy.ethics(), style="info")
+
+        elif subcmd in ("authorize", "allow") and len(args) >= 2:
+            self.display.success(self.policy.authorize(args[1]))
+
+        elif subcmd == "deauthorize" and len(args) >= 2:
+            self.display.success(self.policy.deauthorize(args[1]))
+
+        elif subcmd == "block" and len(args) >= 2:
+            self.display.success(self.policy.block_target(args[1]))
+
+        elif subcmd == "deblock" and len(args) >= 2:
+            self.display.success(self.policy.deblock_target(args[1]))
+
+        elif subcmd in ("on", "enable"):
+            self.policy.policy["enabled"] = True
+            self.policy.save()
+            self.display.success("Kebijakan keamanan diaktifkan")
+
+        elif subcmd in ("off", "disable"):
+            self.policy.policy["enabled"] = False
+            self.policy.save()
+            self.display.warning("Kebijakan keamanan dinonaktifkan — semua batas ditiadakan")
+
+        elif subcmd == "reset":
+            from delta.core.policy import DEFAULT_POLICY
+            self.policy.policy = dict(DEFAULT_POLICY)
+            self.policy.save()
+            self.display.success("Kebijakan dikembalikan ke default")
+
+        else:
+            self.display.section("Policy Commands")
+            cmds = [
+                ("policy", "Tampilkan status kebijakan & batas"),
+                ("policy ethics", "Tampilkan etika keamanan Delta"),
+                ("policy authorize <host>", "Otorisasi target publik (mis. scan ke domain/IP milik Anda)"),
+                ("policy deauthorize <host>", "Cabut otorisasi target"),
+                ("policy block <host>", "Blokir target"),
+                ("policy deblock <host>", "Buka blokir target"),
+                ("policy on / off", "Aktifkan / nonaktifkan kebijakan"),
+                ("policy reset", "Kembalikan kebijakan ke default"),
+            ]
+            for cmd, desc in cmds:
+                self.display.print(f"  {ANSI.CYAN}{cmd:<35}{ANSI.RESET} {desc}")
+            self.display.print()
+            self.display.info(f"File kebijakan: {self.policy._policy_path}")
 
     def _cmd_banner(self, args: List[str] = None, intent: IntentResult = None) -> None:
         """Display the Delta banner again."""
         self.display.show_banner()
+
+    # =========================================================== skills
+
+    def _cmd_skills(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Daftarkan semua skill coding beserta status aktif/nonaktif."""
+        args = args or []
+        query = " ".join(args).strip().lower()
+        skills = self.skills.find(query) if query else self.skills.list_skills()
+        if not skills:
+            self.display.warning("Tidak ada skill ditemukan. Coba `skills` tanpa kata kunci.")
+            return
+
+        self.display.section("🧠 Delta Skills — Coding Mastery")
+        for skill in skills:
+            marker = "●" if self.skills.is_active(skill.name) else "○"
+            state = f"{ANSI.GREEN}Aktif{ANSI.RESET}" if self.skills.is_active(skill.name) else f"{ANSI.GRAY}Nonaktif{ANSI.RESET}"
+            self.display.print(
+                f"  {ANSI.CYAN}{marker} {skill.name:<22}{ANSI.RESET} "
+                f"[{state}] {ANSI.DIM}{skill.category}{ANSI.RESET}"
+            )
+            if skill.description:
+                self.display.print(f"      {ANSI.GRAY}{skill.description}{ANSI.RESET}")
+        active = self.skills.active_names()
+        self.display.print()
+        self.display.info(
+            f"Aktif ({len(active)}): {', '.join(active) if active else '(kosong)'}"
+        )
+        self.display.info("Gunakan: skill <nama> | skill off <nama> | skill all | skill none")
+
+    def _cmd_skill(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Aktifkan/nonaktifkan skill coding."""
+        args = args or []
+
+        if not args:
+            self._cmd_skills()
+            return
+
+        action = args[0].lower()
+        if action in ("all", "on"):
+            for skill in self.skills.list_skills():
+                self.skills.activate(skill.name)
+            self.display.success(f"Semua {len(self.skills.list_skills())} skill diaktifkan.")
+            return
+        if action in ("none", "off", "clear"):
+            if len(args) > 1:
+                self.skills.deactivate(args[1])
+                self.display.success(f"Skill '{args[1]}' dinonaktifkan.")
+                return
+            self.skills.set_active([])
+            self.display.success("Semua skill dinonaktifkan.")
+            return
+        if action in ("-d", "--deactivate", "remove"):
+            if len(args) < 2:
+                self.display.warning("Usage: skill -d <nama>")
+                return
+            self.skills.deactivate(args[1])
+            self.display.success(f"Skill '{args[1]}' dinonaktifkan.")
+            return
+        if action in ("search", "find", "cari"):
+            query = " ".join(args[1:])
+            if query:
+                self._cmd_skills([query])
+            else:
+                self.display.warning("Usage: skill search <kata kunci>")
+            return
+        if action in ("list", "ls"):
+            self._cmd_skills()
+            return
+
+        name = action
+        skill = self.skills.get_skill(name)
+        if skill is None:
+            hits = self.skills.find(name)
+            if not hits:
+                available = ", ".join(s.name for s in self.skills.list_skills())
+                self.display.error(f"Skill '{name}' tidak ditemukan. Tersedia: {available}")
+                return
+            skill = hits[0]
+
+        if self.skills.is_active(skill.name):
+            self.display.info(f"Skill '{skill.name}' sudah aktif.")
+            return
+        self.skills.activate(skill.name)
+        self.display.success(f"Skill '{skill.name}' diaktifkan — {skill.description}")
+
+    # ======================================================== file system
+    #
+    # Semua perintah di bawah dieksekusi LANGSUNG tanpa konfirmasi:
+    # operasi file/folder tidak termasuk risky_commands di kebijakan Delta.
+
+    @staticmethod
+    def _fs_non_flags(args: List[str]) -> List[str]:
+        """Ambil argumen non-flag dari daftar argumen."""
+        from delta.modules.filesystem import _PATH_FLAGS
+        out: List[str] = []
+        skip = False
+        for a in args:
+            if skip:
+                skip = False
+                continue
+            if a in _PATH_FLAGS and a in ("-f", "--find", "-r", "--replace", "-n", "--lines", "-d", "--depth"):
+                skip = True
+                continue
+            if a.startswith("-"):
+                continue
+            out.append(a)
+        return out
+
+    @staticmethod
+    def _fs_flag_value(args: List[str], flags: List[str]) -> Optional[str]:
+        for i, a in enumerate(args):
+            if a in flags and i + 1 < len(args):
+                return args[i + 1]
+        return None
+
+    @staticmethod
+    def _fs_has_flag(args: List[str], flags: List[str]) -> bool:
+        return any(a in flags for a in args)
+
+    def _fs_new(self) -> Any:
+        from delta.modules.filesystem import FileSystemModule
+        return FileSystemModule(cwd=self.cwd, display=self.display)
+
+    def _cmd_mkdir(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Buat folder (langsung, tanpa konfirmasi)."""
+        path = (args[0] if args else "") or (intent.args[0] if intent and intent.args else "")
+        if not path:
+            self.display.warning("Usage: mkdir <folder> [-p]")
+            return
+        parents = self._fs_has_flag(args or [], ["-p", "--parents"])
+        ok, msg = self._fs_new().mkdir(path, parents)
+        (self.display.success if ok else self.display.error)(msg)
+
+    def _cmd_write(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Buat/timpa file (langsung, tanpa konfirmasi)."""
+        from delta.modules.filesystem import _strip_content_prefix
+        parts = self._fs_non_flags(args or [])
+        if not parts:
+            self.display.warning("Usage: write <file> <isi>")
+            return
+        path = parts[0]
+        content = _strip_content_prefix(" ".join(parts[1:]))
+        ok, msg = self._fs_new().write(path, content)
+        (self.display.success if ok else self.display.error)(msg)
+
+    def _cmd_touch(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Buat file kosong (langsung, tanpa konfirmasi)."""
+        path = (args[0] if args else "") or (intent.args[0] if intent and intent.args else "")
+        if not path:
+            self.display.warning("Usage: touch <file>")
+            return
+        ok, msg = self._fs_new().touch(path)
+        (self.display.success if ok else self.display.error)(msg)
+
+    def _cmd_edit(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Ubah isi file — ganti teks lama dengan teks baru (langsung)."""
+        import re as _re
+        parts = self._fs_non_flags(args or [])
+        if not parts:
+            self.display.warning("Usage: edit <file> <teks-lama> <teks-baru>")
+            self.display.info("Contoh: edit app.py --find 'Halo' --replace 'Hai'")
+            return
+        path = parts[0]
+        old = self._fs_flag_value(args or [], ["-f", "--find"])
+        new = self._fs_flag_value(args or [], ["-r", "--replace"])
+        if old is None:
+            rest = " ".join(parts[1:])
+            split = _re.search(r"\b(dengan|menjadi|ke|to|with)\b", rest, _re.IGNORECASE)
+            if split:
+                old = rest[:split.start()].strip()
+                new = rest[split.end():].strip()
+            else:
+                old = rest
+                new = ""
+            old = _re.sub(r"^(ganti|ubah|replace|edit|rubah)\s*", "", old, flags=_re.IGNORECASE).strip()
+        if not old:
+            self.display.warning("Teks lama kosong. Usage: edit <file> <teks-lama> <teks-baru>")
+            return
+        ok, msg = self._fs_new().edit(path, old, new or "")
+        (self.display.success if ok else self.display.error)(msg)
+
+    def _cmd_append(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Tambahkan teks ke akhir file (langsung, tanpa konfirmasi)."""
+        from delta.modules.filesystem import _strip_content_prefix
+        parts = self._fs_non_flags(args or [])
+        if not parts:
+            self.display.warning("Usage: append <file> <teks>")
+            return
+        path = parts[0]
+        text = _strip_content_prefix(" ".join(parts[1:]))
+        ok, msg = self._fs_new().append(path, text)
+        (self.display.success if ok else self.display.error)(msg)
+
+    def _cmd_cat(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Lihat isi file/dokumen (langsung, tanpa konfirmasi)."""
+        parts = self._fs_non_flags(args or [])
+        if not parts:
+            self.display.warning("Usage: cat <file> [jumlah-baris]")
+            return
+        path = parts[0]
+        max_lines: Optional[int] = None
+        if len(parts) > 1 and parts[1].isdigit():
+            max_lines = int(parts[1])
+        elif len(args or []) > 1 and (args[1] if args else "") in ("-n", "--lines") and len(args) > 2:
+            max_lines = int(args[2])
+        ok, content = self._fs_new().read(path, max_lines)
+        if not ok:
+            self.display.error(content)
+            return
+        self.display.section(f"File: {path}")
+        for line in content.split("\n"):
+            self.display.print(line)
+
+    def _cmd_cd(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Pindah folder (langsung, tanpa konfirmasi)."""
+        path = (args[0] if args else "") or (intent.args[0] if intent and intent.args else "")
+        if not path:
+            path = "~"
+        ok, msg, new_cwd = self._fs_new().cd(path)
+        if ok:
+            self.cwd = new_cwd
+        (self.display.success if ok else self.display.error)(msg)
+
+    def _cmd_pwd(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Tampilkan folder aktif."""
+        self.display.info(f"Folder aktif: {self.cwd}")
+
+    def _cmd_ls(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Daftar isi folder (langsung, tanpa konfirmasi)."""
+        from delta.modules.filesystem import FileSystemModule
+        parts = self._fs_non_flags(args or [])
+        path = parts[0] if parts else ""
+        all_hidden = self._fs_has_flag(args or [], ["-a", "--all"])
+        long = self._fs_has_flag(args or [], ["-l", "--long"])
+        fs = self._fs_new()
+        ok, entries = fs.list_dir(path, all_hidden=all_hidden, long=long)
+        if not ok:
+            self.display.error(f"Folder tidak ditemukan: {fs._resolve(path)}")
+            return
+        if not entries:
+            self.display.info(f"(folder kosong) {fs._resolve(path)}")
+            return
+        self.display.section(f"Folder: {fs._resolve(path)} ({len(entries)} entri)")
+        for e in entries:
+            if e["is_dir"]:
+                self.display.print(f"  {ANSI.CYAN}{e['name']}/{ANSI.RESET}")
+            elif long:
+                self.display.print(f"  {e['name']:<40} {FileSystemModule._human_size(e['size']):>10}  {e['mtime'].strftime('%Y-%m-%d %H:%M')}")
+            else:
+                self.display.print(f"  {e['name']}")
+
+    def _cmd_tree(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Tampilkan struktur folder (langsung, tanpa konfirmasi)."""
+        parts = self._fs_non_flags(args or [])
+        path = parts[0] if parts else ""
+        depth = 2
+        flag = self._fs_flag_value(args or [], ["-d", "--depth"])
+        if flag and flag.isdigit():
+            depth = int(flag)
+        ok, body = self._fs_new().tree(path, max_depth=depth)
+        if not ok:
+            self.display.error(body)
+            return
+        self.display.section("Struktur Folder")
+        self.display.print(body)
+
+    def _cmd_dirinfo(self, args: List[str] = None, intent: IntentResult = None) -> None:
+        """Analisis folder/direktori (langsung, tanpa konfirmasi)."""
+        from delta.modules.filesystem import FileSystemModule
+        parts = self._fs_non_flags(args or [])
+        path = parts[0] if parts else ""
+        fs = self._fs_new()
+        ok, stats = fs.dirinfo(path)
+        if not ok:
+            self.display.error(f"Folder tidak ditemukan: {fs._resolve(path)}")
+            return
+        self.display.section(f"Analisis Folder: {stats['path']}")
+        self.display.key_value_table("Ringkasan", {
+            "File": str(stats["files"]),
+            "Folder": str(stats["dirs"]),
+            "Tersembunyi": str(stats["hidden"]),
+            "Total Ukuran": FileSystemModule._human_size(stats["total_size"]),
+        })
+        if stats["extensions"]:
+            self.display.table(
+                "Tipe File (terbesar)",
+                ["Ekstensi", "Jumlah", "Ukuran"],
+                [[ext, str(info["count"]), FileSystemModule._human_size(info["size"])]
+                 for ext, info in list(stats["extensions"].items())[:10]],
+            )
+        if stats["largest"]:
+            self.display.table(
+                "File Terbesar",
+                ["File", "Ukuran"],
+                [[name, FileSystemModule._human_size(size)] for name, size in stats["largest"]],
+            )
+        if stats["recent"]:
+            self.display.table(
+                "Terbaru Dimodifikasi",
+                ["File", "Waktu"],
+                [[name, datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")] for name, ts in stats["recent"]],
+            )

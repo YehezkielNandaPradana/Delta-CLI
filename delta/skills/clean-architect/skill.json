@@ -1,0 +1,7 @@
+{
+  "name": "clean-architect",
+  "description": "Arsitektur bersih: SOLID, pemisahan lapisan, modularitas, dan kode yang mudah dipelihara.",
+  "category": "Architecture",
+  "tags": ["architecture", "solid", "clean-code", "design-patterns", "refactoring"],
+  "version": "1.0.0"
+}

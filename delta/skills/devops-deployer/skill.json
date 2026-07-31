@@ -1,0 +1,7 @@
+{
+  "name": "devops-deployer",
+  "description": "DevOps & deployment: CI/CD, IaC, containerisasi, observabilitas, dan keamanan pipeline.",
+  "category": "DevOps",
+  "tags": ["devops", "ci-cd", "docker", "kubernetes", "infrastructure-as-code", "terraform", "monitoring"],
+  "version": "1.0.0"
+}

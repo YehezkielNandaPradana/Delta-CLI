@@ -1,0 +1,7 @@
+{
+  "name": "debugging-sleuth",
+  "description": "Pakar debugging: analisis akar masalah, reproduksi bug, dan strategi pemecahan.",
+  "category": "Engineering",
+  "tags": ["debugging", "bug", "troubleshooting", "root-cause", "logging"],
+  "version": "1.0.0"
+}

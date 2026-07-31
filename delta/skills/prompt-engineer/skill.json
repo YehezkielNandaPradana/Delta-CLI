@@ -1,0 +1,7 @@
+{
+  "name": "prompt-engineer",
+  "description": "Ahli rekayasa prompt: teknik prompting lanjutan, rantai penalaran, dan optimasi LLM.",
+  "category": "AI",
+  "tags": ["prompt-engineering", "llm", "ai", "gpt", "reasoning", "rag"],
+  "version": "1.0.0"
+}

@@ -1,7 +1,7 @@
 # delta/ai/knowledge.py
 """
 Knowledge Base for Delta - stores vulnerability data, security concepts, and remediation advice.
-"""
+""" 
 
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field

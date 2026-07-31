@@ -63,7 +63,27 @@ class IntentType(Enum):
     ML_STATUS = auto()
     CVE_LOOKUP = auto()
     GEOIP = auto()
+    # File system (auto-approved, tanpa konfirmasi)
+    MKDIR = auto()
+    WRITE = auto()
+    TOUCH = auto()
+    EDIT = auto()
+    APPEND = auto()
+    CAT = auto()
+    CD = auto()
+    PWD = auto()
+    LS = auto()
+    TREE = auto()
+    DIRINFO = auto()
     UNKNOWN = auto()
+
+
+# Intent yang bekerja pada file/folder — argumennya diekstrak khusus path.
+FILE_INTENTS = {
+    IntentType.MKDIR, IntentType.WRITE, IntentType.TOUCH, IntentType.EDIT,
+    IntentType.APPEND, IntentType.CAT, IntentType.CD, IntentType.PWD,
+    IntentType.LS, IntentType.TREE, IntentType.DIRINFO,
+}
 
 
 @dataclass
@@ -309,6 +329,120 @@ class IntentEngine:
                 {"patterns": [r"\bgeoip\b", r"\bgeo.ip\b", r"\bip.lookup\b", r"\bgeolocat(e|ion)\b"], "weight": 2.0},
                 {"keywords": ["ip location", "ip geolocation", "ip info", "where is ip", "ip address location"], "weight": 1.5},
             ],
+            # -------------------------------------------------- file system
+            IntentType.MKDIR: [
+                {"patterns": [
+                    r"\bmkdir\b",
+                    r"\bcreate\s+(a\s+)?(folder|directory)\b",
+                    r"\bmake\s+(a\s+)?(folder|directory)\b",
+                    r"\bbuat(kan)?\s+(folder|direktori|directory)\b",
+                    r"\bbikin\s+(folder|direktori|directory)\b",
+                    r"\bmembuat\s+(folder|direktori)\b",
+                ], "weight": 2.0},
+                {"keywords": ["buat folder", "bikin folder", "new folder", "buat direktori", "buatkan folder"], "weight": 1.5},
+            ],
+            IntentType.WRITE: [
+                {"patterns": [
+                    r"\bwrite\s+(to\s+)?",
+                    r"\bcreate\s+(a\s+)?(new\s+)?file\b",
+                    r"\bmake\s+(a\s+)?(new\s+)?file\b",
+                    r"\bbuat(kan)?\s+file\b",
+                    r"\bbikin\s+file\b",
+                    r"\btulis\s+ke\s+file\b",
+                    r"\btulis\s+file\b",
+                    r"\bbuat(kan)?\s+dokumen\b",
+                ], "weight": 2.0},
+                {"keywords": ["buat file", "bikin file", "create file", "make file", "buatkan file", "tulis file", "buat dokumen"], "weight": 1.5},
+            ],
+            IntentType.TOUCH: [
+                {"patterns": [r"\btouch\b", r"\bcreate\s+empty\s+file\b"], "weight": 2.0},
+                {"keywords": ["file kosong", "empty file"], "weight": 1.5},
+            ],
+            IntentType.EDIT: [
+                {"patterns": [
+                    r"\bedit\b",
+                    r"\bmodif(y|ied|ication)\b",
+                    r"\bupdate\s+(a\s+)?file\b",
+                    r"\bubah\s+file\b",
+                    r"\bganti\s+(isi\s+)?(teks\s+)?file\b",
+                ], "weight": 2.0},
+                {"keywords": ["edit file", "ubah file", "modify file", "ganti teks", "perbarui file", "update file"], "weight": 1.5},
+            ],
+            IntentType.APPEND: [
+                {"patterns": [
+                    r"\bappend\b",
+                    r"\badd\s+(to|text|content)\s+",
+                    r"\btambahkan\s+(teks|isi|text|ke)\b",
+                    r"\btambah\s+(teks|isi|baris)\b",
+                ], "weight": 2.0},
+                {"keywords": ["append", "tambahkan ke file", "tambah ke file", "add to file", "tambahkan teks", "tambah baris"], "weight": 1.5},
+            ],
+            IntentType.CAT: [
+                {"patterns": [
+                    r"\bcat\b",
+                    r"\bread\s+(a\s+)?file\b",
+                    r"\bview\s+(a\s+)?file\b",
+                    r"\bopen\s+(a\s+)?(file|document|dokumen)\b",
+                    r"\blihat\s+(isi\s+)?file\b",
+                    r"\bbaca\s+file\b",
+                    r"\bbuka\s+(file|dokumen)\b",
+                    r"\btampilkan\s+(isi\s+)?file\b",
+                    r"\blihat\s+dokumen\b",
+                ], "weight": 2.0},
+                {"keywords": ["lihat file", "baca file", "buka file", "lihat dokumen", "buka dokumen", "read file", "view file", "show file", "isi file"], "weight": 1.5},
+            ],
+            IntentType.CD: [
+                {"patterns": [
+                    r"\bcd\b",
+                    r"\bgo\s+to\s+(the\s+)?(folder|directory|dir)\b",
+                    r"\bchange\s+directory\b",
+                    r"\bmasuk\s+(ke\s+)?(folder|direktori|directory)\b",
+                    r"\bpindah\s+(ke\s+)?(folder|direktori|directory|dir)\b",
+                    r"\bnavigat(e|ion)\s+(to\s+)?(folder|directory)\b",
+                ], "weight": 2.0},
+                {"keywords": ["change directory", "pindah folder", "masuk folder", "masuk ke folder", "go to folder", "pindah direktori", "pindah ke folder"], "weight": 1.5},
+            ],
+            IntentType.PWD: [
+                {"patterns": [
+                    r"\bpwd\b",
+                    r"\bcurrent\s+directory\b",
+                    r"\bwhere\s+am\s+i\b",
+                    r"\bdirektori\s+saat\s+ini\b",
+                    r"\bfolder\s+aktif\b",
+                ], "weight": 2.0},
+                {"keywords": ["current directory", "folder aktif", "direktori aktif", "di folder mana", "dimana saya"], "weight": 1.5},
+            ],
+            IntentType.LS: [
+                {"patterns": [
+                    r"\bls\b",
+                    r"\blist\s+(the\s+)?(files?|folder|directory|dir|isinya)\b",
+                    r"\blist\s+contents\b",
+                    r"\bdaftar\s+(isi\s+)?(file|folder|direktori|directory)\b",
+                    r"\blihat\s+(isi\s+)?folder\b",
+                    r"\btampilkan\s+(isi\s+)?folder\b",
+                ], "weight": 2.0},
+                {"keywords": ["lihat folder", "lihat isi folder", "daftar file", "daftar folder", "isi folder", "list files", "list folder", "list directory", "tampilkan folder"], "weight": 1.5},
+            ],
+            IntentType.TREE: [
+                {"patterns": [
+                    r"\btree\b",
+                    r"\bdirectory\s+tree\b",
+                    r"\bstruktur\s+(folder|direktori|directory)\b",
+                    r"\btampilkan\s+struktur\b",
+                ], "weight": 2.0},
+                {"keywords": ["struktur folder", "struktur direktori", "directory tree", "tree folder"], "weight": 1.5},
+            ],
+            IntentType.DIRINFO: [
+                {"patterns": [
+                    r"\bdirinfo\b",
+                    r"\bdiraudit\b",
+                    r"\banalyz(e|is)\s+(the\s+)?(folder|directory|dir)\b",
+                    r"\banalis(is|a)\s+(folder|direktori|directory|dir)\b",
+                    r"\bscan\s+(the\s+)?(folder|directory|dir)\b",
+                    r"\binfo\s+(folder|direktori|directory)\b",
+                ], "weight": 3.0},
+                {"keywords": ["analisis folder", "analisis direktori", "analisa folder", "analyze folder", "analyze directory", "analisis directory", "info folder", "info direktori"], "weight": 2.0},
+            ],
         }
 
     def process(self, text: str, context: Any = None) -> Optional[IntentResult]:
@@ -348,7 +482,10 @@ class IntentEngine:
 
         # Extract target and arguments
         target = self._extract_target(text, context)
-        args = self._extract_args(text)
+        if best_intent in FILE_INTENTS:
+            args = self._extract_file_args(text, best_intent)
+        else:
+            args = self._extract_args(text)
         params = self._extract_parameters(text)
 
         return IntentResult(
@@ -396,6 +533,21 @@ class IntentEngine:
             "cve": IntentType.CVE_LOOKUP,
             "geoip": IntentType.GEOIP,
             "geolocate": IntentType.GEOIP,
+            "mkdir": IntentType.MKDIR,
+            "write": IntentType.WRITE,
+            "touch": IntentType.TOUCH,
+            "edit": IntentType.EDIT,
+            "append": IntentType.APPEND,
+            "cat": IntentType.CAT,
+            "read": IntentType.CAT,
+            "view": IntentType.CAT,
+            "cd": IntentType.CD,
+            "pwd": IntentType.PWD,
+            "ls": IntentType.LS,
+            "dir": IntentType.LS,
+            "tree": IntentType.TREE,
+            "dirinfo": IntentType.DIRINFO,
+            "diraudit": IntentType.DIRINFO,
         }
         if text in direct:
             return IntentResult(
@@ -457,6 +609,49 @@ class IntentEngine:
         args.extend(t.lower() for t in types)
 
         return args
+
+    def _extract_file_args(self, text: str, intent: IntentType) -> List[str]:
+        """Extract (path, content) arguments for file system intents.
+
+        Prioritas: token mirip file (punya ekstensi) → path;
+        sisanya menjadi konten. Tanpa token file → kata pertama
+        yang bukan kata pengisi menjadi path.
+        """
+        from delta.modules.filesystem import FILLER_WORDS
+        try:
+            words = shlex.split(text)
+        except ValueError:
+            words = text.split()
+        if len(words) > 1:
+            words = words[1:]
+        else:
+            words = []
+
+        file_idx = None
+        for i, w in enumerate(words):
+            if w.startswith("-"):
+                continue
+            if re.search(r"\.[A-Za-z0-9]{1,10}$", w):
+                file_idx = i
+                break
+
+        if file_idx is not None:
+            path = words[file_idx]
+            before = [w for w in words[:file_idx] if w.lower() not in FILLER_WORDS]
+            after = words[file_idx + 1:]
+            if intent in (IntentType.APPEND, IntentType.EDIT):
+                content = " ".join(before + after)
+            else:
+                content = " ".join(after)
+            return [path, content] if content else [path]
+
+        rest = [w for w in words if w.lower() not in FILLER_WORDS and not w.startswith("-")]
+        if not rest:
+            return []
+        path = rest[0]
+        if intent in (IntentType.WRITE, IntentType.APPEND, IntentType.EDIT) and len(rest) > 1:
+            return [path, " ".join(rest[1:])]
+        return [path]
 
     def _extract_parameters(self, text: str) -> Dict[str, str]:
         """Extract key-value parameters from text."""

@@ -1,0 +1,7 @@
+{
+  "name": "security-sentinel",
+  "description": "Secure coding: OWASP, input sanitization, auth, kriptografi, dan anti-eksploitasi.",
+  "category": "Security",
+  "tags": ["security", "owasp", "xss", "sqli", "authentication", "encryption", "hardening"],
+  "version": "1.0.0"
+}
