@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delta - AI-Powered Cyber Security Assessment CLI</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg-primary:#0a0e17;--bg-secondary:#111827;--bg-card:#1a2235;--bg-card-hover:#1f2a40;
+--accent-green:#00ff88;--accent-cyan:#00d4ff;--accent-purple:#a855f7;--accent-red:#ff4466;
+--accent-yellow:#ffcc00;--accent-orange:#ff8800;
+--text-primary:#e2e8f0;--text-secondary:#94a3b8;--text-muted:#64748b;
+--border-color:#1e293b;--border-active:#334155;
+--font-mono:'JetBrains Mono','Fira Code','Cascadia Code','Consolas',monospace;
+--font-sans:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
+--radius:8px;--radius-lg:12px;--radius-xl:16px;
+--shadow:0 4px 24px rgba(0,0,0,0.4);--shadow-lg:0 8px 40px rgba(0,0,0,0.5);
+--transition:all 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:var(--font-sans);background:var(--bg-primary);color:var(--text-primary);line-height:1.6;overflow-x:hidden}
+a{color:var(--accent-cyan);text-decoration:none;transition:var(--transition)}
+a:hover{color:var(--accent-green)}
+code,pre{font-family:var(--font-mono);font-size:0.9em}
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:var(--bg-secondary)}
+::-webkit-scrollbar-thumb{background:var(--border-active);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-muted)}
+
+/* Navigation */
+.nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(10,14,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border-color);transition:var(--transition)}
+.nav-inner{max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:64px}
+.nav-brand{display:flex;align-items:center;gap:12px;font-weight:700;font-size:1.25rem;color:var(--text-primary)}
+.nav-brand .logo{width:36px;height:36px;background:linear-gradient(135deg,var(--accent-green),var(--accent-cyan));border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:var(--bg-primary)}
+.nav-links{display:flex;gap:8px;list-style:none}
+.nav-links a{padding:8px 16px;border-radius:var(--radius);color:var(--text-secondary);font-size:0.9rem;font-weight:500;transition:var(--transition)}
+.nav-links a:hover,.nav-links a.active{color:var(--accent-green);background:rgba(0,255,136,0.08)}
+.nav-cta{padding:8px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--accent-green),#00cc6a);color:var(--bg-primary);font-weight:600;font-size:0.9rem;border:none;cursor:pointer;transition:var(--transition)}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,255,136,0.3)}
+.nav-mobile-toggle{display:none;background:none;border:none;color:var(--text-primary);font-size:1.5rem;cursor:pointer}
+
+/* Hero */
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:120px 24px 80px}
+.hero-bg{position:absolute;inset:0;z-index:0}
+.hero-bg .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,255,136,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,0.03) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse at center,black 30%,transparent 70%)}
+.hero-bg .glow{position:absolute;border-radius:50%;filter:blur(120px);opacity:0.15;animation:pulse 8s ease-in-out infinite}
+.hero-bg .glow-1{width:600px;height:600px;background:var(--accent-green);top:-200px;left:-100px}
+.hero-bg .glow-2{width:500px;height:500px;background:var(--accent-cyan);bottom:-200px;right:-100px;animation-delay:4s}
+.hero-bg .glow-3{width:400px;height:400px;background:var(--accent-purple);top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:2s}
+@keyframes pulse{0%,100%{opacity:0.1;transform:scale(1)}50%{opacity:0.2;transform:scale(1.1)}}
+.hero-content{position:relative;z-index:1;text-align:center;max-width:800px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:20px;background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.2);color:var(--accent-green);font-size:0.85rem;font-weight:500;margin-bottom:24px}
+.hero-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--accent-green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.hero h1{font-size:clamp(2.5rem,6vw,4.5rem);font-weight:800;line-height:1.1;margin-bottom:20px;background:linear-gradient(135deg,var(--text-primary) 0%,var(--accent-green) 50%,var(--accent-cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero h1 .highlight{background:linear-gradient(135deg,var(--accent-green),var(--accent-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-subtitle{font-size:1.15rem;color:var(--text-secondary);max-width:600px;margin:0 auto 32px;line-height:1.7}
+.hero-actions{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.btn{padding:12px 28px;border-radius:var(--radius);font-weight:600;font-size:0.95rem;cursor:pointer;transition:var(--transition);border:none;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:linear-gradient(135deg,var(--accent-green),#00cc6a);color:var(--bg-primary);box-shadow:0 4px 16px rgba(0,255,136,0.2)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,255,136,0.3)}
+.btn-secondary{background:transparent;color:var(--text-primary);border:1px solid var(--border-active)}
+.btn-secondary:hover{border-color:var(--accent-cyan);color:var(--accent-cyan);background:rgba(0,212,255,0.05)}
+.btn-sm{padding:8px 18px;font-size:0.85rem}
+.hero-stats{display:flex;gap:48px;justify-content:center;margin-top:64px;flex-wrap:wrap}
+.hero-stat{text-align:center}
+.hero-stat .num{font-size:2rem;font-weight:800;color:var(--accent-green);font-family:var(--font-mono)}
+.hero-stat .label{font-size:0.85rem;color:var(--text-muted);margin-top:4px}
+
+/* Sections */
+section{padding:80px 24px}
+.section-inner{max-width:1200px;margin:0 auto}
+.section-label{display:inline-flex;align-items:center;gap:8px;padding:4px 12px;border-radius:20px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.2);color:var(--accent-cyan);font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:16px}
+.section-title{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:700;margin-bottom:16px;line-height:1.2}
+.section-desc{font-size:1.05rem;color:var(--text-secondary);max-width:640px;margin-bottom:48px;line-height:1.7}
+
+/* Features Grid */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px}
+.feature-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:28px;transition:var(--transition);position:relative;overflow:hidden}
+.feature-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent-green),transparent);opacity:0;transition:var(--transition)}
+.feature-card:hover{border-color:var(--border-active);background:var(--bg-card-hover);transform:translateY(-4px);box-shadow:var(--shadow)}
+.feature-card:hover::before{opacity:1}
+.feature-icon{width:48px;height:48px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:16px}
+.feature-icon.green{background:rgba(0,255,136,0.1);color:var(--accent-green)}
+.feature-icon.cyan{background:rgba(0,212,255,0.1);color:var(--accent-cyan)}
+.feature-icon.purple{background:rgba(168,85,247,0.1);color:var(--accent-purple)}
+.feature-icon.red{background:rgba(255,68,102,0.1);color:var(--accent-red)}
+.feature-icon.yellow{background:rgba(255,204,0,0.1);color:var(--accent-yellow)}
+.feature-icon.orange{background:rgba(255,136,0,0.1);color:var(--accent-orange)}
+.feature-card h3{font-size:1.1rem;font-weight:600;margin-bottom:8px;color:var(--text-primary)}
+.feature-card p{font-size:0.9rem;color:var(--text-secondary);line-height:1.6}
+.feature-card .tag{display:inline-block;padding:3px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;margin-top:12px}
+.tag-green{background:rgba(0,255,136,0.1);color:var(--accent-green)}
+.tag-cyan{background:rgba(0,212,255,0.1);color:var(--accent-cyan)}
+.tag-purple{background:rgba(168,85,247,0.1);color:var(--accent-purple)}
+.tag-red{background:rgba(255,68,102,0.1);color:var(--accent-red)}
+
+/* Modules */
+.modules-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.module-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:24px;transition:var(--transition);display:flex;gap:16px;align-items:flex-start}
+.module-card:hover{border-color:var(--accent-green);background:var(--bg-card-hover)}
+.module-icon{width:40px;height:40px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.module-card h3{font-size:1rem;font-weight:600;margin-bottom:4px}
+.module-card p{font-size:0.85rem;color:var(--text-secondary);line-height:1.5}
+
+/* Command Demo */
+.demo-container{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-xl);overflow:hidden;box-shadow:var(--shadow-lg)}
+.demo-header{background:var(--bg-secondary);padding:12px 20px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border-color)}
+.demo-dot{width:12px;height:12px;border-radius:50%}
+.demo-dot.red{background:#ff5f57}
+.demo-dot.yellow{background:#febc2e}
+.demo-dot.green{background:#28c840}
+.demo-header-text{margin-left:12px;color:var(--text-muted);font-size:0.8rem;font-family:var(--font-mono)}
+.demo-body{padding:24px;font-family:var(--font-mono);font-size:0.9rem;line-height:1.8;min-height:300px}
+.demo-line{display:flex;align-items:flex-start;gap:12px;margin-bottom:4px}
+.demo-prompt{color:var(--accent-green);user-select:none;white-space:nowrap}
+.demo-cmd{color:var(--accent-cyan)}
+.demo-output{color:var(--text-secondary);padding-left:28px;font-size:0.85rem}
+.demo-output.success{color:var(--accent-green)}
+.demo-output.warn{color:var(--accent-yellow)}
+.demo-output.error{color:var(--accent-red)}
+.demo-cursor{display:inline-block;width:8px;height:16px;background:var(--accent-green);animation:cursor-blink 1s step-end infinite;vertical-align:text-bottom;margin-left:2px}
+@keyframes cursor-blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* Command Reference Table */
+.cmd-table{width:100%;border-collapse:collapse;font-size:0.9rem}
+.cmd-table th{text-align:left;padding:12px 16px;background:var(--bg-secondary);color:var(--text-secondary);font-weight:600;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.05em;border-bottom:2px solid var(--border-color)}
+.cmd-table td{padding:12px 16px;border-bottom:1px solid var(--border-color);color:var(--text-primary)}
+.cmd-table tr:hover td{background:rgba(0,255,136,0.03)}
+.cmd-table code{background:rgba(0,212,255,0.1);color:var(--accent-cyan);padding:2px 8px;border-radius:4px;font-size:0.85rem}
+
+/* Installation Steps */
+.steps{display:flex;flex-direction:column;gap:24px;max-width:700px}
+.step{display:flex;gap:20px;align-items:flex-start}
+.step-num{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent-green),var(--accent-cyan));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9rem;color:var(--bg-primary);flex-shrink:0}
+.step-content h4{font-size:1rem;font-weight:600;margin-bottom:4px}
+.step-content p{font-size:0.9rem;color:var(--text-secondary);line-height:1.6}
+.step-content code{background:rgba(0,212,255,0.1);color:var(--accent-cyan);padding:2px 8px;border-radius:4px;font-size:0.85rem}
+
+/* Report Preview */
+.report-preview{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow)}
+.report-preview-header{background:var(--bg-secondary);padding:16px 20px;border-bottom:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between}
+.report-preview-header h3{font-size:0.95rem;font-weight:600}
+.report-preview-header .badge{padding:4px 12px;border-radius:12px;font-size:0.75rem;font-weight:600;background:rgba(0,255,136,0.1);color:var(--accent-green)}
+.report-preview-body{padding:24px}
+.report-metric{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;margin-bottom:24px}
+.report-metric .metric{background:var(--bg-secondary);border-radius:var(--radius);padding:16px;text-align:center}
+.report-metric .metric .value{font-size:1.8rem;font-weight:800;font-family:var(--font-mono)}
+.report-metric .metric .value.green{color:var(--accent-green)}
+.report-metric .metric .value.yellow{color:var(--accent-yellow)}
+.report-metric .metric .value.red{color:var(--accent-red)}
+.report-metric .metric .value.cyan{color:var(--accent-cyan)}
+.report-metric .metric .label{font-size:0.8rem;color:var(--text-muted);margin-top:4px}
+.finding-item{padding:12px 16px;border-left:3px solid var(--accent-red);background:rgba(255,68,102,0.05);border-radius:0 var(--radius) var(--radius) 0;margin-bottom:8px}
+.finding-item.critical{border-left-color:var(--accent-red)}
+.finding-item.high{border-left-color:var(--accent-orange)}
+.finding-item.medium{border-left-color:var(--accent-yellow)}
+.finding-item.low{border-left-color:var(--accent-cyan)}
+.finding-item .finding-title{font-weight:600;font-size:0.9rem;margin-bottom:2px}
+.finding-item .finding-severity{font-size:0.75rem;font-weight:600;text-transform:uppercase}
+.finding-item .finding-desc{font-size:0.85rem;color:var(--text-secondary);margin-top:4px}
+
+/* Footer */
+.footer{background:var(--bg-secondary);border-top:1px solid var(--border-color);padding:48px 24px 24px}
+.footer-inner{max-width:1200px;margin:0 auto}
+.footer-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px;margin-bottom:32px}
+.footer-col h4{font-size:0.9rem;font-weight:600;margin-bottom:16px;color:var(--text-primary)}
+.footer-col a{display:block;padding:4px 0;color:var(--text-secondary);font-size:0.85rem;transition:var(--transition)}
+.footer-col a:hover{color:var(--accent-green)}
+.footer-bottom{display:flex;align-items:center;justify-content:space-between;padding-top:24px;border-top:1px solid var(--border-color);flex-wrap:wrap;gap:16px}
+.footer-bottom p{font-size:0.8rem;color:var(--text-muted)}
+.footer-bottom .links{display:flex;gap:16px}
+.footer-bottom .links a{font-size:0.8rem}
+
+/* Responsive */
+@media(max-width:768px){
+.nav-links{display:none}
+.nav-mobile-toggle{display:block}
+.nav-links.open{display:flex;flex-direction:column;position:absolute;top:64px;left:0;right:0;background:var(--bg-primary);border-bottom:1px solid var(--border-color);padding:16px}
+.hero-stats{gap:24px}
+.hero-stat .num{font-size:1.5rem}
+.features-grid{grid-template-columns:1fr}
+.modules-grid{grid-template-columns:1fr}
+.report-metric{grid-template-columns:repeat(2,1fr)}
+.cmd-table{font-size:0.8rem}
+.cmd-table th,.cmd-table td{padding:8px 10px}
+}
+
+/* Animations */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeInUp 0.6s ease-out forwards}
+.fade-in-delay-1{animation-delay:0.1s;opacity:0}
+.fade-in-delay-2{animation-delay:0.2s;opacity:0}
+.fade-in-delay-3{animation-delay:0.3s;opacity:0}
+.fade-in-delay-4{animation-delay:0.4s;opacity:0}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--border-color);margin-bottom:24px}
+.tab{padding:10px 20px;border:none;background:none;color:var(--text-muted);font-size:0.9rem;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:var(--transition);font-family:var(--font-sans)}
+.tab:hover{color:var(--text-primary)}
+.tab.active{color:var(--accent-green);border-bottom-color:var(--accent-green)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* Interactive Terminal */
+.terminal-input{display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border-color)}
+.terminal-input .prompt{color:var(--accent-green);font-family:var(--font-mono);font-size:0.9rem;white-space:nowrap}
+.terminal-input input{flex:1;background:none;border:none;color:var(--text-primary);font-family:var(--font-mono);font-size:0.9rem;outline:none}
+.terminal-input input::placeholder{color:var(--text-muted)}
+
+/* Pill */
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600}
+.pill-green{background:rgba(0,255,136,0.1);color:var(--accent-green)}
+.pill-cyan{background:rgba(0,212,255,0.1);color:var(--accent-cyan)}
+.pill-purple{background:rgba(168,85,247,0.1);color:var(--accent-purple)}
+.pill-red{background:rgba(255,68,102,0.1);color:var(--accent-red)}
+
+/* Stats row */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:48px}
+.stat-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:20px;text-align:center;transition:var(--transition)}
+.stat-card:hover{border-color:var(--accent-green);transform:translateY(-2px)}
+.stat-card .stat-value{font-size:2rem;font-weight:800;font-family:var(--font-mono)}
+.stat-card .stat-label{font-size:0.85rem;color:var(--text-muted);margin-top:4px}
+
+/* Skill tags */
+.skill-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.skill-tag{padding:4px 12px;border-radius:16px;font-size:0.75rem;font-weight:600;background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border-color)}
+.skill-tag:hover{border-color:var(--accent-green);color:var(--accent-green)}
+
+/* Version badge */
+.version-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;background:var(--bg-secondary);border:1px solid var(--border-color);font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary)}
+
+/* Two column layout */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:center}
+@media(max-width:768px){.two-col{grid-template-columns:1fr}}
+
+/* Logo animation */
+.logo-spin{animation:logo-spin 20s linear infinite}
+@keyframes logo-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* Alert box */
+.alert{padding:16px 20px;border-radius:var(--radius);border:1px solid;display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+.alert-info{background:rgba(0,212,255,0.05);border-color:rgba(0,212,255,0.2);color:var(--accent-cyan)}
+.alert-success{background:rgba(0,255,136,0.05);border-color:rgba(0,255,136,0.2);color:var(--accent-green)}
+.alert-warning{background:rgba(255,204,0,0.05);border-color:rgba(255,204,0,0.2);color:var(--accent-yellow)}
+.alert-danger{background:rgba(255,68,102,0.05);border-color:rgba(255,68,102,0.2);color:var(--accent-red)}
+.alert-icon{font-size:1.2rem;flex-shrink:0;margin-top:2px}
+.alert-content{flex:1;font-size:0.9rem;line-height:1.6}
+.alert-content strong{color:var(--text-primary)}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+<div class="nav-inner">
+<a href="#" class="nav-brand">
+<div class="logo">&#9670;</div>
+Delta
+</a>
+<ul class="nav-links" id="navLinks">
+<li><a href="#features" class="active">Features</a></li>
+<li><a href="#modules">Modules</a></li>
+<li><a href="#commands">Commands</a></li>
+<li><a href="#demo">Demo</a></li>
+<li><a href="#reports">Reports</a></li>
+<li><a href="#install">Install</a></li>
+</ul>
+<button class="nav-cta" onclick="location.href='#install'">Get Started</button>
+<button class="nav-mobile-toggle" onclick="toggleMobileNav()">&#9776;</button>
+</div>
+</nav>
+
+<!-- Hero -->
+<section class="hero" id="hero">
+<div class="hero-bg">
+<div class="grid"></div>
+<div class="glow glow-1"></div>
+<div class="glow glow-2"></div>
+<div class="glow glow-3"></div>
+</div>
+<div class="hero-content">
+<div class="hero-badge"><span class="dot"></span> v1.0.0 &mdash; AI-Powered Security Assessment</div>
+<h1>Delta &mdash; <span class="highlight">AI-Powered</span><br>Cyber Security CLI</h1>
+<p class="hero-subtitle">A modern command-line interface that combines artificial intelligence with professional security testing tools. Conduct assessments, vulnerability scanning, and penetration testing using natural language.</p>
+<div class="hero-actions">
+<button class="btn btn-primary" onclick="location.href='#install'">&#9654; Install Delta</button>
+<button class="btn btn-secondary" onclick="location.href='#demo'">&#9889; Try Demo</button>
+</div>
+<div class="hero-stats">
+<div class="hero-stat"><div class="num">15+</div><div class="label">Security Modules</div></div>
+<div class="hero-stat"><div class="num">30+</div><div class="label">Commands</div></div>
+<div class="hero-stat"><div class="num">3</div><div class="label">Report Formats</div></div>
+<div class="hero-stat"><div class="num">Offline</div><div class="label">First Design</div></div>
+</div>
+</div>
+</section>
+
+<!-- Features -->
+<section id="features">
+<div class="section-inner">
+<div class="section-label">&#9670; Core Capabilities</div>
+<h2 class="section-title">Built for Security Professionals</h2>
+<p class="section-desc">Delta combines AI-powered natural language understanding with professional security testing tools in a modern, intuitive interface.</p>
+<div class="features-grid">
+<div class="feature-card fade-in fade-in-delay-1">
+<div class="feature-icon green">&#128274;</div>
+<h3>AI Natural Language Interface</h3>
+<p>Understands and executes commands like "scan localhost", "check security on 192.168.1.1", or "audit wordpress site" using AI-powered intent recognition.</p>
+<span class="tag tag-green">AI Powered</span>
+</div>
+<div class="feature-card fade-in fade-in-delay-2">
+<div class="feature-icon cyan">&#128225;</div>
+<h3>Network Scanning</h3>
+<p>Comprehensive port scanning, service detection, banner grabbing, and OS fingerprinting for thorough network reconnaissance.</p>
+<span class="tag tag-cyan">Reconnaissance</span>
+</div>
+<div class="feature-card fade-in fade-in-delay-3">
+<div class="feature-icon purple">&#127760;</div>
+<h3>Web Application Analysis</h3>
+<p>HTTP header analysis, security misconfiguration detection, technology stack identification, and directory enumeration.</p>
+<span class="tag tag-purple">Web Security</span>
+</div>
+<div class="feature-card fade-in fade-in-delay-1">
+<div class="feature-icon red">&#128274;</div>
+<h3>SSL/TLS Assessment</h3>
+<p>Certificate validation, protocol analysis, cipher suite evaluation, and vulnerability checking for encrypted communications.</p>
+<span class="tag tag-red">Encryption</span>
+</div>
+<div class="feature-card fade-in fade-in-delay-2">
+<div class="feature-icon yellow">&#128279;</div>
+<h3>DNS Enumeration</h3>
+<p>DNS record enumeration, reverse DNS lookup, zone transfer testing, and WHOIS information gathering for intelligence collection.</p>
+<span class="tag tag-yellow">Intelligence</span>
+</div>
+<div class="feature-card fade-in fade-in-delay-3">
+<div class="feature-icon orange">&#128273;</div>
+<h3>Password & Crypto Tools</h3>
+<p>Strength assessment, entropy calculation, hash identification, encoding/decoding utilities, and policy compliance checking.</p>
+<span class="tag tag-orange">Utilities</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Modules -->
+<section id="modules" style="background:var(--bg-secondary)">
+<div class="section-inner">
+<div class="section-label">&#9670; Security Modules</div>
+<h2 class="section-title">Comprehensive Security Toolkit</h2>
+<p class="section-desc">Delta includes a rich set of security modules covering network, web, encryption, and analysis domains.</p>
+<div class="modules-grid">
+<div class="module-card"><div class="module-icon green">&#128269;</div><div><h3>Network Scanner</h3><p>TCP/UDP port scanning, service version detection, and OS fingerprinting</p></div></div>
+<div class="module-card"><div class="module-icon cyan">&#127760;</div><div><h3>Web Analyzer</h3><p>HTTP security headers, technology detection, directory enumeration</p></div></div>
+<div class="module-card"><div class="module-icon purple">&#128274;</div><div><h3>SSL/TLS Checker</h3><p>Certificate validation, protocol weaknesses, cipher analysis</p></div></div>
+<div class="module-card"><div class="module-icon red">&#128279;</div><div><h3>DNS Enumerator</h3><p>Record types, zone transfers, subdomain discovery</p></div></div>
+<div class="module-card"><div class="module-icon yellow">&#128260;</div><div><h3>Crypto Tools</h3><p>Hash algorithms, encoding/decoding, cryptographic utilities</p></div></div>
+<div class="module-card"><div class="module-icon orange">&#128273;</div><div><h3>Password Analyzer</h3><p>Strength assessment, entropy calculation, policy validation</p></div></div>
+<div class="module-card"><div class="module-icon green">&#128202;</div><div><h3>Report Generator</h3><p>Professional security reports in Markdown, HTML, and JSON</p></div></div>
+<div class="module-card"><div class="module-icon cyan">&#128269;</div><div><h3>Brute Force Module</h3><p>SSH, FTP, HTTP Basic authentication testing</p></div></div>
+<div class="module-card"><div class="module-icon purple">&#127760;</div><div><h3>GeoIP Lookup</h3><p>IP geolocation, ISP, organization, and timezone info</p></div></div>
+<div class="module-card"><div class="module-icon red">&#128269;</div><div><h3>CVE Lookup</h3><p>Search and retrieve CVE vulnerability information</p></div></div>
+<div class="module-card"><div class="module-icon yellow">&#128269;</div><div><h3>Web Search</h3><p>DuckDuckGo search integration for OSINT and threat intel</p></div></div>
+<div class="module-card"><div class="module-icon orange">&#128187;</div><div><h3>ML Threat Analysis</h3><p>Machine learning-based threat prediction and anomaly detection</p></div></div>
+</div>
+</div>
+</section>
+
+<!-- Command Reference -->
+<section id="commands">
+<div class="section-inner">
+<div class="section-label">&#9670; Command Reference</div>
+<h2 class="section-title">Intuitive Command Interface</h2>
+<p class="section-desc">Delta uses natural language commands for security operations. All commands work in both interactive REPL and direct execution modes.</p>
+<div style="overflow-x:auto">
+<table class="cmd-table">
+<thead><tr><th>Command</th><th>Description</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td><code>scan &lt;target&gt;</code></td><td>Scan target for open ports and services</td><td><code>scan 192.168.1.1</code></td></tr>
+<tr><td><code>audit &lt;target&gt;</code></td><td>Perform comprehensive security audit</td><td><code>audit example.com</code></td></tr>
+<tr><td><code>enumerate &lt;target&gt;</code></td><td>Enumerate network/DNS information</td><td><code>enumerate 192.168.1.0/24</code></td></tr>
+<tr><td><code>check &lt;target&gt;</code></td><td>Check specific security aspects</td><td><code>check ssl example.com:443</code></td></tr>
+<tr><td><code>dns &lt;domain&gt;</code></td><td>Perform DNS lookup</td><td><code>dns google.com</code></td></tr>
+<tr><td><code>whois &lt;domain&gt;</code></td><td>WHOIS information lookup</td><td><code>whois example.com</code></td></tr>
+<tr><td><code>ssl &lt;host:port&gt;</code></td><td>SSL/TLS certificate analysis</td><td><code>ssl example.com:443</code></td></tr>
+<tr><td><code>ping &lt;host&gt;</code></td><td>Network connectivity test</td><td><code>ping 8.8.8.8</code></td></tr>
+<tr><td><code>password &lt;pwd&gt;</code></td><td>Analyze password strength</td><td><code>password MySecurePass123!</code></td></tr>
+<tr><td><code>hash &lt;data&gt;</code></td><td>Hash operations and identification</td><td><code>hash testdata</code></td></tr>
+<tr><td><code>decode &lt;type&gt; &lt;data&gt;</code></td><td>Decode base64/hex/url/jwt</td><td><code>decode base64 dGhpcyBpcyBhIHRlc3Q=</code></td></tr>
+<tr><td><code>analyze &lt;target&gt;</code></td><td>Analyze previous scan results</td><td><code>analyze last</code></td></tr>
+<tr><td><code>explain &lt;vuln&gt;</code></td><td>Get vulnerability explanation</td><td><code>explain XSS</code></td></tr>
+<tr><td><code>report</code></td><td>Generate security report</td><td><code>report --format html</code></td></tr>
+<tr><td><code>cve &lt;CVE-ID&gt;</code></td><td>Look up CVE vulnerability info</td><td><code>cve CVE-2021-44228</code></td></tr>
+<tr><td><code>searchweb &lt;query&gt;</code></td><td>Search the web for OSINT</td><td><code>searchweb CVE-2021-44228</code></td></tr>
+<tr><td><code>geoip &lt;ip&gt;</code></td><td>IP geolocation lookup</td><td><code>geoip 8.8.8.8</code></td></tr>
+<tr><td><code>ml predict</code></td><td>ML threat prediction/analysis</td><td><code>ml predict 8 3 2 3 0 0 4</code></td></tr>
+<tr><td><code>ai on/off/status</code></td><td>Manage AI LLM integration</td><td><code>ai on</code></td></tr>
+<tr><td><code>policy status</code></td><td>View security policy &amp; limits</td><td><code>policy status</code></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<!-- Interactive Demo -->
+<section id="demo" style="background:var(--bg-secondary)">
+<div class="section-inner">
+<div class="section-label">&#9670; Interactive Demo</div>
+<h2 class="section-title">Try Delta Commands</h2>
+<p class="section-desc">Experience Delta's natural language interface with this interactive command demo.</p>
+<div class="demo-container">
+<div class="demo-header">
+<div class="demo-dot red"></div>
+<div class="demo-dot yellow"></div>
+<div class="demo-dot green"></div>
+<span class="demo-header-text">delta --interactive</span>
+</div>
+<div class="demo-body" id="demoBody">
+<div class="demo-line"><span class="demo-prompt">$ </span><span class="demo-cmd">delta</span></div>
+<div class="demo-output">
+  <span style="color:var(--accent-cyan)">&#9670;</span> Delta AI Engine initialized successfully
+  <span style="color:var(--accent-green)">&#9670;</span> AI LLM Mode: ACTIVE
+  <span style="color:var(--accent-yellow)">&#9670;</span> Authorized security testing only
+</div>
+<div class="demo-line"><span class="demo-prompt">I"&gt; </span><span class="demo-cmd">scan localhost</span><span class="demo-cursor"></span></div>
+<div class="demo-line" style="display:none" id="demoStep2"><span class="demo-prompt"></span><span class="demo-output">[Scanning localhost...]&#123;target: 127.0.0.1, ports: 1000, threads: 50&#125;</span></div>
+<div class="demo-line" style="display:none" id="demoStep3"><span class="demo-prompt"></span><span class="demo-output success">&#9670; Port 22/tcp   open  ssh     OpenSSH 8.9p1 Ubuntu 3ubuntu0.4</span></div>
+<div class="demo-line" style="display:none" id="demoStep4"><span class="demo-prompt"></span><span class="demo-output success">&#9670; Port 80/tcp   open  http    Apache httpd 2.4.52</span></div>
+<div class="demo-line" style="display:none" id="demoStep5"><span class="demo-prompt"></span><span class="demo-output success">&#9670; Port 443/tcp  open  https   Apache httpd 2.4.52 (OpenSSL 3.0.2)</span></div>
+<div class="demo-line" style="display:none" id="demoStep6"><span class="demo-prompt"></span><span class="demo-output">&#123;total_open: 3, scan_time: 2.3s, risk_level: LOW&#125;</span></div>
+<div class="demo-line" style="display:none" id="demoStep7"><span class="demo-prompt">I"&gt; </span><span class="demo-cmd">explain XSS</span><span class="demo-cursor"></span></div>
+<div class="demo-line" style="display:none" id="demoStep8"><span class="demo-prompt"></span><span class="demo-output">&#12B; Cross-Site Scripting (XSS)&#12B;</span></div>
+<div class="demo-line" style="display:none" id="demoStep9"><span class="demo-prompt"></span><span class="demo-output">XSS allows attackers to inject client-side scripts into web pages...</span></div>
+<div class="demo-line" style="display:none" id="demoStep10"><span class="demo-prompt"></span><span class="demo-output warn">&#9632; Remediation: Use Content-Security-Policy headers and output encoding</span></div>
+<div class="demo-line" style="display:none" id="demoStep11"><span class="demo-prompt">I"&gt; </span><span class="demo-cmd" style="color:var(--accent-green)">&#9650; Ready</span></div>
+</div>
+<div class="terminal-input">
+<span class="prompt">I"&gt;</span>
+<input type="text" id="terminalInput" placeholder="Type a command (e.g., scan, audit, explain XSS)..." autocomplete="off" aria-label="Delta command input">
+</div>
+</div>
+</div>
+</section>
+
+<!-- Report Preview -->
+<section id="reports">
+<div class="section-inner">
+<div class="section-label">&#9670; Professional Reporting</div>
+<h2 class="section-title">Automated Security Reports</h2>
+<p class="section-desc">Delta generates professional security reports in multiple formats with executive summaries, detailed findings, and remediation guidance.</p>
+<div class="two-col">
+<div>
+<div class="report-preview">
+<div class="report-preview-header">
+<h3>&#128202; Security Assessment Report</h3>
+<span class="badge">&#9670; HIGH</span>
+</div>
+<div class="report-preview-body">
+<div class="report-metric">
+<div class="metric"><div class="value cyan">3</div><div class="label">Open Ports</div></div>
+<div class="metric"><div class="value yellow">1</div><div class="label">Warnings</div></div>
+<div class="metric"><div class="value red">2</div><div class="label">Findings</div></div>
+<div class="metric"><div class="value green">92%</div><div class="label">Security Score</div></div>
+</div>
+<div class="finding-item critical"><div class="finding-title">Outdated OpenSSL Version</div><div class="finding-severity" style="color:var(--accent-red)">CRITICAL</div><div class="finding-desc">OpenSSL 3.0.2 has known vulnerabilities. Upgrade to 3.1.4 or later.</div></div>
+<div class="finding-item high"><div class="finding-title">Missing Security Headers</div><div class="finding-severity" style="color:var(--accent-orange)">HIGH</div><div class="finding-desc">X-Content-Type-Options and X-Frame-Options headers are not set.</div></div>
+<div class="finding-item medium"><div class="finding-title">Weak Cipher Suites</div><div class="finding-severity" style="color:var(--accent-yellow)">MEDIUM</div><div class="finding-desc">TLS 1.0 and 1.1 are enabled. Disable and use TLS 1.2+ only.</div></div>
+<div class="finding-item low"><div class="finding-title">Server Token Leaks</div><div class="finding-severity" style="color:var(--accent-cyan)">LOW</div><div class="finding-desc">Server version information exposed in HTTP response headers.</div></div>
+</div>
+</div>
+</div>
+<div>
+<h3 style="font-size:1.2rem;margin-bottom:16px">Report Formats</h3>
+<div class="features-grid" style="grid-template-columns:1fr">
+<div class="feature-card"><div class="feature-icon green">&#128196;</div><h3>Markdown</h3><p>Clean, readable documentation format perfect for wikis, documentation, and version control.</p></div>
+<div class="feature-card"><div class="feature-icon cyan">&#128187;</div><h3>HTML</h3><p>Professional styled reports with executive summaries, charts, and interactive elements.</p></div>
+<div class="feature-card"><div class="feature-icon purple">&#123; }&#125;</div><h3>JSON</h3><p>Machine-readable format for CI/CD integration, automated pipelines, and custom tooling.</p></div>
+</div>
+<h3 style="font-size:1.1rem;margin:24px 0 12px">Report Templates</h3>
+<div class="skill-tags">
+<span class="skill-tag">Executive Summary</span>
+<span class="skill-tag">Technical Detail</span>
+<span class="skill-tag">Compliance Audit</span>
+<span class="skill-tag">Penetration Test</span>
+<span class="skill-tag">Vulnerability Assessment</span>
+<span class="skill-tag">Network Recon</span>
+<span class="skill-tag">Custom Template</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Installation -->
+<section id="install" style="background:var(--bg-secondary)">
+<div class="section-inner">
+<div class="section-label">&#9670; Installation</div>
+<h2 class="section-title">Get Started in Seconds</h2>
+<p class="section-desc">Delta runs on Python 3.11+ with zero external dependencies for basic operation. Enhanced features available with optional packages.</p>
+<div class="tabs" id="installTabs">
+<button class="tab active" onclick="switchTab('pip')">PyPI</button>
+<button class="tab" onclick="switchTab('source')">From Source</button>
+<button class="tab" onclick="switchTab('docker')">Docker</button>
+</div>
+<div class="tab-content active" id="tab-pip">
+<div class="steps">
+<div class="step"><div class="step-num">1</div><div class="step-content"><h4>Install via pip</h4><p><code>pip install delta-security</code></p></div></div>
+<div class="step"><div class="step-num">2</div><div class="step-content"><h4>Enhanced UI (recommended)</h4><p><code>pip install delta-security[all]</code></p></div></div>
+<div class="step"><div class="step-num">3</div><div class="step-content"><h4>Start Delta</h4><p><code>delta</code> or <code>python -m delta</code></p></div></div>
+<div class="step"><div class="step-num">4</div><div class="step-content"><h4>Configure AI Provider</h4><p>On first run, Delta prompts you to configure an LLM provider. Ollama (local) works out of the box with no API key needed.</p></div></div>
+</div>
+</div>
+<div class="tab-content" id="tab-source">
+<div class="steps">
+<div class="step"><div class="step-num">1</div><div class="step-content"><h4>Clone the repository</h4><p><code>git clone https://github.com/hackerai/delta.git</code></p></div></div>
+<div class="step"><div class="step-num">2</div><div class="step-content"><h4>Install in development mode</h4><p><code>cd delta && pip install -e .</code></p></div></div>
+<div class="step"><div class="step-num">3</div><div class="step-content"><h4>Run Delta</h4><p><code>delta</code></p></div></div>
+</div>
+</div>
+<div class="tab-content" id="tab-docker">
+<div class="steps">
+<div class="step"><div class="step-num">1</div><div class="step-content"><h4>Pull the image</h4><p><code>docker pull hackerai/delta:latest</code></p></div></div>
+<div class="step"><div class="step-num">2</div><div class="step-content"><h4>Run Delta</h4><p><code>docker run -it --rm hackerai/delta delta</code></p></div></div>
+<div class="step"><div class="step-num">3</div><div class="step-content"><h4>With custom config</h4><p><code>docker run -it --rm -v ~/.delta:/root/.delta hackerai/delta delta</code></p></div></div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Skills -->
+<section id="skills">
+<div class="section-inner">
+<div class="section-label">&#9670; Delta Skills</div>
+<h2 class="section-title">Coding Mastery Skills</h2>
+<p class="section-desc">Delta includes specialized skills for software development, security, and infrastructure. Activate skills to enhance Delta's capabilities for specific domains.</p>
+<div class="features-grid">
+<div class="feature-card fade-in fade-in-delay-1"><div class="feature-icon green">&#128187;</div><h3>Backend Master</h3><p>Master backend development with security-focused coding practices, API design, and server-side architecture.</p><span class="tag tag-green">Development</span></div>
+<div class="feature-card fade-in fade-in-delay-2"><div class="feature-icon cyan">&#128187;</div><h3>Frontend Master</h3><p>Build secure, modern frontend applications with best practices for XSS prevention, CSP, and secure state management.</p><span class="tag tag-cyan">Development</span></div>
+<div class="feature-card fade-in fade-in-delay-3"><div class="feature-icon purple">&#128187;</div><h3>Cloud Architect</h3><p>Design secure cloud architectures with AWS, Azure, and GCP best practices for security and compliance.</p><span class="tag tag-purple">Architecture</span></div>
+<div class="feature-card fade-in fade-in-delay-1"><div class="feature-icon red">&#128187;</div><h3>Security Sentinel</h3><p>Specialized security skills for vulnerability analysis, threat modeling, and security code review.</p><span class="tag tag-red">Security</span></div>
+<div class="feature-card fade-in fade-in-delay-2"><div class="feature-icon yellow">&#128187;</div><h3>Code Reviewer</h3><p>Automated code review with security-focused analysis, best practices enforcement, and vulnerability detection.</p><span class="tag tag-yellow">Quality</span></div>
+<div class="feature-card fade-in fade-in-delay-3"><div class="feature-icon orange">&#128187;</div><h3>DevOps Deployer</h3><p>Secure deployment pipelines, infrastructure-as-code, CI/CD security hardening, and container security.</p><span class="tag tag-orange">DevOps</span></div>
+</div>
+</div>
+</section>
+
+<!-- Configuration -->
+<section id="config" style="background:var(--bg-secondary)">
+<div class="section-inner">
+<div class="section-label">&#9670; Configuration</div>
+<h2 class="section-title">Flexible Configuration</h2>
+<p class="section-desc">Delta is highly configurable through config files, environment variables, and in-app commands.</p>
+<div class="two-col">
+<div>
+<h3 style="font-size:1.1rem;margin-bottom:16px">Configuration Options</h3>
+<div class="features-grid" style="grid-template-columns:1fr">
+<div class="feature-card"><div class="feature-icon green">&#128187;</div><h3>AI &amp; LLM Settings</h3><p>Configure provider, model, API key, base URL, and memory settings for AI-powered features.</p></div>
+<div class="feature-card"><div class="feature-icon cyan">&#128269;</div><h3>Scanner Settings</h3><p>Adjust timing, service detection, OS fingerprinting, version intensity, and thread limits.</p></div>
+<div class="feature-card"><div class="feature-icon purple">&#128187;</div><h3>Report Settings</h3><p>Set company name, author, default output format, template, and report directory.</p></div>
+<div class="feature-card"><div class="feature-icon red">&#128274;</div><h3>Security Policy</h3><p>Manage authorization, target blocking, capability limits, and ethics rules.</p></div>
+</div>
+</div>
+<div>
+<h3 style="font-size:1.1rem;margin-bottom:16px">Environment Variables</h3>
+<div style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:20px;font-family:var(--font-mono);font-size:0.85rem;line-height:2">
+<span style="color:var(--accent-cyan)">DELTA_CONFIG_DIR</span> = <span style="color:var(--accent-green)">/path/to/config</span><br>
+<span style="color:var(--accent-cyan)">DELTA_API_KEY</span> = <span style="color:var(--accent-green)">your-api-key</span><br>
+<span style="color:var(--accent-cyan)">DELTA_API_BASE_URL</span> = <span style="color:var(--accent-green)">http://localhost:11434/v1</span><br>
+<span style="color:var(--accent-cyan)">DELTA_LLM_MODEL</span> = <span style="color:var(--accent-green)">qwen3.6</span><br>
+<span style="color:var(--accent-cyan)">DELTA_PROVIDER</span> = <span style="color:var(--accent-green)">local</span><br>
+<span style="color:var(--accent-cyan)">DELTA_DATA_DIR</span> = <span style="color:var(--accent-green)">~/.delta</span><br>
+<span style="color:var(--accent-cyan)">OPENCODE_API_KEY</span> = <span style="color:var(--accent-green)">your-key</span><br>
+<span style="color:var(--accent-cyan)">DEEPSEEK_API_KEY</span> = <span style="color:var(--accent-green)">your-key</span><br>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+<div class="footer-inner">
+<div class="footer-grid">
+<div class="footer-col">
+<h4>Delta</h4>
+<p style="color:var(--text-secondary);font-size:0.85rem;line-height:1.6;margin-top:8px">AI-Powered Cyber Security Assessment CLI. Built for security professionals, penetration testers, and system administrators.</p>
+</div>
+<div class="footer-col">
+<h4>Links</h4>
+<a href="https://github.com/hackerai/delta">GitHub Repository</a>
+<a href="https://hackerai.co/delta">Homepage</a>
+<a href="https://docs.hackerai.co/delta">Documentation</a>
+<a href="https://pypi.org/project/delta-security">PyPI Package</a>
+</div>
+<div class="footer-col">
+<h4>Resources</h4>
+<a href="#features">Features</a>
+<a href="#modules">Modules</a>
+<a href="#commands">Commands</a>
+<a href="#demo">Demo</a>
+</div>
+<div class="footer-col">
+<h4>License</h4>
+<p style="color:var(--text-secondary);font-size:0.85rem;margin-top:8px">Delta is licensed under the MIT License. See LICENSE file for details.</p>
+<div style="margin-top:12px"><span class="version-badge">v1.0.0</span> <span class="version-badge" style="margin-left:8px">MIT</span></div>
+</div>
+</div>
+<div class="footer-bottom">
+<p>&copy; 2026 HackerAI. Delta is for authorized security testing only.</p>
+<div class="links">
+<a href="https://github.com/hackerai/delta">GitHub</a>
+<a href="https://hackerai.co">HackerAI</a>
+</div>
+</div>
+</div>
+</footer>
+
+<script>
+// Navigation active state
+const navLinks = document.querySelectorAll('.nav-links a');
+const sections = document.querySelectorAll('section[id]');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    const top = s.offsetTop - 100;
+    if (window.scrollY >= top) current = s.getAttribute('id');
+  });
+  navLinks.forEach(a => {
+    a.classList.remove('active');
+    if (a.getAttribute('href') === '#' + current) a.classList.add('active');
+  });
+});
+
+// Mobile nav toggle
+function toggleMobileNav() {
+  document.getElementById('navLinks').classList.toggle('open');
+}
+
+// Tab switching
+function switchTab(tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + tabId).classList.add('active');
+}
+
+// Interactive terminal demo
+const commands = {
+  'scan': '<span class="demo-output">[Scanning localhost...]{target: 127.0.0.1, ports: 1000, threads: 50}</span>',
+  'audit': '<span class="demo-output">[Running comprehensive audit...]{modules: [network, web, ssl, dns, headers], target: localhost}</span>',
+  'explain': '<span class="demo-output">[Loading knowledge base...]</span>',
+  'report': '<span class="demo-output success">&#9670; Report generated: delta_report.html</span>',
+  'help': '<span class="demo-output">Available commands: scan, audit, enumerate, check, dns, whois, ssl, ping, password, hash, decode, analyze, explain, report, cve, searchweb, geoip, ml, ai, policy, help</span>',
+  'status': '<span class="demo-output success">&#9670; Delta v1.0.0 | AI: Active | Modules: 15+ | Risk: LOW</span>',
+  'history': '<span class="demo-output">1. scan localhost\n2. explain XSS\n3. report --format html</span>',
+  'whois': '<span class="demo-output">[WHOIS Lookup] Domain: example.com | Registrar: Example Registrar | Created: 1995-08-14 | Expires: 2025-08-13</span>',
+  'dns': '<span class="demo-output">[DNS Lookup] A: 93.184.216.34 | AAAA: 2606:2800:220:1:248:1893:25c8:1946 | MX: mail.example.com</span>',
+  'password': '<span class="demo-output">[Password Analysis] Strength: STRONG | Entropy: 68.5 bits | Crack Time: 3.2 years | Score: 92/100</span>',
+  'hash': '<span class="demo-output">[Hash] SHA256: a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e</span>',
+  'cve': '<span class="demo-output">[CVE Lookup] CVE-2021-44228 | Log4Shell | CVSS: 10.0 | Critical RCE in Apache Log4j</span>',
+  'geoip': '<span class="demo-output">[GeoIP] IP: 8.8.8.8 | Country: US | City: Mountain View | ISP: Google LLC</span>',
+};
+
+const terminalInput = document.getElementById('terminalInput');
+const demoBody = document.getElementById('demoBody');
+
+terminalInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    const val = this.value.trim().toLowerCase();
+    if (!val) return;
+
+    // Add user input line
+    const inputLine = document.createElement('div');
+    inputLine.className = 'demo-line';
+    inputLine.innerHTML = '<span class="demo-prompt">I"&gt; </span><span class="demo-cmd">' + escapeHtml(val) + '</span>';
+    demoBody.appendChild(inputLine);
+
+    // Show cursor briefly then output
+    const cursorLine = document.createElement('div');
+    cursorLine.className = 'demo-line';
+    cursorLine.innerHTML = '<span class="demo-prompt"></span><span class="demo-cursor"></span>';
+    demoBody.appendChild(cursorLine);
+
+    this.value = '';
+
+    setTimeout(function() {
+      cursorLine.remove();
+
+      // Find matching command
+      let output = '<span class="demo-output">[Unknown command: ' + escapeHtml(val) + '. Type \'help\' for available commands.]</span>';
+      for (var cmd in commands) {
+        if (val.indexOf(cmd) === 0) {
+          output = commands[cmd];
+          break;
+        }
+      }
+
+      const outputLine = document.createElement('div');
+      outputLine.className = 'demo-line';
+      outputLine.innerHTML = '<span class="demo-prompt"></span>' + output;
+      demoBody.appendChild(outputLine);
+      demoBody.scrollTop = demoBody.scrollHeight;
+
+      // Add ready prompt
+      const readyLine = document.createElement('div');
+      readyLine.className = 'demo-line';
+      readyLine.innerHTML = '<span class="demo-prompt">I"&gt; </span><span class="demo-cmd" style="color:var(--accent-green)">&#9650; Ready</span>';
+      demoBody.appendChild(readyLine);
+      demoBody.scrollTop = demoBody.scrollHeight;
+    }, 600);
+  }
+});
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Auto-run demo sequence on page load
+window.addEventListener('load', function() {
+  var steps = ['demoStep2', 'demoStep3', 'demoStep4', 'demoStep5', 'demoStep6', 'demoStep7', 'demoStep8', 'demoStep9', 'demoStep10', 'demoStep11'];
+  var delay = 1500;
+  steps.forEach(function(id, i) {
+    setTimeout(function() {
+      var el = document.getElementById(id);
+      if (el) el.style.display = 'flex';
+    }, delay + i * 800);
+  });
+});
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
+  anchor.addEventListener('click', function(e) {
+    e.preventDefault();
+    var target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Close mobile nav if open
+      document.getElementById('navLinks').classList.remove('open');
+    }
+  });
+});
+
+// Nav background on scroll
+window.addEventListener('scroll', function() {
+  var nav = document.getElementById('nav');
+  if (window.scrollY > 50) {
+    nav.style.boxShadow = '0 2px 16px rgba(0,0,0,0.3)';
+  } else {
+    nav.style.boxShadow = 'none';
+  }
+});
+</script>
+</body>
+</html>
