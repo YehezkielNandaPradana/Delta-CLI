@@ -100,9 +100,9 @@ class GeoIPModule:
 
             req = Request(url, headers={"User-Agent": "Delta-CLI/1.0"})
 
-            response = urlopen(req, timeout=self.REQUEST_TIMEOUT)
+            with urlopen(req, timeout=self.REQUEST_TIMEOUT) as response:
 
-            data = json.loads(response.read().decode())
+                data = json.loads(response.read().decode())
 
             if data.get("status") == "success":
 
