@@ -1,7 +1,13 @@
 {
+
   "name": "refactoring-surgeon",
+
   "description": "Refactoring aman: peningkatan kualitas tanpa mengubah perilaku, didukung tes.",
+
   "category": "Engineering",
+
   "tags": ["refactoring", "clean-code", "legacy", "code-quality", "maintainability"],
+
   "version": "1.0.0"
+
 }
