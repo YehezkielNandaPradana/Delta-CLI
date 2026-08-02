@@ -1,7 +1,13 @@
 {
+
   "name": "cloud-architect",
+
   "description": "Arsitektur cloud: AWS/GCP/Azure, keandalan, skalabilitas, biaya, dan keamanan infrastruktur.",
+
   "category": "Cloud",
+
   "tags": ["cloud", "aws", "gcp", "azure", "infrastructure", "scalability", "reliability"],
+
   "version": "1.0.0"
+
 }

@@ -1,7 +1,13 @@
 {
+
   "name": "code-reviewer",
+
   "description": "Review kode ketat: akurasi, keamanan, performa, dan umpan balik yang konstruktif.",
+
   "category": "Engineering",
+
   "tags": ["code-review", "review", "collaboration", "best-practices", "quality"],
+
   "version": "1.0.0"
+
 }

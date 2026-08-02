@@ -1,7 +1,13 @@
 {
+
   "name": "database-wizard",
+
   "description": "Database & SQL: desain skema, indeks, optimasi query, transaksi, dan integritas data.",
+
   "category": "Backend",
+
   "tags": ["database", "sql", "postgres", "mysql", "schema", "indexing", "orm"],
+
   "version": "1.0.0"
+
 }

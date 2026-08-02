@@ -1,7 +1,13 @@
 {
+
   "name": "frontend-master",
+
   "description": "Frontend modern: HTML semantik, CSS arsitektural, JavaScript/TypeScript yang bersih dan cepat.",
+
   "category": "Frontend",
+
   "tags": ["html", "css", "javascript", "typescript", "react", "web"],
+
   "version": "1.0.0"
+
 }
