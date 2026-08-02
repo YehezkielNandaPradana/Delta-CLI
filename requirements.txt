@@ -1,18 +1,35 @@
 # Delta Security Assessment CLI
+
 # Core dependencies (stdlib only - zero external requirements for basic operation)
+
 # Python 3.11+ required
 
+
+
 # Optional dependencies for enhanced UI
+
 # pip install rich         -> Rich terminal output
+
 # pip install prompt-toolkit -> Enhanced command input with history/completion
 
+
+
 # Optional: for ICMP ping without subprocess
+
 # pip install icmplib
 
+
+
 # Optional dependencies for internet search
+
 # pip install requests          -> Better HTTP client for web search
+
 # pip install beautifulsoup4    -> HTML parsing for search results
 
+
+
 # Optional dependencies for enhanced ML
+
 # pip install numpy             -> Faster numerical operations
+
 # pip install scikit-learn      -> Advanced ML algorithms
