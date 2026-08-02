@@ -19,6 +19,11 @@ venv/
 .venv/
 env/
 
+# 9Router
+9router/node_modules/
+9router/.env
+9router/.next/
+
 # IDE
 .vscode/
 .idea/
