@@ -6,7 +6,6 @@ import os
 from delta.core.config import DeltaConfig
 from delta.core.database import Database
 
-
 class TestConfig(unittest.TestCase):
     """Test Delta configuration."""
     
@@ -29,7 +28,6 @@ class TestConfig(unittest.TestCase):
             config2.load(os.path.join(tmpdir, "config.json"))
             self.assertEqual(config2.timeout, 60)
             self.assertEqual(config2.debug, True)
-
 
 class TestDatabase(unittest.TestCase):
     """Test database operations."""
@@ -54,7 +52,6 @@ class TestDatabase(unittest.TestCase):
         host = self.db.get_host("127.0.0.1")
         self.assertIsNotNone(host)
         self.assertEqual(host["os"], "Linux")
-
 
 if __name__ == "__main__":
     unittest.main()

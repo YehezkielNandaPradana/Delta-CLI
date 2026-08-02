@@ -3,7 +3,6 @@ import unittest
 from unittest.mock import patch, MagicMock
 from delta.modules.dns import DNSModule
 
-
 class TestDNSModule(unittest.TestCase):
     """Test DNS lookup operations."""
 
@@ -68,7 +67,6 @@ class TestDNSModule(unittest.TestCase):
         self.assertEqual(result.ip, "93.184.216.34")
         self.assertEqual(len(result.mx_records), 1)
         self.assertEqual(len(result.ns_records), 1)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,7 +3,6 @@ import unittest
 from unittest.mock import patch, MagicMock
 from delta.modules.geoip import GeoIPModule
 
-
 class TestGeoIPModule(unittest.TestCase):
     """Test IP geolocation operations."""
 
@@ -67,7 +66,6 @@ class TestGeoIPModule(unittest.TestCase):
         mock_lookup.return_value = mock_result
         result = self.geo.lookup_local()
         self.assertIsNotNone(result)
-
 
 if __name__ == "__main__":
     unittest.main()

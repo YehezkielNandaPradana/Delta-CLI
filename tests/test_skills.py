@@ -15,7 +15,6 @@ from delta.modules.skills import (
     SAFE_NAME,
 )
 
-
 class _FakeConfig:
     """Config stub that satisfies SkillManager's read/write needs."""
 
@@ -32,7 +31,6 @@ class _FakeConfig:
 
     def save(self):
         pass
-
 
 def _write_skill(base, name, description="desc", category="Coding", tags=None,
                  content="instructions", version="1.0.0", bad_name=False):
@@ -52,7 +50,6 @@ def _write_skill(base, name, description="desc", category="Coding", tags=None,
     with open(os.path.join(sdir, "skill.md"), "w") as f:
         f.write(content)
     return sdir
-
 
 class TestSkillLoading(unittest.TestCase):
     """Loading from disk."""
@@ -112,7 +109,6 @@ class TestSkillLoading(unittest.TestCase):
         sm = SkillManager(self.config, skills_dir=self.tmp)
         self.assertIsNone(sm.get_skill("no-meta"))
 
-
 class TestSkillActivation(unittest.TestCase):
     """Activating, deactivating, persisting."""
 
@@ -152,7 +148,6 @@ class TestSkillActivation(unittest.TestCase):
         self.assertIn("testing-guru", names)
         self.assertNotIn("ghost-skill", names)
 
-
 class TestBuildContext(unittest.TestCase):
     """build_context() merges active skills into system prompt text."""
 
@@ -186,7 +181,6 @@ class TestBuildContext(unittest.TestCase):
         sm.set_active([])
         self.assertEqual(sm.build_context(), "")
 
-
 class TestSearch(unittest.TestCase):
     """find() searches name, description, category, and tags."""
 
@@ -216,7 +210,6 @@ class TestSearch(unittest.TestCase):
     def test_search_no_match(self):
         self.assertEqual(self.sm.find("nonexistentterm"), [])
 
-
 class TestBundledSkills(unittest.TestCase):
     """The real shipped skills in delta/skills/ must be valid and loadable."""
 
@@ -232,7 +225,6 @@ class TestBundledSkills(unittest.TestCase):
         names = {s.name for s in sm.list_skills()}
         for core in ("ui-ux-pro-max", "clean-architect", "security-sentinel"):
             self.assertIn(core, names)
-
 
 if __name__ == "__main__":
     unittest.main()

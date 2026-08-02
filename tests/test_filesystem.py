@@ -6,7 +6,6 @@ import unittest
 
 from delta.modules.filesystem import FileSystemModule, FILLER_WORDS
 
-
 class TestFileSystemModule(unittest.TestCase):
     """Test file/folder operations."""
 
@@ -127,7 +126,6 @@ class TestFileSystemModule(unittest.TestCase):
         self.assertIn("buat", FILLER_WORDS)
         self.assertIn("bikin", FILLER_WORDS)
         self.assertIn("folder", FILLER_WORDS)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,7 +3,6 @@
 import unittest
 from delta.modules.crypto import CryptoModule
 
-
 class TestCryptoModule(unittest.TestCase):
     """Test cryptography module."""
     
@@ -29,7 +28,6 @@ class TestCryptoModule(unittest.TestCase):
         result = self.crypto.analyze_password("password")
         self.assertEqual(result.score, 0)
         self.assertIn("common", result.feedback[0].lower() if result.feedback else "")
-
 
 if __name__ == "__main__":
     unittest.main()

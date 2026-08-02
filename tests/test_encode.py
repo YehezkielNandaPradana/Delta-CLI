@@ -2,7 +2,6 @@
 import unittest
 from delta.modules.encode import EncodeModule
 
-
 class TestEncodeModule(unittest.TestCase):
     """Test encoding and decoding operations."""
 
@@ -99,7 +98,6 @@ class TestEncodeModule(unittest.TestCase):
         result = self.encode.decode_base64("")
         self.assertTrue(result.success)
         self.assertEqual(result.result, "")
-
 
 if __name__ == "__main__":
     unittest.main()
