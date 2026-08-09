@@ -36,9 +36,11 @@ import re
 
 from datetime import datetime
 
+from functools import lru_cache
+
 from typing import Any, Dict, List, Optional, Tuple
 
-TEXT_EXTENSIONS = {
+TEXT_EXTENSIONS = frozenset({
 
     ".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".c", ".cpp", ".h", ".cs",
 
@@ -52,35 +54,13 @@ TEXT_EXTENSIONS = {
 
     ".ipynb", ".rst", ".tex", ".ini",
 
-}
+})
 
-# Kata pengisi yang diabaikan saat mengekstrak argumen file dari bahasa alami.
+# Kata pengisi diabaikan saat mengekstrak argumen file dari bahasa alami.
 
-FILLER_WORDS = {
+_PATH_FLAGS = frozenset({"-p", "--parents", "-a", "--all", "-l", "--long", "-d", "--depth",
 
-    "buat", "buatkan", "bikin", "membuat", "create", "make", "new",
-
-    "file", "folder", "direktori", "directory", "dir", "dokumen", "document",
-
-    "dengan", "berisi", "isi", "content", "yang", "untuk", "di", "pada",
-
-    "ke", "dalam", "menjadi", "jadi", "ubah", "ganti", "edit", "tulis",
-
-    "tambahkan", "tambah", "append", "baca", "lihat", "buka", "tampilkan",
-
-    "daftar", "list", "show", "open", "read", "view", "write", "masuk",
-
-    "pindah", "go", "cd", "pwd", "analisis", "analisa", "analyze", "analyse",
-
-    "analysis", "info", "struktur", "tree", "the", "a", "an", "in", "of",
-
-    "saya", "minta", "tolong", "please", "bantu", "help", "dengan", "sebagai",
-
-}
-
-_PATH_FLAGS = {"-p", "--parents", "-a", "--all", "-l", "--long", "-d", "--depth",
-
-               "-f", "--find", "-r", "--replace", "-n", "--lines"}
+               "-f", "--find", "-r", "--replace", "-n", "--lines"})
 
 def _decode_newlines(text: str) -> str:
 
