@@ -6,6 +6,34 @@ import os
 from delta.core.config import DeltaConfig
 from delta.core.database import Database
 
+class TestProtocols(unittest.TestCase):
+    """Test core protocol contracts."""
+
+    def test_core_protocols_exist(self):
+        """Protocols are importable."""
+        from delta.core.protocols import EngineProtocol, ConfigProtocol
+        self.assertIsNotNone(EngineProtocol)
+        self.assertIsNotNone(ConfigProtocol)
+
+    def test_engine_conforms(self):
+        """DeltaEngine satisfies EngineProtocol."""
+        from unittest.mock import MagicMock
+        from delta.core.protocols import EngineProtocol
+        from delta.core.engine import DeltaEngine
+        engine = DeltaEngine(
+            config=MagicMock(), database=MagicMock(), session=MagicMock(),
+            intent_engine=MagicMock(), plugin_manager=MagicMock(), display=MagicMock(),
+        )
+        self.assertIsInstance(engine, EngineProtocol)
+        self.assertEqual(engine.execute(""), "")
+        engine.execute("echo halo")
+
+    def test_config_conforms(self):
+        """DeltaConfig satisfies ConfigProtocol."""
+        from delta.core.protocols import ConfigProtocol
+        from delta.core.config import DeltaConfig
+        self.assertIsInstance(DeltaConfig(), ConfigProtocol)
+
 class TestConfig(unittest.TestCase):
     """Test Delta configuration."""
     

@@ -18,6 +18,10 @@
 
 # pip install icmplib
 
+# Web chat interface
+
+# pip install flask -> Web chat UI (delta --web)
+
 
 
 # Optional dependencies for internet search

@@ -10,8 +10,15 @@ import os
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 
-from flask import Flask, render_template_string, request, jsonify, session
-import markdown
+try:
+    from flask import Flask, render_template_string, request, jsonify, session
+    import markdown
+    _FLASK_AVAILABLE = True
+except ImportError:
+    _FLASK_AVAILABLE = False
+
+if not _FLASK_AVAILABLE:
+    raise ImportError("Flask is required for web UI. Install with: pip install flask")
 
 from delta.core.config import DeltaConfig
 from delta.core.engine import DeltaEngine

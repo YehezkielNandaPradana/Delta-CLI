@@ -3,6 +3,22 @@
 import unittest
 from delta.modules.crypto import CryptoModule
 
+class TestModuleProtocol(unittest.TestCase):
+    """Test module protocol contract."""
+
+    def test_module_protocol_exists(self):
+        """ModuleBase protocol is importable."""
+        from delta.modules.protocols import ModuleBase
+        self.assertIsNotNone(ModuleBase)
+
+    def test_crypto_conforms(self):
+        """CryptoModule exposes its real security API surface."""
+        from delta.modules.protocols import ModuleBase
+        crypto = CryptoModule()
+        self.assertIn("identify_hash", dir(crypto))
+        self.assertIn("generate_hash", dir(crypto))
+        self.assertIn("analyze_password", dir(crypto))
+
 class TestCryptoModule(unittest.TestCase):
     """Test cryptography module."""
     

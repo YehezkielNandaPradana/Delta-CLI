@@ -4,7 +4,9 @@ import os
 import tempfile
 import unittest
 
-from delta.modules.filesystem import FileSystemModule, FILLER_WORDS
+from delta.modules.filesystem import FileSystemModule
+
+from delta.ai.intent import FILLER_WORDS
 
 class TestFileSystemModule(unittest.TestCase):
     """Test file/folder operations."""
