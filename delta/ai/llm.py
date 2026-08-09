@@ -1,26 +1,20 @@
 import json
-
 import os
-
 import re
-
 import sys
-
 import time
-
 import urllib.request
-
 import urllib.error
-
 import urllib.parse
-
 import socket
-
 from typing import Optional, List, Dict, Any, Tuple
-
 from datetime import datetime
+from functools import lru_cache
 
 from delta.ai.memory import MemoryManager
+from delta.ai.protocols import MODEL_PRESETS
+
+__all__ = ["LLMEngine", "parse_command_from_response", "strip_command_tags", "PROVIDERS", "MODEL_PRESETS"]
 
 PROVIDERS = {
 
@@ -30,11 +24,13 @@ PROVIDERS = {
 
         "description": "9Router - Local AI routing gateway (40+ providers, no API key needed)",
 
-        "default_model": "naxxcombo",
+        "default_model": "DeepseekCombo",
 
         "env_key": "",
 
         "requires_key": False,
+
+        "fast_mode": True,
 
     },
 
@@ -413,9 +409,19 @@ MODEL_PRESETS = {
         "provider": "9router",
 
         "description": "NaxxCombo model on 9Router",
-
     },
-
+    "kilocombo": {
+        "model": "KiloCombo",
+        "base_url": "http://localhost:20128/v1",
+        "provider": "9router",
+        "description": "KiloCombo model on 9Router (Advanced model with superior coding capabilities)",
+    },
+    "deepseekcombo": {
+        "model": "DeepseekCombo",
+        "base_url": "http://localhost:20128/v1",
+        "provider": "9router",
+        "description": "DeepseekCombo on 9Router (Ultra-fast response, optimized routing)",
+    },
 }
 
 DEFAULT_API_TIMEOUT = 120
@@ -771,6 +777,12 @@ class LLMEngine:
 
         self._model_resolved_at: float = 0.0
 
+        self._connection_pool: Dict[str, Any] = {}
+
+        self._model_cache: Dict[str, bool] = {}
+
+        self._fast_mode: bool = False
+
         self._load_messages()
 
     def _resolve_base_url(self, base_url: Optional[str], model: Optional[str]) -> str:
@@ -875,6 +887,8 @@ class LLMEngine:
 
             self.provider = info.get("provider", self.provider)
 
+            self._fast_mode = info.get("fast_mode", False)
+
             self._system_prompt = self._build_system_prompt()
 
             self._refresh_system_message()
@@ -890,6 +904,8 @@ class LLMEngine:
                 self.base_url = pinfo["base_url"]
 
                 self.model = pinfo.get("default_model", self.model)
+
+                self._fast_mode = pinfo.get("fast_mode", False)
 
                 self._system_prompt = self._build_system_prompt()
 
@@ -1095,6 +1111,12 @@ class LLMEngine:
 
         """
 
+        # Fast mode: skip model check for trusted providers
+        if self._fast_mode and self.provider in ["9router", "local"]:
+            cache_key = f"{self.provider}:{self.model}"
+            if cache_key in self._model_cache:
+                return self._model_cache[cache_key]
+
         if self.provider not in LOCAL_PROVIDERS:
 
             return True
@@ -1107,6 +1129,9 @@ class LLMEngine:
 
         if self.model in model_names:
 
+            if self._fast_mode:
+                self._model_cache[f"{self.provider}:{self.model}"] = True
+
             return True
 
         for name in model_names:
@@ -1114,6 +1139,9 @@ class LLMEngine:
             if self.model in name or name in self.model:
 
                 self.model = name
+
+                if self._fast_mode:
+                    self._model_cache[f"{self.provider}:{self.model}"] = True
 
                 return True
 
@@ -1165,59 +1193,53 @@ class LLMEngine:
 
         return False
 
-    def _get_model_list(self, timeout: int = 5) -> List[str]:
-
-        """Get list of available models from a local provider."""
-
-        if self.provider not in LOCAL_PROVIDERS:
-
-            return []
+    @lru_cache(maxsize=8)
+    def _get_model_list_cached(self, provider: str, base_url: str) -> tuple:
+        """Cached model list retrieval."""
+        if provider not in LOCAL_PROVIDERS:
+            return ()
 
         try:
-
-            base = self.base_url
-
+            base = base_url
             if base.endswith("/v1"):
-
                 base = base[:-3]
-
             req = urllib.request.Request(f"{base}/v1/models", method="GET", headers={"User-Agent": "Delta-CLI/1.0"})
-
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-
+            with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-
             model_list = data.get("data") if isinstance(data, dict) else data
-
             if model_list is None:
-
                 model_list = data.get("models", [])
-
-            return [m.get("id", m.get("name", "")) for m in model_list if isinstance(m, dict)]
-
+            return tuple(m.get("id", m.get("name", "")) for m in model_list if isinstance(m, dict))
         except Exception:
-
             try:
-
-                base = self.base_url
-
+                base = base_url
                 if base.endswith("/v1"):
-
                     base = base[:-3]
-
                 url = f"{base}/api/tags"
-
                 req = urllib.request.Request(url, method="GET", headers={"User-Agent": "Delta-CLI/1.0"})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                models = data.get("models", [])
+                return tuple(m.get("name", "") for m in models if isinstance(m, dict))
+            except Exception:
+                return ()
+
+    def _get_model_list(self, timeout: int = 5) -> List[str]:
+        """Get list of available models from a local provider."""
+        cached = self._get_model_list_cached(self.provider, self.base_url)
+        return list(cached)
 
                 with urllib.request.urlopen(req, timeout=timeout) as resp:
 
-                    data = json.loads(resp.read().decode("utf-8"))
-
-                return [m.get("name", "") for m in data.get("models", [])]
-
+                models = data.get("models", [])
+                return tuple(m.get("name", "") for m in models if isinstance(m, dict))
             except Exception:
+                return ()
 
-                return []
+    def _get_model_list(self, timeout: int = 5) -> List[str]:
+        """Get list of available models from a local provider."""
+        cached = self._get_model_list_cached(self.provider, self.base_url)
+        return list(cached)
 
     def set_session_id(self, session_id: str) -> None:
 
@@ -1609,7 +1631,7 @@ class LLMEngine:
 
                     "Content-Type": "application/json",
 
-                    **({"Authorization": f"Bearer {self.api_key}"} if self.requires_key and self.api_key else {}),
+                    **({"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}),
 
                     "User-Agent": "Delta-CLI/1.0",
 
@@ -1759,6 +1781,8 @@ class LLMEngine:
 
             "temperature": 0.7,
 
+            "stream": True,
+
         }
 
         if self.is_local and self.provider in ("local", "lmstudio"):
@@ -1781,7 +1805,7 @@ class LLMEngine:
 
                 "Content-Type": "application/json",
 
-                **({"Authorization": f"Bearer {self.api_key}"} if self.requires_key and self.api_key else {}),
+                **({"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}),
 
                 "User-Agent": "Delta-CLI/1.0",
 
@@ -1793,9 +1817,73 @@ class LLMEngine:
 
         try:
 
-            with urllib.request.urlopen(req, timeout=self._api_timeout) as resp:
+            resp = urllib.request.urlopen(req, timeout=self._api_timeout)
 
-                response = json.loads(resp.read().decode("utf-8"))
+            # Check Content-Type to detect streaming
+            content_type = resp.headers.get("Content-Type", "")
+            is_streaming = "text/event-stream" in content_type or "stream" in data
+
+            if not is_streaming:
+                raw = resp.read().decode("utf-8")
+                resp.close()
+                try:
+                    response = json.loads(raw)
+                except json.JSONDecodeError:
+                    full = ""
+                    for line in raw.splitlines():
+                        line = line.strip()
+                        if not line:
+                            continue
+                        if line == "data: [DONE]":
+                            break
+                        if line.startswith("data: "):
+                            full += line[5:]
+                        else:
+                            full += line
+                    full = full.strip()
+                    if not full:
+                        raise json.JSONDecodeError("empty response", "", 0)
+                    response, _ = json.JSONDecoder().raw_decode(full)
+                return response
+
+            # Streaming: read line by line as chunks arrive
+            content_parts: List[str] = []
+            finish_reason = "stop"
+            model_name = self.model
+            for raw_line in resp:
+                line = raw_line.decode("utf-8").strip()
+                if not line:
+                    continue
+                if line == "data: [DONE]":
+                    break
+                if not line.startswith("data: "):
+                    continue
+                payload = line[5:]
+                try:
+                    chunk = json.loads(payload)
+                except json.JSONDecodeError:
+                    continue
+                model_name = chunk.get("model", model_name)
+                for choice in chunk.get("choices", []):
+                    delta = choice.get("delta", {})
+                    piece = delta.get("content")
+                    if piece:
+                        content_parts.append(piece)
+                    fr = choice.get("finish_reason")
+                    if fr:
+                        finish_reason = fr
+            resp.close()
+            response = {
+                "id": "chatcmpl-stream",
+                "object": "chat.completion",
+                "model": model_name,
+                "choices": [{
+                    "index": 0,
+                    "message": {"role": "assistant", "content": "".join(content_parts)},
+                    "finish_reason": finish_reason,
+                }],
+                "usage": {},
+            }
 
         except urllib.error.HTTPError as e:
 
@@ -1866,6 +1954,19 @@ class LLMEngine:
             Exception: For non-retryable connection errors.
 
         """
+
+        # Fast mode: minimal retries for local providers
+        if self._fast_mode and self.provider in ["9router", "local"]:
+            try:
+                return self._call_api()
+            except urllib.error.HTTPError as e:
+                if e.code in [429, 503]:  # Only retry rate limit/unavailable
+                    time.sleep(0.3)
+                    return self._call_api()
+                raise
+            except (urllib.error.URLError, socket.timeout):
+                time.sleep(0.3)
+                return self._call_api()
 
         delay = self.retry_initial_delay
 
