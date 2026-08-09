@@ -6,6 +6,7 @@ Web Analysis Module - HTTP header analysis, security checks, and technology dete
 
 """
 
+
 import socket
 
 import ssl
@@ -13,6 +14,8 @@ import ssl
 import re
 
 from typing import Any, Dict, List, Optional, Set, Tuple
+
+from functools import lru_cache
 
 from dataclasses import dataclass, field
 
