@@ -24,6 +24,8 @@ import traceback
 
 from datetime import datetime
 
+from functools import lru_cache
+
 from typing import Any, Dict, List, Optional, Tuple
 
 from dataclasses import dataclass
@@ -1042,7 +1044,13 @@ class DeltaEngine:
 
     def _is_retryable_error(response: str) -> bool:
 
-        """Check if an LLM error response is retryable with a fallback provider."""
+        """Check if an LLM error response is retryable with a fallback provider.
+
+        Auth errors count when the provider is a no-key local gateway (9Router)
+
+        whose server-side key may be missing or rotated.
+
+        """
 
         retryable_patterns = [
 
@@ -1051,6 +1059,12 @@ class DeltaEngine:
             "ERROR [Server Error]",
 
             "ERROR [Timeout]",
+
+            "ERROR [Authentication]",
+
+            "ERROR [Access Denied]",
+
+            "ERROR [Connection]",
 
         ]
 
@@ -1129,6 +1143,15 @@ class DeltaEngine:
         else:
 
             self.display.warning(f"Unknown command. Type 'help' for available commands.")
+
+    def execute(self, command: str) -> str:
+        """Execute a raw command line (EngineProtocol contract).
+
+        Runs the direct dispatcher; output goes to the active display.
+        ponytail: return captured output once DisplayManager buffers.
+        """
+        self._dispatch_command(command)
+        return ""
 
     def _dispatch_command(self, raw: str) -> None:
 
