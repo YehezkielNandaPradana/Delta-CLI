@@ -11,10 +11,22 @@ Supports direct command execution and interactive REPL mode.
 import sys
 
 import os
+import urllib.error
 
 import argparse
 
+import socket
+
 from typing import Optional
+from functools import lru_cache
+
+# Windows console (cp1252) crashes on emoji — force UTF-8 with safe fallback.
+if getattr(sys.stdout, "reconfigure", None):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if getattr(sys.stderr, "reconfigure", None):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+from delta import __version__
 
 from delta import __version__
 
@@ -158,6 +170,8 @@ def create_engine(config_path: Optional[str] = None) -> DeltaEngine:
 
         config.save()
 
+    _fallback_ai_if_needed(llm_engine, display)
+
     engine = DeltaEngine(
 
         config=config,
@@ -183,6 +197,64 @@ def create_engine(config_path: Optional[str] = None) -> DeltaEngine:
         _first_run_setup(config, llm_engine, display)
 
     return engine
+
+def _fallback_ai_if_needed(llm_engine: LLMEngine, display: DisplayManager) -> None:
+    """Jika 9Router tidak bisa dipakai (mati / butuh key), alihkan ke Ollama lokal agar AI tetap jalan."""
+    if llm_engine.provider != "9router":
+        return
+    if not llm_engine._check_connectivity(timeout=2):
+        try:
+            socket.create_connection(("127.0.0.1", 11434), timeout=2).close()
+        except OSError:
+            return
+        llm_engine.provider = "local"
+        llm_engine.base_url = "http://localhost:11434/v1"
+        llm_engine.api_key = ""
+        llm_engine.model = _pick_fast_ollama_model() or "qwen2.5:3b"
+        llm_engine._system_prompt = llm_engine._build_system_prompt()
+        llm_engine._refresh_system_message()
+        display.warning(f"9Router tidak tersedia — otomatis beralih ke Ollama lokal ({llm_engine.model}). Gunakan /model untuk ganti.")
+        return
+    probe_failed = False
+    try:
+        probe = llm_engine._call_api()
+    except urllib.error.HTTPError as e:
+        if e.code not in (401, 403):
+            return
+        probe_failed = True
+    except Exception:
+        probe_failed = True
+
+    if not probe_failed:
+        return
+
+    try:
+        socket.create_connection(("127.0.0.1", 11434), timeout=2).close()
+    except OSError:
+        return
+    llm_engine.provider = "local"
+    llm_engine.base_url = "http://localhost:11434/v1"
+    llm_engine.api_key = ""
+    llm_engine.model = _pick_fast_ollama_model() or "qwen2.5:3b"
+    llm_engine._system_prompt = llm_engine._build_system_prompt()
+    llm_engine._refresh_system_message()
+    display.warning(f"9Router butuh API key — otomatis beralih ke Ollama lokal ({llm_engine.model}). Gunakan /key untuk set key 9Router.")
+
+def _pick_fast_ollama_model() -> str:
+    """Pilih model Ollama lokal yang paling kecil/cepat dan tersedia."""
+    try:
+        import urllib.request, json
+        req = urllib.request.Request("http://localhost:11434/api/tags", headers={"User-Agent": "Delta-CLI/1.0"})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        models = [m.get("name", "") for m in data.get("models", [])]
+    except Exception:
+        return ""
+    preference = ["qwen2.5:3b", "qwen2.5:1.5b", "qwen2.5:0.5b", "gemma3:1b", "gemma3:4b", "llama3.2:1b", "llama3.2:3b", "phi4-mini", "tinyllama", "gemma4:12b", "qwen2.5", "gemma4"]
+    for name in preference:
+        if name in models:
+            return name
+    return models[0] if models else ""
 
 def _first_run_setup(config: DeltaConfig, llm_engine: LLMEngine, display: DisplayManager) -> None:
 
