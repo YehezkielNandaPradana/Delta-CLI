@@ -18,7 +18,9 @@ from pathlib import Path
 
 from typing import Any, Dict, List, Optional
 
-from delta.ai.llm import MODEL_PRESETS
+from functools import lru_cache
+
+from delta.ai.protocols import MODEL_PRESETS
 
 @dataclass
 
@@ -66,7 +68,7 @@ class DeltaConfig:
 
     llm_api_base_url: str = "http://localhost:20128/v1"
 
-    llm_model: str = "naxxcombo"
+    llm_model: str = "DeepseekCombo"
 
     llm_provider: str = "9router"  # 9router is the default local routing gateway
 
@@ -262,17 +264,13 @@ class DeltaConfig:
 
         self.llm_api_base_url = "http://localhost:20128/v1"
 
-        self.llm_api_key = ""
-
         self.llm_enabled = True
 
-        if not self.llm_model or self.llm_model not in [k for k in MODEL_PRESETS if "/" in k] + ["naxxcombo"]:
+        if not self.llm_model or self.llm_model not in [k for k in MODEL_PRESETS if "/" in k] + ["KiloCombo"]:
 
-            self.llm_model = "naxxcombo"
+            self.llm_model = "DeepseekCombo"
 
         self._loaded = True
-
-        self.save()
 
     def _clean_bad_urls(self) -> None:
 
