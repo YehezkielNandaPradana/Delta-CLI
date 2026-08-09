@@ -9,14 +9,23 @@ Uses keyword matching, pattern recognition, and rule-based parsing.
 """
 
 import re
-
 import shlex
-
 from dataclasses import dataclass, field
-
 from typing import Any, Dict, List, Optional, Tuple
-
 from enum import Enum, auto
+from functools import lru_cache
+
+FILLER_WORDS = frozenset({
+    "buat", "buatkan", "bikin", "membuat", "create", "make", "new",
+    "file", "folder", "direktori", "directory", "dir", "dokumen", "document",
+    "dengan", "berisi", "isi", "content", "yang", "untuk", "di", "pada",
+    "ke", "dalam", "menjadi", "jadi", "ubah", "ganti", "edit", "tulis",
+    "tambahkan", "tambah", "append", "baca", "lihat", "buka", "tampilkan",
+    "daftar", "list", "show", "open", "read", "view", "write", "masuk",
+    "pindah", "go", "cd", "pwd", "analisis", "analisa", "analyze", "analyse",
+    "analysis", "info", "struktur", "tree", "the", "a", "an", "in", "of",
+    "saya", "minta", "tolong", "please", "bantu", "help", "dengan", "sebagai",
+})
 
 class IntentType(Enum):
 
@@ -1161,8 +1170,6 @@ class IntentEngine:
         yang bukan kata pengisi menjadi path.
 
         """
-
-        from delta.modules.filesystem import FILLER_WORDS
 
         try:
 
