@@ -338,13 +338,13 @@ def _first_run_setup(config: DeltaConfig, llm_engine: LLMEngine, display: Displa
 
 def run_web_chat() -> None:
 
-    """Run the web chat interface."""
+    """Run the web chat/dashboard interface."""
 
-    from delta.web.chat import DeltaChatInterface
+    from delta.web.server import start_web_server
 
-    chat = DeltaChatInterface()
+    engine = create_engine()
 
-    chat.run()
+    start_web_server(engine=engine, host="127.0.0.1", port=8000)
 def execute_direct(engine: DeltaEngine, cmd: str, cmd_args: list) -> None:
 
     """Execute a command directly and exit."""
