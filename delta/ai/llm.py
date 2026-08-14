@@ -416,6 +416,12 @@ MODEL_PRESETS = {
         "provider": "9router",
         "description": "KiloCombo model on 9Router (Advanced model with superior coding capabilities)",
     },
+    "KiloCombo": {
+        "model": "KiloCombo",
+        "base_url": "http://localhost:20128/v1",
+        "provider": "9router",
+        "description": "KiloCombo model on 9Router (Advanced model with superior coding capabilities)",
+    },
     "deepseekcombo": {
         "model": "DeepseekCombo",
         "base_url": "http://localhost:20128/v1",
@@ -733,13 +739,13 @@ class LLMEngine:
 
     ):
 
-        self.provider = provider or os.environ.get("DELTA_PROVIDER", "") or ("opencode-zen" if api_key else "local")
+        self.provider = provider or os.environ.get("DELTA_PROVIDER", "") or "9router"
 
         self.api_key = api_key or os.environ.get("DELTA_API_KEY", "") or os.environ.get("OPENCODE_API_KEY", "") or os.environ.get("DEEPSEEK_API_KEY", "")
 
         self.base_url = self._resolve_base_url(base_url, model)
 
-        self.model = self._resolve_model(model)
+        self.model = self._resolve_model(model or "DeepseekCombo")
 
         self.max_history = max_history
 
@@ -781,7 +787,11 @@ class LLMEngine:
 
         self._model_cache: Dict[str, bool] = {}
 
-        self._fast_mode: bool = False
+        self._fast_mode: bool = True  # Enable fast mode by default
+
+        # Validation cache - skip repeated validation
+        self._validation_cache: Dict[str, Tuple[bool, str, float]] = {}
+        self._validation_ttl: float = 30.0  # Cache validation for 30 seconds
 
         self._load_messages()
 
@@ -877,17 +887,25 @@ class LLMEngine:
 
     def apply_preset(self, model_name: str) -> bool:
 
+        # Direct match or case-insensitive match in MODEL_PRESETS
+        target_preset = None
         if model_name in MODEL_PRESETS:
+            target_preset = MODEL_PRESETS[model_name]
+        else:
+            for k, v in MODEL_PRESETS.items():
+                if k.lower() == model_name.lower():
+                    target_preset = v
+                    break
 
-            info = MODEL_PRESETS[model_name]
+        if target_preset is not None:
 
-            self.model = info.get("model", model_name)
+            self.model = target_preset.get("model", model_name)
 
-            self.base_url = info["base_url"]
+            self.base_url = target_preset["base_url"]
 
-            self.provider = info.get("provider", self.provider)
+            self.provider = target_preset.get("provider", self.provider)
 
-            self._fast_mode = info.get("fast_mode", False)
+            self._fast_mode = target_preset.get("fast_mode", False)
 
             self._system_prompt = self._build_system_prompt()
 
@@ -1229,18 +1247,6 @@ class LLMEngine:
         cached = self._get_model_list_cached(self.provider, self.base_url)
         return list(cached)
 
-                with urllib.request.urlopen(req, timeout=timeout) as resp:
-
-                models = data.get("models", [])
-                return tuple(m.get("name", "") for m in models if isinstance(m, dict))
-            except Exception:
-                return ()
-
-    def _get_model_list(self, timeout: int = 5) -> List[str]:
-        """Get list of available models from a local provider."""
-        cached = self._get_model_list_cached(self.provider, self.base_url)
-        return list(cached)
-
     def set_session_id(self, session_id: str) -> None:
 
         if self.memory_enabled and self.memory_manager:
@@ -1502,8 +1508,27 @@ class LLMEngine:
             return f"ERROR: {e}"
 
     def _validate_settings(self) -> str:
-
         """Validate LLM settings before making a request. Returns empty string if OK."""
+
+        # Check validation cache first
+        cache_key = f"{self.provider}:{self.model}:{self.base_url}"
+        now = time.time()
+
+        if cache_key in self._validation_cache:
+            cached_valid, cached_msg, cached_time = self._validation_cache[cache_key]
+            if now - cached_time < self._validation_ttl:
+                return cached_msg
+
+        # Perform validation
+        result = self._validate_settings_impl()
+
+        # Cache the result
+        self._validation_cache[cache_key] = (result == "", result, now)
+
+        return result
+
+    def _validate_settings_impl(self) -> str:
+        """Internal validation implementation."""
 
         pinfo = PROVIDERS.get(self.provider)
 
