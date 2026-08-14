@@ -1,0 +1,272 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Aether Intelligence Chat</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&amp;family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@450;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-bright": "#31394d",
+                        "on-surface": "#dae2fd",
+                        "surface-container-highest": "#2d3449",
+                        "on-error": "#690005",
+                        "on-primary-fixed": "#07006c",
+                        "primary-container": "#8083ff",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "surface-tint": "#c0c1ff",
+                        "on-tertiary-fixed": "#3d0026",
+                        "on-surface-variant": "#c7c4d7",
+                        "outline": "#908fa0",
+                        "on-background": "#dae2fd",
+                        "secondary-fixed-dim": "#4cd7f6",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffd8e7",
+                        "surface-dim": "#0b1326",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed-dim": "#ffafd3",
+                        "on-secondary-fixed-variant": "#004e5c",
+                        "surface-variant": "#2d3449",
+                        "background": "#0b1326",
+                        "secondary-fixed": "#acedff",
+                        "tertiary-container": "#e364a7",
+                        "inverse-on-surface": "#283044",
+                        "on-primary-container": "#0d0096",
+                        "secondary-container": "#03b5d3",
+                        "on-tertiary": "#620040",
+                        "tertiary": "#ffafd3",
+                        "primary": "#c0c1ff",
+                        "secondary": "#4cd7f6",
+                        "surface-container-low": "#131b2e",
+                        "outline-variant": "#464554",
+                        "on-primary": "#1000a9",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#001f26",
+                        "surface-container-high": "#222a3d",
+                        "inverse-surface": "#dae2fd",
+                        "primary-fixed": "#e1e0ff",
+                        "surface": "#0b1326",
+                        "on-tertiary-fixed-variant": "#85145a",
+                        "surface-container-lowest": "#060e20",
+                        "on-secondary-container": "#00424e",
+                        "on-secondary": "#003640",
+                        "surface-container": "#171f33",
+                        "inverse-primary": "#494bd6",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "on-tertiary-container": "#560038"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        "edge-margin-mobile": "16px",
+                        "container-max": "800px",
+                        "section-gap": "48px",
+                        "stack-gap": "24px",
+                        "edge-margin-desktop": "40px",
+                        "bubble-padding": "16px 20px"
+                    },
+                    fontFamily: {
+                        "display-lg": ["Geist"],
+                        "body-sm": ["Inter"],
+                        "headline-sm": ["Geist"],
+                        "code-snippet": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Geist"],
+                        "body-lg": ["Inter"],
+                        "label-caps": ["JetBrains Mono"]
+                    },
+                    fontSize: {
+                        "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "headline-sm": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "code-snippet": ["14px", { lineHeight: "22px", fontWeight: "450" }],
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "body-lg": ["18px", { lineHeight: "28px", fontWeight: "400" }],
+                        "label-caps": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #020617; /* Base level 0 from guidance */
+        }
+        /* Custom scrollbar for chat area */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="text-on-background font-body-md h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="hidden md:flex bg-surface-container-low/50 dark:bg-surface-container-low/50 backdrop-blur-2xl text-secondary font-body-md h-screen w-64 fixed left-0 top-0 border-r border-outline-variant/10 flex-col py-6 z-40">
+<!-- Header -->
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A futuristic AI persona avatar. An abstract glowing geometric shape in cool blues and cybernetic neon cyan against a dark abyssal background, representing artificial intelligence in a high-tech minimalist style. Clean, vector-like aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgvkVgluYel6nsUnv-MTOW9UZT-5i2uaQ3Ho9ddWm-279VvUQpqy1dqJma4izaXrfK4GtBpcE0utKrxpIpowNTidEqTMbJgS1ghgKrsqoDLDBiSUZmZ-duyV6ZAsKymHC5nctIAW0QgD7GFxS6FQSJZkx9Cf2tljKLwC8ygfcVUBS0sBPj2VVniA1ubFHs2YUzuTvfgv1BCCIwMj0BkQVUUuDjWO6lMN4WOVtnxxW8LbGE2xK3nNewNw">
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">GPT-4o</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Creative Assistant</p>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<div class="flex-1 overflow-y-auto">
+<div class="px-2 space-y-1">
+<!-- Active Tab -->
+<a class="flex items-center gap-3 bg-secondary-container/30 text-secondary border-l-4 border-secondary px-4 py-3 cursor-pointer transition-transform hover:bg-surface-bright/10 hover:text-on-surface" href="#">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+<span class="">New Chat</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 cursor-pointer transition-transform hover:bg-surface-bright/10 hover:text-on-surface" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="">History</span>
+</a>
+<!-- Chat History Items (Simulated under History) -->
+<div class="pl-12 pr-4 py-2 space-y-2 mt-2 border-l border-outline-variant/10 ml-6">
+<p class="font-label-caps text-label-caps text-on-surface-variant/50 uppercase">Recent</p>
+<a class="block text-body-sm text-on-surface-variant hover:text-on-surface truncate" href="#">Japan Travel Planner</a>
+<a class="block text-body-sm text-on-surface-variant hover:text-on-surface truncate" href="#">Code Optimization</a>
+<a class="block text-body-sm text-on-surface-variant hover:text-on-surface truncate" href="#">Yesterday's Discussion</a>
+</div>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 cursor-pointer transition-transform hover:bg-surface-bright/10 hover:text-on-surface mt-4" href="#">
+<span class="material-symbols-outlined" data-icon="book">book</span>
+<span class="">Library</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 cursor-pointer transition-transform hover:bg-surface-bright/10 hover:text-on-surface" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="">Settings</span>
+</a>
+</div>
+</div>
+<!-- CTA & Footer -->
+<div class="px-6 mt-auto space-y-4">
+
+<div class="flex gap-4 border-t border-outline-variant/10 pt-4">
+<a class="text-on-surface-variant hover:text-on-surface flex items-center gap-1 font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="help">help</span> Help
+                </a>
+<a class="text-on-surface-variant hover:text-on-surface flex items-center gap-1 font-body-sm text-body-sm" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="shield">shield</span> Privacy
+                </a>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:ml-64 relative min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface/50 dark:bg-surface/50 backdrop-blur-xl fixed top-0 w-full md:w-[calc(100%-16rem)] border-b border-outline-variant/10 flex justify-between items-center px-edge-margin-mobile md:px-edge-margin-desktop h-16 z-30">
+<div class="flex items-center gap-3">
+<h1 class="font-display-lg text-headline-md text-primary tracking-tight">Aether Intelligence</h1>
+<div class="hidden sm:flex items-center gap-2 bg-surface-container py-1 px-3 rounded-full border border-outline-variant/20">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-secondary">Aether-1 Pro Ready</span>
+</div>
+</div>
+<div class="flex items-center gap-2 text-primary font-headline-sm text-headline-sm">
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-bright/20 transition-colors active:scale-95 duration-200 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-bright/20 transition-colors active:scale-95 duration-200 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Chat Canvas -->
+<div class="flex-1 overflow-y-auto pt-24 pb-32 px-edge-margin-mobile md:px-edge-margin-desktop flex justify-center">
+<div class="w-full max-w-container-max space-y-stack-gap">
+<!-- Initial System / Date Marker -->
+<div class="text-center text-body-sm text-on-surface-variant/50 font-body-sm my-6">
+                    Today, 10:24 AM
+                </div>
+<!-- User Message -->
+<div class="flex justify-end">
+<div class="bg-surface-container-highest text-on-surface rounded-2xl rounded-tr-sm p-bubble-padding max-w-[85%] md:max-w-[75%] font-body-lg text-body-lg">
+                        Bisakah kamu bantu aku membuat rencana perjalanan ke Jepang selama 7 hari?
+                    </div>
+</div>
+<!-- AI Response -->
+<div class="flex justify-start">
+<!-- Glassmorphic AI Bubble -->
+<div class="bg-surface-container-low/50 backdrop-blur-[20px] border-l-2 border-secondary rounded-2xl rounded-tl-sm p-bubble-padding max-w-[85%] md:max-w-[75%] font-body-lg text-body-lg text-on-background relative shadow-lg">
+                        Tentu! Jepang adalah destinasi yang luar biasa. Untuk membuat rencana yang tepat, apakah kamu lebih suka fokus di area kota seperti Tokyo dan Osaka, atau ingin menjelajahi sisi tradisional seperti Kyoto?
+                        
+                        <!-- Quick Suggestions / Chips -->
+<div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-outline-variant/10">
+<button class="font-label-caps text-label-caps border border-primary/30 text-primary px-3 py-1.5 rounded-full hover:bg-primary hover:text-on-primary transition-colors">
+                                Tokyo &amp; Osaka (Modern)
+                            </button>
+<button class="font-label-caps text-label-caps border border-primary/30 text-primary px-3 py-1.5 rounded-full hover:bg-primary hover:text-on-primary transition-colors">
+                                Kyoto &amp; Nara (Tradisional)
+                            </button>
+<button class="font-label-caps text-label-caps border border-primary/30 text-primary px-3 py-1.5 rounded-full hover:bg-primary hover:text-on-primary transition-colors">
+                                Campuran Keduanya
+                            </button>
+</div>
+</div>
+</div>
+<!-- Typing Indicator (Simulated active state) -->
+<div class="flex justify-start mt-4 opacity-0 transition-opacity duration-500" id="typingIndicator">
+<div class="bg-surface-container-low/50 backdrop-blur-[20px] border-l-2 border-secondary rounded-2xl rounded-tl-sm p-4 flex gap-1 items-center">
+<div class="w-1.5 h-1.5 rounded-full bg-secondary animate-bounce" style="animation-delay: 0s;"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-secondary animate-bounce" style="animation-delay: 0.2s;"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-secondary animate-bounce" style="animation-delay: 0.4s;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Input Bar (Floating) -->
+<div class="absolute bottom-0 left-0 w-full px-edge-margin-mobile md:px-edge-margin-desktop pb-6 pt-4 bg-gradient-to-t from-[#020617] via-[#020617]/80 to-transparent flex justify-center">
+<div class="w-full max-w-container-max relative group">
+<!-- Level 2 Surface Styling -->
+<div class="absolute inset-0 bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-outline-variant/20 group-hover:border-primary/40 group-focus-within:border-primary/50 group-focus-within:bg-slate-800/70 transition-all duration-300 pointer-events-none"></div>
+<div class="relative flex items-end p-2 pl-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors mb-1 rounded-full hover:bg-surface-bright/20">
+<span class="material-symbols-outlined text-[24px]" data-icon="attach_file">attach_file</span>
+</button><button class="p-2 text-on-surface-variant hover:text-primary transition-colors mb-1 rounded-full hover:bg-surface-bright/20">
+<span class="material-symbols-outlined text-[24px]" data-icon="image">image</span>
+</button>
+<textarea class="flex-1 bg-transparent border-none focus:ring-0 text-on-surface font-body-md text-body-md resize-none py-3 px-3 max-h-32" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" placeholder="Ketik pesan... Tanya apa saja..." rows="1" style="height:48px;overflow-y:hidden;"></textarea>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-all duration-300 mb-1 rounded-full hover:bg-surface-bright/20 group-focus-within:text-primary group-focus-within:bg-primary/10">
+<span class="material-symbols-outlined text-[24px]" data-icon="send">send</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple JS for auto-resizing textarea to feel responsive
+        const tx = document.getElementsByTagName("textarea");
+        for (let i = 0; i < tx.length; i++) {
+            tx[i].setAttribute("style", "height:" + (tx[i].scrollHeight) + "px;overflow-y:hidden;");
+            tx[i].addEventListener("input", OnInput, false);
+        }
+        function OnInput() {
+            this.style.height = "auto";
+            this.style.height = (this.scrollHeight) + "px";
+        }
+    </script>
+
+
+</body></html>
