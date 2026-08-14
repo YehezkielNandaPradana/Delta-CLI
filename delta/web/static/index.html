@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delta AI - Security Assistant Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            bg: '#090d16',
+                            card: '#111726',
+                            sidebar: '#0d1320',
+                            border: '#1e293b',
+                            accent: '#10b981',
+                            accentHover: '#059669',
+                            userBubble: '#1e293b',
+                            aiBubble: '#131c2e'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #090d16; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    </style>
+</head>
+<body class="bg-cyber-bg text-slate-100 font-sans h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-72 bg-cyber-sidebar border-r border-cyber-border hidden md:flex flex-col justify-between p-4">
+        <div class="space-y-6">
+            <!-- Brand -->
+            <div class="flex items-center space-x-3 px-2 py-1">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-bold text-cyber-bg text-xl shadow-lg shadow-emerald-500/20">
+                    Δ
+                </div>
+                <div>
+                    <h1 class="font-bold text-slate-100 tracking-wide text-lg">DELTA AI</h1>
+                    <p class="text-xs text-slate-400">Security Assessment Assistant</p>
+                </div>
+            </div>
+
+            <!-- New Chat Button -->
+            <button onclick="clearChat()" class="w-full py-2.5 px-4 rounded-xl bg-cyber-card border border-cyber-border hover:border-cyber-accent text-slate-200 text-sm font-medium flex items-center justify-center space-x-2 transition shadow-sm">
+                <svg class="w-4 h-4 text-cyber-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                <span>New Conversation</span>
+            </button>
+
+            <!-- Quick Suggestions -->
+            <div class="space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider px-2">Suggested Actions</p>
+                <div class="space-y-1">
+                    <button onclick="sendPrompt('scan localhost')" class="w-full text-left p-2.5 rounded-lg hover:bg-cyber-card text-xs text-slate-300 transition flex items-center space-x-2 border border-transparent hover:border-cyber-border">
+                        <span class="text-emerald-400">🔍</span>
+                        <span>Scan local ports</span>
+                    </button>
+                    <button onclick="sendPrompt('audit example.com')" class="w-full text-left p-2.5 rounded-lg hover:bg-cyber-card text-xs text-slate-300 transition flex items-center space-x-2 border border-transparent hover:border-cyber-border">
+                        <span class="text-teal-400">🛡️</span>
+                        <span>Audit web security</span>
+                    </button>
+                    <button onclick="sendPrompt('explain SQL injection')" class="w-full text-left p-2.5 rounded-lg hover:bg-cyber-card text-xs text-slate-300 transition flex items-center space-x-2 border border-transparent hover:border-cyber-border">
+                        <span class="text-indigo-400">📚</span>
+                        <span>Explain vulnerability</span>
+                    </button>
+                    <button onclick="sendPrompt('password MySecureP@ss123')" class="w-full text-left p-2.5 rounded-lg hover:bg-cyber-card text-xs text-slate-300 transition flex items-center space-x-2 border border-transparent hover:border-cyber-border">
+                        <span class="text-amber-400">🔐</span>
+                        <span>Analyze password strength</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Footer -->
+        <div class="p-3 bg-cyber-card/60 rounded-xl border border-cyber-border space-y-2 text-xs">
+            <div class="flex justify-between items-center text-slate-400">
+                <span>Engine Status</span>
+                <span class="inline-flex items-center text-emerald-400 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-1.5"></span> Online
+                </span>
+            </div>
+            <div class="flex justify-between items-center text-slate-400">
+                <span>Version</span>
+                <span class="font-mono text-slate-300">v1.0.0</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Chat Workspace -->
+    <main class="flex-1 flex flex-col h-full bg-cyber-bg relative">
+
+        <!-- Header Mobile / Title Bar -->
+        <header class="h-16 border-b border-cyber-border px-6 flex items-center justify-between bg-cyber-sidebar/50 backdrop-blur-md">
+            <div class="flex items-center space-x-3">
+                <span class="md:hidden text-2xl font-bold text-cyber-accent">Δ</span>
+                <div>
+                    <h2 class="font-semibold text-slate-100 text-sm md:text-base flex items-center gap-2">
+                        Delta Assistant
+                        <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono">ACTIVE</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 hidden sm:block">AI-Powered Cybersecurity & System Diagnostics</p>
+                </div>
+            </div>
+            <button onclick="clearChat()" class="md:hidden p-2 text-slate-400 hover:text-slate-200">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+        </header>
+
+        <!-- Messages Viewport -->
+        <div id="messages-container" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 max-w-4xl w-full mx-auto">
+
+            <!-- Welcome Card Message -->
+            <div class="flex items-start space-x-3.5">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
+                    Δ
+                </div>
+                <div class="bg-cyber-aiBubble border border-cyber-border rounded-2xl rounded-tl-none p-4 max-w-2xl shadow-sm text-slate-200 text-sm space-y-2">
+                    <p class="font-medium text-emerald-400">Halo Tuan! Saya Delta AI Assistant.</p>
+                    <p class="text-slate-300">Ada yang bisa saya bantu dengan keamanan jaringan, analisis sistem, atau perintah scanning hari ini?</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Floating Chat Input Area -->
+        <div class="p-4 border-t border-cyber-border/50 bg-cyber-bg/80 backdrop-blur-lg">
+            <form id="chat-form" onsubmit="handleSubmit(event)" class="max-w-4xl mx-auto relative flex items-center">
+                <input
+                    type="text"
+                    id="user-input"
+                    placeholder="Ketik pesan atau perintah Delta (e.g. scan localhost, help)..."
+                    autocomplete="off"
+                    class="w-full bg-cyber-card border border-cyber-border rounded-2xl py-3.5 pl-5 pr-14 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyber-accent focus:ring-1 focus:ring-cyber-accent transition shadow-lg"
+                >
+                <button
+                    type="submit"
+                    class="absolute right-2 p-2 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-cyber-bg hover:opacity-90 transition font-bold shadow-md"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+            </form>
+            <p class="text-[11px] text-center text-slate-500 mt-2">Delta AI Assistant • Cybersecurity testing & analysis tools</p>
+        </div>
+    </main>
+
+    <script>
+        const container = document.getElementById('messages-container');
+        const input = document.getElementById('user-input');
+
+        function appendUserMessage(text) {
+            const msgHtml = `
+                <div class="flex items-start justify-end space-x-3.5">
+                    <div class="bg-cyber-userBubble border border-cyber-border rounded-2xl rounded-tr-none p-4 max-w-xl shadow-sm text-slate-100 text-sm">
+                        ${escapeHtml(text)}
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', msgHtml);
+            scrollToBottom();
+        }
+
+        function appendAiMessage(text, isError = false) {
+            const colorClass = isError ? 'text-rose-400' : 'text-slate-200';
+            const msgHtml = `
+                <div class="flex items-start space-x-3.5">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
+                        Δ
+                    </div>
+                    <div class="bg-cyber-aiBubble border border-cyber-border rounded-2xl rounded-tl-none p-4 max-w-2xl shadow-sm ${colorClass} text-sm space-y-2">
+                        <pre class="whitespace-pre-wrap font-sans leading-relaxed">${escapeHtml(text)}</pre>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', msgHtml);
+            scrollToBottom();
+        }
+
+        function appendTypingIndicator() {
+            const id = 'typing-' + Date.now();
+            const html = `
+                <div id="${id}" class="flex items-start space-x-3.5">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
+                        Δ
+                    </div>
+                    <div class="bg-cyber-aiBubble border border-cyber-border rounded-2xl rounded-tl-none p-4 shadow-sm text-slate-400 text-xs flex items-center space-x-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-bounce"></span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:0.2s]"></span>
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:0.4s]"></span>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            scrollToBottom();
+            return id;
+        }
+
+        async function handleSubmit(e) {
+            if (e) e.preventDefault();
+            const text = input.value.trim();
+            if (!text) return;
+
+            appendUserMessage(text);
+            input.value = '';
+
+            const typingId = appendTypingIndicator();
+
+            try {
+                const res = await fetch('/api/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: text })
+                });
+                const data = await res.json();
+
+                document.getElementById(typingId)?.remove();
+                appendAiMessage(data.output || 'Tidak ada respons.');
+            } catch (err) {
+                document.getElementById(typingId)?.remove();
+                appendAiMessage('Gagal terhubung ke Delta engine server.', true);
+            }
+        }
+
+        function sendPrompt(promptText) {
+            input.value = promptText;
+            handleSubmit();
+        }
+
+        function clearChat() {
+            container.innerHTML = `
+                <div class="flex items-start space-x-3.5">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
+                        Δ
+                    </div>
+                    <div class="bg-cyber-aiBubble border border-cyber-border rounded-2xl rounded-tl-none p-4 max-w-2xl shadow-sm text-slate-200 text-sm space-y-2">
+                        <p class="font-medium text-emerald-400">Chat dibersihkan!</p>
+                        <p class="text-slate-300">Ada topik atau perintah lain yang ingin Anda jalankan?</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function scrollToBottom() {
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
