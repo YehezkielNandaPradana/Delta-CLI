@@ -225,6 +225,13 @@ MODEL_PRESETS: Dict[str, Dict[str, Any]] = {
         "description": "KiloCombo on 9Router (Advanced coding capabilities)",
         "fast_mode": True,
     },
+    "KiloCombo": {
+        "model": "KiloCombo",
+        "base_url": "http://localhost:20128/v1",
+        "provider": "9router",
+        "description": "KiloCombo on 9Router (Advanced coding capabilities)",
+        "fast_mode": True,
+    },
     "DeepseekCombo": {
         "model": "DeepseekCombo",
         "base_url": "http://localhost:20128/v1",
