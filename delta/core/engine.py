@@ -982,10 +982,6 @@ class DeltaEngine:
 
                 self.display.error(response)
 
-                self.display.info("Falling back to standard command processing...")
-
-            self._dispatch_command(user_input)
-
             return {"response": "", "command": "", "error": response}
 
         command = parse_command_from_response(response)
