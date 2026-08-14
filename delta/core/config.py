@@ -66,11 +66,11 @@ class DeltaConfig:
 
     llm_api_key: str = ""
 
-    llm_api_base_url: str = "http://localhost:20128/v1"
+    llm_api_base_url: str = "http://localhost:11434/v1"
 
-    llm_model: str = "DeepseekCombo"
+    llm_model: str = "gemma4:12b"
 
-    llm_provider: str = "9router"  # 9router is the default local routing gateway
+    llm_provider: str = "local"  # local ollama is default
 
     llm_enabled: bool = True
 
