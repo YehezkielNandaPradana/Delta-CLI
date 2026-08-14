@@ -21,7 +21,7 @@
 
 ## File Structure
 
-```
+```.
 delta/
 ├── __init__.py                 # minimal re-export (qa-team owns)
 ├── main.py                     # entry point (core-team)
