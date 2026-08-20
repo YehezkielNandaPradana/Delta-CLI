@@ -14,7 +14,7 @@ PROVIDERS: Dict[str, Dict[str, Any]] = {
     "9router": {
         "base_url": "http://localhost:20128/v1",
         "description": "9Router - Local AI routing gateway (40+ providers, no API key needed)",
-        "default_model": "DeepseekCombo",
+        "default_model": "AntigravityCombo",
         "env_key": "",
         "requires_key": False,
         "fast_mode": True,
@@ -230,6 +230,20 @@ MODEL_PRESETS: Dict[str, Dict[str, Any]] = {
         "base_url": "http://localhost:20128/v1",
         "provider": "9router",
         "description": "KiloCombo on 9Router (Advanced coding capabilities)",
+        "fast_mode": True,
+    },
+    "AntigravityCombo": {
+        "model": "AntigravityCombo",
+        "base_url": "http://localhost:20128/v1",
+        "provider": "9router",
+        "description": "AntigravityCombo on 9Router (High-performance multi-provider routing)",
+        "fast_mode": True,
+    },
+    "antigravitycombo": {
+        "model": "AntigravityCombo",
+        "base_url": "http://localhost:20128/v1",
+        "provider": "9router",
+        "description": "AntigravityCombo on 9Router (High-performance multi-provider routing)",
         "fast_mode": True,
     },
     "DeepseekCombo": {

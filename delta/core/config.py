@@ -266,9 +266,9 @@ class DeltaConfig:
 
         self.llm_enabled = True
 
-        if not self.llm_model or self.llm_model not in [k for k in MODEL_PRESETS if "/" in k] + ["KiloCombo"]:
+        if not self.llm_model or self.llm_model not in [k for k in MODEL_PRESETS if "/" in k] + ["KiloCombo", "AntigravityCombo", "DeepseekCombo"]:
 
-            self.llm_model = "DeepseekCombo"
+            self.llm_model = "AntigravityCombo"
 
         self._loaded = True
 

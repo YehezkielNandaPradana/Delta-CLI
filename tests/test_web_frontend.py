@@ -16,6 +16,6 @@ def test_web_static_html_served():
             assert resp.status == 200
             html = resp.read().decode("utf-8")
             assert "<title>Delta AI Security Dashboard</title>" in html
-            assert "Delta Web Terminal" in html
+            assert "Delta AI" in html
     finally:
         server.shutdown()

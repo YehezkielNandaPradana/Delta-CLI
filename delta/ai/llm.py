@@ -24,7 +24,7 @@ PROVIDERS = {
 
         "description": "9Router - Local AI routing gateway (40+ providers, no API key needed)",
 
-        "default_model": "DeepseekCombo",
+        "default_model": "AntigravityCombo",
 
         "env_key": "",
 
@@ -400,6 +400,34 @@ MODEL_PRESETS = {
 
     },
 
+    "antigravitycombo": {
+
+        "model": "AntigravityCombo",
+
+        "base_url": "http://localhost:20128/v1",
+
+        "provider": "9router",
+
+        "description": "AntigravityCombo on 9Router (High-performance multi-provider routing)",
+
+        "fast_mode": True,
+
+    },
+
+    "AntigravityCombo": {
+
+        "model": "AntigravityCombo",
+
+        "base_url": "http://localhost:20128/v1",
+
+        "provider": "9router",
+
+        "description": "AntigravityCombo on 9Router (High-performance multi-provider routing)",
+
+        "fast_mode": True,
+
+    },
+
     "naxxcombo": {
 
         "model": "naxxcombo",
@@ -745,7 +773,7 @@ class LLMEngine:
 
         self.base_url = self._resolve_base_url(base_url, model)
 
-        self.model = self._resolve_model(model or "DeepseekCombo")
+        self.model = self._resolve_model(model or "AntigravityCombo")
 
         self.max_history = max_history
 

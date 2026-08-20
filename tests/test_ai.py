@@ -5,6 +5,25 @@ from delta.ai.intent import IntentEngine, IntentType, IntentResult
 from delta.ai.llm import LLMEngine, MODEL_PRESETS
 from delta.core.config import DeltaConfig
 
+class TestAntigravityComboPreset(unittest.TestCase):
+    """Test the AntigravityCombo model preset on 9Router."""
+
+    def test_preset_exists(self):
+        self.assertIn("AntigravityCombo", MODEL_PRESETS)
+
+    def test_preset_uses_9router(self):
+        preset = MODEL_PRESETS["AntigravityCombo"]
+        self.assertEqual(preset["provider"], "9router")
+        self.assertEqual(preset["base_url"], "http://localhost:20128/v1")
+        self.assertEqual(preset["model"], "AntigravityCombo")
+
+    def test_apply_preset(self):
+        engine = LLMEngine(provider="9router", base_url="http://localhost:20128/v1")
+        self.assertTrue(engine.apply_preset("AntigravityCombo"))
+        self.assertEqual(engine.model, "AntigravityCombo")
+        self.assertEqual(engine.provider, "9router")
+        self.assertEqual(engine.base_url, "http://localhost:20128/v1")
+
 class TestKiloComboPreset(unittest.TestCase):
     """Test the KiloCombo model preset on 9Router."""
 
