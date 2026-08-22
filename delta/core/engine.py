@@ -10,6 +10,8 @@ import sys
 
 import os
 
+import json
+
 import re
 
 import shlex
@@ -92,6 +94,8 @@ class DeltaEngine:
 
         llm_engine: Optional[LLMEngine] = None,
 
+        cwd: Optional[str] = None,
+
     ):
 
         """
@@ -154,15 +158,27 @@ class DeltaEngine:
 
         # Folder aktif untuk perintah file system (cd/ls/write/dst).
 
-        self.cwd = os.getcwd()
+        self.cwd = os.path.abspath(cwd) if cwd else os.getcwd()
+
+        self.session.context.working_directory = self.cwd
 
         # True saat dijalankan di bawah DeltaTUI — _process_with_llm tidak
-
         # mencetak ke stdout, melainkan mengembalikan hasil terstruktur
-
         # agar TUI bisa merender respons AI dengan rapi.
-
         self.tui_mode = False
+        self.web_mode = False
+
+        # Coding Agent sub-modules & Tool Registry
+        from delta.modules.codebase import CodebaseModule
+        from delta.modules.terminal import TerminalModule
+        from delta.modules.filesystem import FileSystemModule
+        from delta.ai.tools import ToolRegistry, Tool, ToolParameter
+
+        self.fs = FileSystemModule(cwd=self.cwd, display=self.display)
+        self.codebase = CodebaseModule(self.cwd)
+        self.terminal = TerminalModule()
+        self.tools = ToolRegistry()
+        self._init_agent_tools()
 
         # Command aliases
 
@@ -267,6 +283,163 @@ class DeltaEngine:
             if loaded:
 
                 self.display.debug(f"Loaded {len(loaded)} plugin(s)")
+
+    def set_cwd(self, path: str) -> Tuple[bool, str]:
+        """Change current working directory for session and all modules."""
+        if not path or path == ".":
+            target = self.cwd
+        elif path == "~":
+            target = os.path.expanduser("~")
+        else:
+            target = self.fs._resolve(path)
+
+        if not os.path.isdir(target):
+            return False, f"Directory not found: {target}"
+
+        self.cwd = os.path.abspath(target)
+        self.fs.cwd = self.cwd
+        if hasattr(self, "codebase") and self.codebase:
+            self.codebase.root_dir = self.cwd
+        if hasattr(self, "git") and self.git:
+            self.git.cwd = self.cwd
+        self.session.context.working_directory = self.cwd
+
+        from delta.ai.events import event_bus, AgentEvent, EventType
+        event_bus.emit(AgentEvent(
+            type=EventType.AGENT_STATUS,
+            path=self.cwd,
+            status_text=f"Working directory changed to {self.cwd}"
+        ))
+        return True, f"Working directory changed to: {self.cwd}"
+
+    def _init_agent_tools(self) -> None:
+        """Register default coding agent tools into the ToolRegistry with full system access."""
+        from delta.ai.tools import Tool, ToolParameter
+
+        # Get current directory tool
+        self.tools.register(Tool(
+            name="get_current_directory",
+            description="Get the true absolute working directory of current agent session",
+            func=lambda: self.cwd,
+            parameters=[]
+        ))
+
+        # Change directory tool
+        self.tools.register(Tool(
+            name="change_directory",
+            description="Change the working directory of the active session",
+            func=lambda path: self.set_cwd(path)[1],
+            parameters=[ToolParameter("path", "string", "Target directory path to navigate to")]
+        ))
+
+        # Execute terminal command tool
+        self.tools.register(Tool(
+            name="execute_command",
+            description="Execute shell command in current working directory safely",
+            func=lambda command: self.terminal.execute(command, cwd=self.cwd).get("output", ""),
+            parameters=[ToolParameter("command", "string", "Shell command to run")]
+        ))
+
+        # Read file tool
+        self.tools.register(Tool(
+            name="read_file",
+            description="Read content of any file on local disks (absolute path like C:\\... or relative path)",
+            func=lambda path: self.fs.read(path)[1],
+            parameters=[ToolParameter("path", "string", "Absolute or relative path to target file")]
+        ))
+
+        # Write file tool
+        self.tools.register(Tool(
+            name="write_file",
+            description="Write full text content to any file on local disks",
+            func=lambda path, content: self.fs.write(path, content)[1],
+            parameters=[
+                ToolParameter("path", "string", "Absolute or relative path to target file"),
+                ToolParameter("content", "string", "Text content to write")
+            ]
+        ))
+
+        # Edit file tool
+        self.tools.register(Tool(
+            name="edit_file",
+            description="Replace target old text with new text in any file on local disks",
+            func=lambda path, old_text, new_text: self.fs.smart_edit(path, old_text, new_text)[1],
+            parameters=[
+                ToolParameter("path", "string", "Absolute or relative path to target file"),
+                ToolParameter("old_text", "string", "Exact or approximate old text block to replace"),
+                ToolParameter("new_text", "string", "New replacement text")
+            ]
+        ))
+
+        # File tree tool
+        self.tools.register(Tool(
+            name="codebase_tree",
+            description="Get ASCII tree view of current directory or project workspace",
+            func=lambda max_depth=3: self.codebase.build_tree(max_depth=max_depth),
+            parameters=[ToolParameter("max_depth", "integer", "Max directory traversal depth", required=False)]
+        ))
+
+        # List directory files tool
+        self.tools.register(Tool(
+            name="list_directory",
+            description="List all files and folders in a specific directory",
+            func=lambda path="": self.fs.list_dir(path)[1],
+            parameters=[ToolParameter("path", "string", "Target directory path to list (relative or absolute)", required=False)]
+        ))
+
+        # Find files tool
+        self.tools.register(Tool(
+            name="find_files",
+            description="Find files matching glob or pattern in active or target directory",
+            func=lambda pattern: self.codebase.find_files(pattern),
+            parameters=[ToolParameter("pattern", "string", "File name pattern or substring")]
+        ))
+
+        # Extract symbols tool
+        self.tools.register(Tool(
+            name="extract_symbols",
+            description="Extract classes, functions, and imports from any source file",
+            func=lambda path: self.codebase.extract_symbols(path),
+            parameters=[ToolParameter("path", "string", "Path to code file")]
+        ))
+
+        # Git status tool
+        from delta.modules.git import GitModule
+        self.git = GitModule(cwd=self.cwd, display=self.display)
+
+        self.tools.register(Tool(
+            name="git_status",
+            description="Get git working tree status and branch info",
+            func=lambda: self.git.status()[1],
+            parameters=[]
+        ))
+
+        # Git diff tool
+        self.tools.register(Tool(
+            name="git_diff",
+            description="Get git diff of staged or unstaged changes",
+            func=lambda staged=False, path="": self.git.diff(staged=staged, path=path)[1],
+            parameters=[
+                ToolParameter("staged", "boolean", "Show staged changes if true", required=False),
+                ToolParameter("path", "string", "Optional path filter", required=False)
+            ]
+        ))
+
+        # Git log tool
+        self.tools.register(Tool(
+            name="git_log",
+            description="Get git commit history",
+            func=lambda count=10: self.git.log(count=count)[1],
+            parameters=[ToolParameter("count", "integer", "Number of commits to retrieve", required=False)]
+        ))
+
+        # Git commit tool
+        self.tools.register(Tool(
+            name="git_commit",
+            description="Stage changes and create a git commit",
+            func=lambda message: self.git.commit(message)[1],
+            parameters=[ToolParameter("message", "string", "Commit message")]
+        ))
 
     def _register_builtin_commands(self) -> None:
 
@@ -878,6 +1051,58 @@ class DeltaEngine:
 
             self.display.warning(f"Unknown slash command: {cmd}. Try /help")
 
+    def _is_task_intent(self, user_input: str) -> bool:
+        """Check if user input requires tool schemas or is just casual chat."""
+        if not user_input or not user_input.strip():
+            return False
+        inp = user_input.strip().lower()
+        # Direct questions about capabilities or conversational fillers should be non-task chat
+        casual_phrases = {
+            "tes", "test", "halo", "hello", "hi", "hai", "lah", "lu kenapa",
+            "lu siapa", "siapa lu", "apa kabar", "ping", "p", "siapa kamu",
+            "bisa coding", "bisa?", "bisa", "ok", "okay", "siap", "mantap",
+            "apakah kamu bisa mengakses direktori?", "apakah kamu bisa mengakses direktori",
+            "bisa akses direktori?", "bisa akses direktori", "bisa lihat file?", "bisa lihat file"
+        }
+        if inp in casual_phrases:
+            return False
+        words = inp.split()
+        if len(words) <= 2 and not any(w in inp for w in ["scan", "audit", "find", "search", "read", "write", "edit", "git", "ls", "dir", "cat", "tree", "cve"]):
+            return False
+        # If matches task keywords or filesystem/scan keywords
+        task_keywords = [
+            "scan", "audit", "read", "cat", "write", "edit", "touch", "mkdir",
+            "git", "run", "explain", "cve", "password", "jwt", "search", "find",
+            "list", "buat", "ubah", "hapus", "perbaiki", "coding", "lihat", "struktur",
+            "masuk", "folder", "kirim", "isi", "direktori", "buka"
+        ]
+        return any(kw in inp for kw in task_keywords)
+
+    def _get_tool_status_text(self, t_name: str, t_args: dict) -> str:
+        path = t_args.get("path") or ""
+        filename = os.path.basename(path) if path else ""
+
+        if t_name in ("read_file", "cat", "view"):
+            return f"Reading {filename}" if filename else "Reading files..."
+        elif t_name in ("write_file", "touch"):
+            return f"Writing {filename}" if filename else "Writing files..."
+        elif t_name in ("edit_file", "smart_edit"):
+            return f"Editing {filename}" if filename else "Editing files..."
+        elif t_name == "execute_command":
+            cmd = t_args.get("command", "").lower()
+            if "test" in cmd or "pytest" in cmd:
+                return "Running tests..."
+            return "Running command..."
+        elif t_name in ("find_files", "grep"):
+            return "Searching code..."
+        elif t_name == "codebase_tree":
+            return "Analyzing project..."
+        elif t_name == "change_directory":
+            return f"Navigating to {filename}..." if filename else "Changing directory..."
+        elif t_name.startswith("git_"):
+            return "Running git command..."
+        return "Thinking..."
+
     def _process_with_llm(self, user_input: str) -> Optional[Dict[str, Any]]:
 
         """
@@ -891,134 +1116,259 @@ class DeltaEngine:
         TUI bisa merendernya dalam kotak yang rapi. Mode REPL tetap mencetak.
 
         """
+        import uuid
 
         host = self.session.get_host()
-
         owner = self.config.get("owner_name", "Tuan")
-
-        context_info = f"Current session target: {host or 'none'}. User adalah {owner}, pemilik Delta. Panggil dia Tuan."
+        context_info = (
+            f"Current working directory: {self.cwd}\n"
+            f"SYSTEM CAPABILITIES: You have UNRESTRICTED full access to read, write, edit files, navigate directories, and run terminal commands across any local drive/folder (e.g. C:\\, D:\\, /...). You are NEVER restricted.\n"
+            f"Current session target: {host or 'none'}. User adalah {owner}, pemilik Delta. Panggil dia Tuan."
+        )
 
         skills_context = self.skills.build_context()
-
         if skills_context:
-
             context_info += "\n\n" + skills_context
+
+        # Determine if input is a task requiring tools or just casual conversation
+        is_task_request = self._is_task_intent(user_input)
+        task_id = f"task_{uuid.uuid4().hex[:8]}" if is_task_request else None
+
+        # Append XML tool calling instructions if available AND if task input requires tools
+        if is_task_request and hasattr(self, "tools") and self.tools:
+            context_info += "\n\n" + self.tools.generate_xml_prompt_instructions()
 
         self.llm_engine.set_system_context(context_info)
 
-        if not self.tui_mode:
+        show_cli_ui = not self.tui_mode and not getattr(self, "web_mode", False)
 
-            self.display.print(f"{ANSI.MAGENTA}Δ AI{ANSI.RESET} {ANSI.GRAY}memikirkan jawaban...{ANSI.RESET}", end="\r")
+        from delta.ai.cli_renderer import CLIRenderer
+        cli_renderer = CLIRenderer() if show_cli_ui else None
+
+        from delta.ai.events import event_bus, AgentEvent, EventType
+
+        exec_id = task_id or f"exec-{int(time.time()*1000)}"
+        event_bus.emit(AgentEvent(
+            type=EventType.AGENT_START,
+            task_id=exec_id,
+            execution_id=exec_id,
+            status_text="Thinking..."
+        ))
+        event_bus.emit(AgentEvent(
+            type=EventType.AGENT_THINKING,
+            task_id=exec_id,
+            execution_id=exec_id,
+            status_text="Analyzing user request..."
+        ))
 
         self._in_llm_processing = True
 
+        from delta.ai.tools import parse_xml_tool_calls, parse_json_tool_calls
+
+        max_iterations = 10
+        current_input = user_input
+        final_clean_response = ""
+        last_command = ""
+        task_completed_emitted = False
+
         try:
-
-            validation_error = self.llm_engine._validate_settings()
-
-            if validation_error:
-
-                response = f"ERROR [Provider]: {validation_error}"
-
-            else:
+            for iteration in range(max_iterations):
+                if self.config.debug:
+                    print(f"[Agent] iteration={iteration+1}")
+                validation_error = self.llm_engine._validate_settings()
+                if validation_error:
+                    response = f"ERROR [Provider]: {validation_error}"
+                    break
 
                 self._configure_llm_retry()
 
-                response = self.llm_engine.chat(user_input)
+                # Pass JSON schemas for native tool call support only if input is a task request
+                tool_schemas = (self.tools.to_json_schemas() if hasattr(self, "tools") and self.tools else None) if is_task_request else None
 
-                if response.startswith("ERROR") and self._is_retryable_error(response):
+                # If this is iteration > 0, we are continuing the ReAct loop
+                response = self.llm_engine.chat(current_input, tools=tool_schemas, is_continuation=(iteration > 0))
 
-                    fallback_providers = self.llm_engine._get_fallback_providers()
-
-                    if fallback_providers:
-
-                        if not self.tui_mode:
-
-                            sys.stdout.write("\r" + " " * 50 + "\r")
-
-                            sys.stdout.flush()
-
-                        self.display.warning(f"Provider '{self.llm_engine.provider}' failed, trying fallback...")
-
-                        success, fallback_response = self.llm_engine._try_fallback_provider(user_input)
-
-                        if success:
-
-                            response = fallback_response
-
+                if response.startswith("ERROR"):
+                    if self._is_retryable_error(response):
+                        fallback_providers = self.llm_engine._get_fallback_providers()
+                        if fallback_providers:
+                            if show_cli_ui:
+                                sys.stdout.write("\r" + " " * 50 + "\r")
+                                sys.stdout.flush()
+                                self.display.warning(f"Provider '{self.llm_engine.provider}' failed, trying fallback...")
+                            success, fallback_response = self.llm_engine._try_fallback_provider(current_input)
+                            if success:
+                                response = fallback_response
+                            else:
+                                break
                         else:
-
-                            if not self.tui_mode:
-
-                                self.display.error(response)
-
-                            self._dispatch_command(user_input)
-
-                            return {"response": "", "command": "", "error": response}
-
+                            break
                     else:
+                        break
 
-                        if not self.tui_mode:
+                # 1. Parse JSON or XML tool calls
+                json_tool_calls = []
+                xml_tool_calls = []
 
-                            self.display.error(response)
+                try:
+                    raw_text = response
+                    if (response.startswith("{") or "tool_calls" in response) and "tool_calls" in response:
+                        parsed_json = json.loads(response)
+                        if isinstance(parsed_json, dict) and "tool_calls" in parsed_json:
+                            json_tool_calls = parse_json_tool_calls(parsed_json["tool_calls"])
+                            raw_text = parsed_json.get("content", "")
+                except Exception as ex:
+                    if self.config.debug:
+                        print(f"EXCEPT PARSE: {ex}")
 
-                        self._dispatch_command(user_input)
+                if not json_tool_calls:
+                    xml_tool_calls = parse_xml_tool_calls(response)
 
-                        return {"response": "", "command": "", "error": response}
+                # Check for legacy single <command> tag
+                legacy_command = parse_command_from_response(response)
+
+                # If no tool calls and no legacy command, we have our final response
+                if not json_tool_calls and not xml_tool_calls and not legacy_command:
+                    final_clean_response = strip_command_tags(raw_text)
+                    if self.config.debug:
+                        print(f"[Agent] final_response")
+                    if is_task_request and not task_completed_emitted:
+                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=task_id, status_text="Task completed"))
+                        task_completed_emitted = True
+                        if self.config.debug:
+                            print(f"[Agent] completed")
+                    break
+
+                # Emit AGENT_THINKING event for reasoning phase
+                thinking_status = "Analyzing project..." if iteration == 0 else ("Planning changes..." if iteration == 1 else "Verifying changes...")
+                event_bus.emit(AgentEvent(
+                    type=EventType.AGENT_THINKING,
+                    task_id=task_id,
+                    execution_id=task_id,
+                    status_text=thinking_status
+                ))
+
+                # Process tool calls / commands
+                tool_executed = False
+
+                if json_tool_calls:
+                    for t_name, t_args, t_id in json_tool_calls:
+                        if self.config.debug:
+                            print(f"[LLM] tool_call={t_name}")
+                        event_bus.emit(AgentEvent(
+                            type=EventType.TOOL_START,
+                            task_id=task_id,
+                            execution_id=task_id,
+                            tool=t_name,
+                            input=t_args,
+                            status_text=self._get_tool_status_text(t_name, t_args)
+                        ))
+                        if self.config.debug:
+                            print(f"[Tool] {t_name} started")
+                        res = self.tools.execute_call(t_name, t_args)
+                        out_str = res.get("output") or res.get("error") or ""
+                        if len(out_str) > 2500:
+                            out_str = out_str[:2500] + "\n... [output truncated]"
+                        event_bus.emit(AgentEvent(
+                            type=EventType.TOOL_RESULT,
+                            task_id=task_id,
+                            execution_id=task_id,
+                            tool=t_name,
+                            output=out_str[:500],
+                            success=res.get("success", True),
+                            status_text=f"Completed {t_name}"
+                        ))
+                        if self.config.debug:
+                            print(f"[Tool] {t_name} completed")
+
+                        self.llm_engine.append_tool_result(t_id, out_str)
+                        if self.config.debug:
+                            print(f"[Agent] tool_result persisted")
+                        current_input = f"Tool result for tool call id {t_id} ({t_name}): {out_str}"
+                        if self.config.debug:
+                            print(f"[Agent] continuing LLM")
+                        tool_executed = True
+
+                elif xml_tool_calls:
+                    for t_name, t_args in xml_tool_calls:
+                        if self.config.debug:
+                            print(f"[LLM] tool_call={t_name}")
+                        event_bus.emit(AgentEvent(
+                            type=EventType.TOOL_START,
+                            task_id=task_id,
+                            execution_id=task_id,
+                            tool=t_name,
+                            input=t_args,
+                            status_text=self._get_tool_status_text(t_name, t_args)
+                        ))
+                        if self.config.debug:
+                            print(f"[Tool] {t_name} started")
+                        res = self.tools.execute_call(t_name, t_args)
+                        out_str = res.get("output") or res.get("error") or ""
+                        if len(out_str) > 2500:
+                            out_str = out_str[:2500] + "\n... [output truncated]"
+                        event_bus.emit(AgentEvent(
+                            type=EventType.TOOL_RESULT,
+                            task_id=task_id,
+                            execution_id=task_id,
+                            tool=t_name,
+                            output=out_str[:500],
+                            success=res.get("success", True),
+                            status_text=f"Completed {t_name}"
+                        ))
+                        if self.config.debug:
+                            print(f"[Tool] {t_name} completed")
+                        current_input = f"Tool result for {t_name}: {out_str}"
+                        if self.config.debug:
+                            print(f"[Agent] tool_result persisted")
+                            print(f"[Agent] continuing LLM")
+                        tool_executed = True
+
+                elif legacy_command:
+                    last_command = legacy_command
+                    if self.config.debug:
+                        self.display.print(f"  {ANSI.CYAN}▸ Executing:{ANSI.RESET} {ANSI.YELLOW}{legacy_command}{ANSI.RESET}")
+                    self._dispatch_command(legacy_command)
+                    final_clean_response = strip_command_tags(response)
+                    if is_task_request and not task_completed_emitted:
+                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, status_text="Task completed"))
+                        task_completed_emitted = True
+                    break
+
+                if not tool_executed:
+                    final_clean_response = strip_command_tags(response)
+                    if is_task_request and not task_completed_emitted:
+                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, status_text="Task completed"))
+                        task_completed_emitted = True
+                    break
 
         finally:
-
-            if not self.tui_mode:
-
+            if show_cli_ui:
                 sys.stdout.write("\r" + " " * 50 + "\r")
-
                 sys.stdout.flush()
-
             self._in_llm_processing = False
+            if is_task_request and not task_completed_emitted:
+                event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, status_text="Task completed"))
 
         if response.startswith("ERROR"):
-
-            if not self.tui_mode:
-
+            if is_task_request:
+                event_bus.emit(AgentEvent(type=EventType.ERROR, task_id=task_id, execution_id=task_id, error={"message": response}, status_text="Something went wrong"))
+            if show_cli_ui:
                 self.display.error(response)
+            return {"response": "", "command": "", "error": response, "is_task": is_task_request, "task_id": task_id}
 
-            return {"response": "", "command": "", "error": response}
+        if final_clean_response or last_command:
+            self.last_llm_response = final_clean_response
 
-        command = parse_command_from_response(response)
-
-        clean_response = strip_command_tags(response)
-
-        if command or clean_response:
-
-            self.last_llm_response = clean_response
-
-        if not self.tui_mode:
-
+        if show_cli_ui and final_clean_response:
             term_width = shutil.get_terminal_size().columns if hasattr(shutil, 'get_terminal_size') else 60
-
             line = "▔" * min(term_width - 10, 50)
+            self.display.print(f"{ANSI.BRIGHT_MAGENTA}  Δ AI{ANSI.RESET} {ANSI.GRAY}→ {ANSI.BOLD}{owner}{ANSI.RESET}")
+            self.display.print(f"  {ANSI.DIM}{line}{ANSI.RESET}")
+            self.display.markdown(final_clean_response)
+            self.display.print()
 
-            if clean_response:
-
-                self.display.print(f"{ANSI.BRIGHT_MAGENTA}  Δ AI{ANSI.RESET} {ANSI.GRAY}→ {ANSI.BOLD}{owner}{ANSI.RESET}")
-
-                self.display.print(f"  {ANSI.DIM}{line}{ANSI.RESET}")
-
-                self.display.markdown(clean_response)
-
-                self.display.print()
-
-            if command:
-
-                self.display.print(f"  {ANSI.CYAN}▸{ANSI.RESET} {ANSI.YELLOW}Menjalankan:{ANSI.RESET} {ANSI.BOLD}{command}{ANSI.RESET}")
-
-                self.display.print(f"  {ANSI.DIM}{'▔' * min(term_width - 10, 50)}{ANSI.RESET}")
-
-        if command:
-
-            self._dispatch_command(command)
-
-        return {"response": clean_response, "command": command, "error": ""}
+        return {"response": final_clean_response, "command": last_command, "error": "", "is_task": is_task_request, "task_id": task_id}
 
     def _configure_llm_retry(self) -> None:
 
@@ -4615,7 +4965,12 @@ class DeltaEngine:
 
             self.display.print(line)
 
-    def _cmd_cd(self, args: List[str] = None, intent: IntentResult = None) -> None:
+    def _fs_new(self) -> Any:
+        """Instansiasi FileSystemModule dengan cwd engine saat ini."""
+        from delta.modules.filesystem import FileSystemModule
+        return FileSystemModule(cwd=self.cwd, display=self.display)
+
+    def _cmd_cd(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """Pindah folder (langsung, tanpa konfirmasi)."""
 
@@ -4625,11 +4980,7 @@ class DeltaEngine:
 
             path = "~"
 
-        ok, msg, new_cwd = self._fs_new().cd(path)
-
-        if ok:
-
-            self.cwd = new_cwd
+        ok, msg = self.set_cwd(path)
 
         (self.display.success if ok else self.display.error)(msg)
 
