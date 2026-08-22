@@ -1,153 +1,1322 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delta AI Security Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        cyber: {
-                            bg: '#090d16',
-                            card: '#111726',
-                            sidebar: '#0d1320',
-                            border: '#1e293b',
-                            accent: '#10b981',
-                            accentHover: '#059669',
-                            userBubble: '#1e293b',
-                            aiBubble: '#131c2e'
-                        }
-                    }
-                }
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Delta IDE Workspace</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            "colors": {
+              "primary": "#10B981",
+              "primary-fixed": "#D1FAE5",
+              "secondary": "#8B5CF6",
+              "danger": "#EF4444",
+              "canvas": "#0F172A",
+              "panel": "#1F2937",
+              "card-agent": "#111827",
+              "card-user": "#064E3B",
+              "card-system": "#111827",
+              "border-subtle": "#374151",
+              "border-focus": "#10B981"
+            },
+            "boxShadow": {
+              "card-agent": "0 4px 20px -2px rgba(0, 0, 0, 0.5)"
+            },
+            "borderRadius": {
+              "sm": "0.25rem",
+              "DEFAULT": "0.5rem",
+              "md": "0.5rem",
+              "lg": "0.5rem",
+              "xl": "0.625rem",
+              "full": "9999px"
+            },
+            "spacing": {
+              "sidebar-width": "200px",
+              "inspector-width": "300px"
+            },
+            "fontFamily": {
+              "code": ["JetBrains Mono", "Fira Code", "monospace"],
+              "sans": ["Inter", "Geist", "sans-serif"]
             }
+          }
         }
+      }
+    </script>
+    <script>
+      (function() {
+        function applyTheme() {
+          const savedTheme = localStorage.getItem('delta-theme') || 'system';
+          const isDark = savedTheme === 'dark' || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        }
+        window.applyTheme = applyTheme;
+        applyTheme();
+      })();
+
+      function setTheme(mode) {
+        if (mode === 'system') {
+          localStorage.removeItem('delta-theme');
+        } else {
+          localStorage.setItem('delta-theme', mode);
+        }
+        window.applyTheme();
+        updateThemeIcon();
+      }
+
+      function cycleTheme() {
+        const current = localStorage.getItem('delta-theme') || 'system';
+        const next = current === 'system' ? 'dark' : (current === 'dark' ? 'light' : 'system');
+        setTheme(next);
+      }
+
+      function updateThemeIcon() {
+        const iconEl = document.getElementById('theme-toggle-icon');
+        if (!iconEl) return;
+        const theme = localStorage.getItem('delta-theme') || 'system';
+        if (theme === 'dark') {
+          iconEl.textContent = 'dark_mode';
+        } else if (theme === 'light') {
+          iconEl.textContent = 'light_mode';
+        } else {
+          iconEl.textContent = 'desktop_windows';
+        }
+      }
+      document.addEventListener('DOMContentLoaded', updateThemeIcon);
+      window.setTheme = setTheme;
+      window.cycleTheme = cycleTheme;
     </script>
     <style>
-        /* Custom scrollbar styling */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #090d16; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        .panel-bg { background-color: #ffffff; }
+        .border-subtle { border-color: #e2e8f0; }
+
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.95); }
+        }
+        .animate-pulse-subtle {
+            animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-up {
+            animation: slideInUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.18s ease-out forwards;
+        }
+
+        /* Scrollbar styling for IDE feel */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Micro interaction feedback */
+        .btn-active-scale {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .btn-active-scale:active {
+            transform: scale(0.95);
+        }
+        .glow-hover:hover {
+            box-shadow: 0 4px 14px 0 rgba(2, 132, 199, 0.35);
+        }
+        @keyframes messagePopIn {
+            0% { opacity: 0; transform: translateY(12px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-slide-up {
+            animation: messagePopIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
     </style>
 </head>
-<body class="bg-cyber-bg text-slate-100 font-sans h-screen flex overflow-hidden">
+<body class="h-screen w-screen overflow-hidden flex flex-col font-body-sm text-body-sm antialiased selection:bg-sky-100 selection:text-sky-800 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 relative">
 
-    <!-- Sidebar -->
-    <aside class="w-72 bg-cyber-sidebar border-r border-cyber-border hidden md:flex flex-col justify-between p-4">
-        <div class="space-y-6">
-            <!-- Brand -->
-            <div class="flex items-center space-x-3 px-2 py-1">
-                <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-bold text-cyber-bg text-xl shadow-lg shadow-emerald-500/20">
-                    Δ
-                </div>
-                <div>
-                    <h1 class="font-bold text-slate-100 tracking-wide text-lg">DELTA AI</h1>
-                    <p class="text-xs text-slate-400">Security Assessment Assistant</p>
-                </div>
+    <!-- TopAppBar -->
+    <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center h-12 px-4 w-full z-50 shrink-0 select-none shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-lg shadow-sm">⚡</div>
+            <div class="flex flex-col cursor-pointer" onclick="switchNav('files')">
+                <span class="text-sm font-bold tracking-wider text-slate-900 dark:text-slate-100 font-sans flex items-center gap-2">DELTA</span>
+                <span class="text-[9px] font-mono font-bold tracking-widest text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/50 px-1.5 py-0.2 rounded border border-sky-200 dark:border-sky-800">SOC CYBER OPS</span>
             </div>
-
-            <!-- New Chat Button -->
-            <button onclick="clearChat()" class="w-full py-2.5 px-4 rounded-xl bg-cyber-card border border-cyber-border hover:border-cyber-accent text-slate-200 text-sm font-medium flex items-center justify-center space-x-2 transition shadow-sm">
-                <svg class="w-4 h-4 text-cyber-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                <span>New Conversation</span>
+            <!-- Command Palette Trigger -->
+            <button onclick="toggleModal('command-palette')" class="flex items-center bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:border-sky-500/50 rounded-lg px-3 py-1 ml-2 text-slate-600 dark:text-slate-300 font-mono text-xs transition-all btn-active-scale group">
+                <span class="material-symbols-outlined text-[14px] mr-2 text-slate-400 group-hover:text-sky-600">search</span>
+                <span>Search files, symbols, commands</span>
+                <kbd class="ml-4 text-[10px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 font-mono">⌘K</kbd>
             </button>
-
-            <!-- Quick Suggestions -->
-            <div class="space-y-2">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider px-2">Suggested Actions</p>
-                <div class="space-y-1">
-                    <button onclick="sendPrompt('scan localhost')" class="w-full text-left p-2.5 rounded-lg hover:bg-cyber-card text-xs text-slate-300 transition flex items-center space-x-2 border border-transparent hover:border-cyber-border">
-                        <span class="text-emerald-400">🔍</span>
-                        <span>Scan local ports</span>
-                    </button>
-                    <button onclick="sendPrompt('audit example.com')" class="w-full text-left p-2.5 rounded-lg hover:bg-cyber-card text-xs text-slate-300 transition flex items-center space-x-2 border border-transparent hover:border-cyber-border">
-                        <span class="text-teal-400">🛡️</span>
-                        <span>Audit web security</span>
-                    </button>
-                    <button onclick="sendPrompt('explain SQL injection')" class="w-full text-left p-2.5 rounded-lg hover:bg-cyber-card text-xs text-slate-300 transition flex items-center space-x-2 border border-transparent hover:border-cyber-border">
-                        <span class="text-indigo-400">📚</span>
-                        <span>Explain vulnerability</span>
-                    </button>
-                    <button onclick="sendPrompt('password MySecureP@ss123')" class="w-full text-left p-2.5 rounded-lg hover:bg-cyber-card text-xs text-slate-300 transition flex items-center space-x-2 border border-transparent hover:border-cyber-border">
-                        <span class="text-amber-400">🔐</span>
-                        <span>Analyze password strength</span>
-                    </button>
-                </div>
-            </div>
         </div>
-
-    </aside>
-
-    <!-- Main Chat Workspace -->
-    <main class="flex-1 flex flex-col h-full bg-cyber-bg relative">
-
-        <!-- Header Mobile / Title Bar -->
-        <header class="h-16 border-b border-cyber-border px-6 flex items-center justify-between bg-cyber-sidebar/50 backdrop-blur-md">
-            <div class="flex items-center space-x-3">
-                <span class="md:hidden text-2xl font-bold text-cyber-accent">Δ</span>
-                <div>
-                    <h2 class="font-semibold text-slate-100 text-sm md:text-base flex items-center gap-2">
-                        Delta Assistant
-                        <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono">ACTIVE</span>
-                    </h2>
-                    <p class="text-xs text-slate-400 hidden sm:block">AI-Powered Cybersecurity & System Diagnostics</p>
-                </div>
+        <div class="flex items-center gap-3 text-slate-600">
+            <div class="hidden md:flex items-center gap-2 font-mono text-xs">
+                <span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200 font-bold" id="header-target-badge">Target: localhost</span>
+                <span class="bg-red-50 text-red-700 px-2 py-0.5 rounded border border-red-200 font-bold text-[11px]">0 High</span>
+                <span class="bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-200 font-bold text-[11px]">0 Med</span>
+                <span class="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200 font-bold text-[11px]">0 Low</span>
             </div>
-            <button onclick="clearChat()" class="md:hidden p-2 text-slate-400 hover:text-slate-200">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            <div class="flex items-center gap-2 border border-sky-200 rounded-full px-2.5 py-0.5 bg-sky-50 text-xs font-mono">
+                <div class="w-2 h-2 rounded-full bg-sky-500 animate-pulse-subtle" id="status-indicator-dot"></div>
+                <span class="text-sky-700 uppercase tracking-wider text-[11px] font-bold" id="status-indicator-text">Online</span>
+            </div>
+            <button title="Branch Info" onclick="toggleModal('branch-modal')" class="hover:bg-slate-100 transition-colors duration-150 p-1.5 rounded-lg flex items-center justify-center btn-active-scale">
+                <span class="material-symbols-outlined text-[18px]">account_tree</span>
             </button>
-        </header>
-
-        <!-- Messages Viewport -->
-        <div id="messages-container" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 max-w-4xl w-full mx-auto">
-
-            <!-- Welcome Card Message -->
-            <div class="flex items-start space-x-3.5">
-                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
-                    Δ
-                </div>
-                <div class="bg-cyber-aiBubble border border-cyber-border rounded-2xl rounded-tl-none p-4 max-w-2xl shadow-sm text-slate-200 text-sm space-y-2">
-                    <p class="font-medium text-emerald-400">Halo Tuan! Saya Delta .</p>
-                    <p class="text-slate-300">Ada yang bisa saya bantu dengan keamanan jaringan, analisis sistem, atau perintah scanning hari ini?</p>
-                </div>
-            </div>
-
+            <button title="Notifications" onclick="toggleModal('notifications-modal')" class="hover:bg-slate-100 transition-colors duration-150 p-1.5 rounded-lg flex items-center justify-center relative btn-active-scale">
+                <span class="material-symbols-outlined text-[18px]">notifications</span>
+                <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span>
+            </button>
+            <button title="Reset Chat / Settings (Ctrl+L)" onclick="toggleModal('settings-modal')" class="hover:bg-slate-100 transition-colors duration-150 p-1.5 rounded-lg flex items-center justify-center btn-active-scale">
+                <span class="material-symbols-outlined text-[18px]">settings</span>
+            </button>
+            <button id="theme-toggle-btn" title="Toggle Theme (Light / Dark / System)" onclick="cycleTheme()" class="hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors duration-150 p-1.5 rounded-lg flex items-center justify-center btn-active-scale">
+                <span class="material-symbols-outlined text-[18px]" id="theme-toggle-icon">light_mode</span>
+            </button>
         </div>
+    </header>
 
-        <!-- Floating Chat Input Area -->
-        <div class="p-4 border-t border-cyber-border/50 bg-cyber-bg/80 backdrop-blur-lg">
-            <form id="chat-form" onsubmit="handleSubmit(event)" class="max-w-4xl mx-auto relative flex items-center">
-                <input
-                    type="text"
-                    id="user-input"
-                    placeholder="Ketik pesan atau perintah Delta (e.g. scan localhost, help)..."
-                    autocomplete="off"
-                    class="w-full bg-cyber-card border border-cyber-border rounded-2xl py-3.5 pl-5 pr-14 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyber-accent focus:ring-1 focus:ring-cyber-accent transition shadow-lg"
-                >
-                <button
-                    type="submit"
-                    class="absolute right-2 p-2 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-cyber-bg hover:opacity-90 transition font-bold shadow-md"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+    <!-- Main Layout Container -->
+    <div class="flex flex-1 overflow-hidden bg-slate-100 dark:bg-[#0F172A]">
+
+        <!-- Left Sidebar (Collapsible ~200px) -->
+        <aside class="bg-white dark:bg-[#1F2937] border-r border-slate-200 dark:border-[#374151] w-[200px] shrink-0 flex flex-col h-full z-40 hidden md:flex select-none">
+            <div class="p-3 border-b border-slate-200 dark:border-[#374151] flex justify-between items-center bg-slate-50 dark:bg-[#111827]">
+                <div class="flex items-center gap-2 truncate">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h2 class="text-xs font-semibold text-slate-800 dark:text-[#F3F4F6] truncate">Delta SOC Ops</h2>
+                </div>
+                <button onclick="toggleModal('branch-modal')" class="text-slate-400 hover:text-emerald-600 dark:hover:text-[#10B981] p-1 rounded" title="Switch Branch">
+                    <span class="material-symbols-outlined text-[14px]">unfold_more</span>
                 </button>
-            </form>
-            <p class="text-[11px] text-center text-slate-500 mt-2">Delta AI Assistant • Cybersecurity testing & analysis tools</p>
-        </div>
-    </main>
+            </div>
+            <nav class="flex-1 overflow-y-auto p-2 flex flex-col gap-1" id="sidebar-nav">
+                <!-- Nav Item Files -->
+                <button onclick="switchNav('files')" id="nav-files" class="nav-btn active-nav w-full text-left flex items-center text-emerald-600 dark:text-[#10B981] bg-emerald-50 dark:bg-[#111827] border-l-2 border-emerald-600 dark:border-[#10B981] rounded px-3 py-2 text-xs font-medium transition-all">
+                    <span class="material-symbols-outlined text-[16px] mr-2">folder</span>
+                    <span>Files</span>
+                </button>
+                <!-- Tasks -->
+                <button onclick="switchNav('tasks')" id="nav-tasks" class="nav-btn w-full text-left flex items-center text-slate-600 dark:text-[#9CA3AF] hover:text-slate-900 dark:hover:text-[#F3F4F6] hover:bg-slate-100 dark:hover:bg-[#111827] rounded px-3 py-2 transition-all border-l-2 border-transparent text-xs font-medium">
+                    <span class="material-symbols-outlined text-[16px] mr-2">assignment</span>
+                    <span>Tasks</span>
+                </button>
+                <!-- History -->
+                <button onclick="switchNav('history')" id="nav-history" class="nav-btn w-full text-left flex items-center text-slate-600 dark:text-[#9CA3AF] hover:text-slate-900 dark:hover:text-[#F3F4F6] hover:bg-slate-100 dark:hover:bg-[#111827] rounded px-3 py-2 transition-all border-l-2 border-transparent text-xs font-medium">
+                    <span class="material-symbols-outlined text-[16px] mr-2">history</span>
+                    <span>History</span>
+                </button>
 
+                <div class="mt-3 px-2 mb-1 flex items-center justify-between">
+                    <h3 class="text-[10px] font-mono tracking-widest text-slate-400 dark:text-[#9CA3AF] uppercase font-semibold">QUICK ACTIONS</h3>
+                </div>
+
+                <button onclick="sendPrompt('scan localhost')" class="w-full text-left flex items-center text-slate-700 dark:text-[#F3F4F6] px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-[#111827] hover:text-emerald-600 dark:hover:text-[#10B981] rounded transition-all text-xs">
+                    <span class="material-symbols-outlined text-[14px] mr-2 text-emerald-600 dark:text-[#10B981]">radar</span>
+                    <span class="truncate font-mono text-[11px]">scan localhost</span>
+                </button>
+                <button onclick="sendPrompt('audit example.com')" class="w-full text-left flex items-center text-slate-700 dark:text-[#F3F4F6] px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-[#111827] hover:text-purple-600 dark:hover:text-[#8B5CF6] rounded transition-all text-xs">
+                    <span class="material-symbols-outlined text-[14px] mr-2 text-purple-600 dark:text-[#8B5CF6]">security</span>
+                    <span class="truncate font-mono text-[11px]">audit example.com</span>
+                </button>
+
+                <div class="mt-3 px-2 mb-1">
+                    <h3 class="text-[10px] font-mono tracking-widest text-slate-400 dark:text-[#9CA3AF] uppercase font-semibold">WORKSPACE</h3>
+                </div>
+
+                <button onclick="switchNav('agents')" id="nav-agents" class="nav-btn w-full text-left flex items-center text-slate-600 dark:text-[#9CA3AF] hover:text-slate-900 dark:hover:text-[#F3F4F6] hover:bg-slate-100 dark:hover:bg-[#111827] rounded px-3 py-2 transition-all border-l-2 border-transparent text-xs">
+                    <span class="material-symbols-outlined text-[16px] mr-2">smart_toy</span>
+                    <span>Agents</span>
+                </button>
+                <button onclick="switchNav('tools')" id="nav-tools" class="nav-btn w-full text-left flex items-center text-slate-600 dark:text-[#9CA3AF] hover:text-slate-900 dark:hover:text-[#F3F4F6] hover:bg-slate-100 dark:hover:bg-[#111827] rounded px-3 py-2 transition-all border-l-2 border-transparent text-xs">
+                    <span class="material-symbols-outlined text-[16px] mr-2">build</span>
+                    <span>Tools</span>
+                </button>
+                <button onclick="toggleModal('settings-modal')" class="nav-btn w-full text-left flex items-center text-slate-600 dark:text-[#9CA3AF] hover:text-slate-900 dark:hover:text-[#F3F4F6] hover:bg-slate-100 dark:hover:bg-[#111827] rounded px-3 py-1.5 transition-all border-l-2 border-transparent text-xs mt-auto">
+                    <span class="material-symbols-outlined text-[16px] mr-2">settings</span>
+                    <span>Settings</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Workspace (Center Panel) -->
+        <main class="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-[#0F172A] relative">
+
+            <!-- Workspace Status Bar Header -->
+            <div class="h-11 border-b border-slate-200 dark:border-[#374151] flex items-center px-4 justify-between shrink-0 bg-white dark:bg-[#1F2937] select-none text-xs">
+                <div class="flex items-center gap-4">
+                    <h1 class="font-semibold text-slate-800 dark:text-[#F3F4F6] font-sans flex items-center gap-2" id="view-title">
+                        AGENT EXECUTION
+                    </h1>
+                    <div class="flex items-center gap-2 bg-slate-100 dark:bg-[#111827] border border-slate-200 dark:border-[#374151] rounded-full px-2.5 py-0.5 text-xs font-mono">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" id="status-indicator-dot"></div>
+                        <span class="text-emerald-700 dark:text-[#10B981] uppercase tracking-wider text-[11px] font-bold" id="status-indicator-text">Online</span>
+                    </div>
+                </div>
+                <div class="font-mono text-xs text-slate-500 dark:text-[#9CA3AF] bg-slate-100 dark:bg-[#111827] px-3 py-1 rounded border border-slate-200 dark:border-[#374151] max-w-md truncate" id="current-task-display" onclick="toggleModal('context-modal')">
+                    Target: localhost · Mode: Autonomous
+                </div>
+            </div>
+
+            <!-- Main Dynamic View Container -->
+            <div id="main-view-container" class="flex-1 overflow-hidden flex flex-col bg-slate-50 dark:bg-slate-950">
+
+                <!-- Execution Canvas View (Default) -->
+                <div id="messages-container" class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+                    <!-- Session Active Container -->
+                </div>
+
+            </div>
+
+            <!-- Command Input (Bottom Area) -->
+            <div class="p-3 border-t border-slate-200 dark:border-[#374151] bg-white dark:bg-[#1F2937] shrink-0">
+                <form id="chat-form" onsubmit="event.preventDefault(); handleSubmit(event)" class="relative flex flex-col bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-[#374151] rounded-[8px] focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/50 transition-all">
+                    <textarea
+                        id="user-input"
+                        class="w-full bg-transparent border-none text-slate-900 dark:text-[#F3F4F6] font-sans text-sm resize-none p-3 h-[60px] focus:outline-none focus:ring-0 placeholder-slate-400 dark:placeholder-[#9CA3AF]"
+                        placeholder="Ask Delta to scan, audit, edit files, or execute commands..."
+                        onkeydown="handleKeyDown(event)"
+                    ></textarea>
+                    <div class="flex justify-between items-center px-3 py-2 border-t border-slate-200 dark:border-[#374151] select-none text-xs font-mono text-slate-500 dark:text-[#9CA3AF]">
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="toggleModal('model-modal')" class="text-slate-600 dark:text-[#9CA3AF] hover:text-slate-900 dark:hover:text-[#F3F4F6] bg-slate-100 dark:bg-[#1F2937] border border-slate-200 dark:border-[#374151] hover:border-emerald-500 px-2.5 py-1 rounded text-[11px] font-mono flex items-center gap-1.5 transition-colors">
+                                <span class="material-symbols-outlined text-[14px]">memory</span>
+                                <span id="active-model-btn-text">Model: Antigravity</span>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button type="submit" class="bg-emerald-600 dark:bg-[#10B981] text-white dark:text-[#111827] hover:bg-emerald-700 dark:hover:bg-[#0D9488] px-4 h-9 rounded font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm">
+                                <span>SEND</span>
+                                <span class="material-symbols-outlined text-[14px]">send</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </main>
+
+        <!-- Right Inspector Panel (~300px, Tabbed) -->
+        <aside class="bg-white dark:bg-[#1F2937] border-l border-slate-200 dark:border-[#374151] w-[300px] shrink-0 flex flex-col h-full z-40 hidden lg:flex select-none">
+            <div class="p-3 border-b border-slate-200 dark:border-[#374151] flex justify-between items-center bg-slate-50 dark:bg-[#111827]">
+                <h2 class="text-xs font-mono tracking-wider text-slate-800 dark:text-[#F3F4F6] font-bold uppercase">INSPECTOR</h2>
+                <button onclick="toggleModal('context-modal')" class="text-slate-400 hover:text-emerald-600 dark:hover:text-[#10B981]">
+                    <span class="material-symbols-outlined text-[16px]">fullscreen</span>
+                </button>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div class="flex border-b border-slate-200 dark:border-[#374151] bg-slate-50 dark:bg-[#111827] text-xs font-mono">
+                <button onclick="switchInspectorTab('context')" id="tab-btn-context" class="flex-1 py-2 text-center text-emerald-600 dark:text-[#10B981] border-b-2 border-emerald-600 dark:border-[#10B981] font-bold">Context</button>
+                <button onclick="switchInspectorTab('activity')" id="tab-btn-activity" class="flex-1 py-2 text-center text-slate-500 dark:text-[#9CA3AF] hover:text-slate-800 dark:hover:text-[#F3F4F6]">Activity</button>
+                <button onclick="switchInspectorTab('logs')" id="tab-btn-logs" class="flex-1 py-2 text-center text-slate-500 dark:text-[#9CA3AF] hover:text-slate-800 dark:hover:text-[#F3F4F6]">Logs</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-3 space-y-3 font-mono text-xs">
+                <!-- Context Tab -->
+                <div id="tab-content-context" class="space-y-3">
+                    <div class="bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-[#374151] rounded-[10px] p-3 space-y-2">
+                        <div class="text-[10px] uppercase text-slate-400 dark:text-[#9CA3AF] font-bold tracking-wider">Engine Context</div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 dark:text-[#9CA3AF]">Protocol</span>
+                            <span class="bg-slate-100 dark:bg-[#1F2937] text-emerald-600 dark:text-[#10B981] px-2 py-0.5 rounded text-[10px] border border-slate-200 dark:border-[#374151] font-bold">9Router</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 dark:text-[#9CA3AF]">Active Agent</span>
+                            <span class="bg-slate-100 dark:bg-[#1F2937] text-purple-600 dark:text-[#8B5CF6] px-2 py-0.5 rounded text-[10px] border border-slate-200 dark:border-[#374151] font-bold" id="inspector-agent-name">Delta Core</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 dark:text-[#9CA3AF]">Git Status</span>
+                            <span class="text-emerald-600 dark:text-[#10B981] font-bold" id="inspector-git-status">clean</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Session Activity Tab -->
+                <div id="tab-content-activity" class="hidden space-y-3">
+                    <div class="bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-[#374151] rounded-[10px] p-3 space-y-2">
+                        <div class="text-[10px] uppercase text-slate-400 dark:text-[#9CA3AF] font-bold tracking-wider">Session Metrics</div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 dark:text-[#9CA3AF]">Tools Used</span>
+                            <span class="text-emerald-600 dark:text-[#10B981] font-bold" id="inspector-tool-count">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500 dark:text-[#9CA3AF]">Files Updated</span>
+                            <span class="text-purple-600 dark:text-[#8B5CF6] font-bold" id="inspector-file-count">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logs Tab -->
+                <div id="tab-content-logs" class="hidden space-y-2">
+                    <div class="bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-[#374151] rounded-[10px] p-3 text-[11px] text-slate-500 dark:text-[#9CA3AF] space-y-1 font-mono max-h-80 overflow-y-auto">
+                        <div>[system] SSE Stream listening on /api/events</div>
+                        <div>[system] Active model initialized</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- MODALS & POPUPS CONTAINER -->
+
+    <!-- Command Palette (⌘K) Modal -->
+    <div id="command-palette" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-start justify-center pt-20 hidden animate-fade-in" onclick="if(event.target===this) toggleModal('command-palette')">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden animate-slide-up">
+            <div class="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 bg-slate-50 dark:bg-slate-950/50">
+                <span class="material-symbols-outlined text-sky-600 dark:text-sky-400 text-[20px]">search</span>
+                <input type="text" id="palette-search-input" onkeyup="filterCommandPalette()" placeholder="Type a command, tool, or prompt..." class="w-full bg-transparent border-none text-slate-800 dark:text-slate-200 font-code-sm text-code-md focus:ring-0 focus:outline-none">
+                <kbd class="text-[10px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300 font-code-sm">ESC</kbd>
+            </div>
+            <div class="max-h-80 overflow-y-auto p-2 space-y-1 font-code-sm text-code-sm" id="palette-options">
+                <div class="px-2 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Quick Commands</div>
+                <button onclick="runPaletteCmd('scan localhost')" class="w-full text-left p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between text-slate-800 dark:text-slate-200 group">
+                    <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px] text-sky-600 dark:text-sky-400">radar</span> scan localhost</span>
+                    <span class="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100">Run</span>
+                </button>
+                <button onclick="runPaletteCmd('audit example.com')" class="w-full text-left p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between text-slate-800 dark:text-slate-200 group">
+                    <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px] text-amber-600 dark:text-amber-400">security</span> audit example.com</span>
+                    <span class="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100">Run</span>
+                </button>
+                <button onclick="runPaletteCmd('explain SQL injection')" class="w-full text-left p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between text-slate-800 dark:text-slate-200 group">
+                    <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px] text-sky-600 dark:text-sky-400">menu_book</span> explain SQL injection</span>
+                    <span class="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100">Run</span>
+                </button>
+                <button onclick="runPaletteCmd('password MySecureP@ss123')" class="w-full text-left p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between text-slate-800 dark:text-slate-200 group">
+                    <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px] text-slate-600 dark:text-slate-400">key</span> password check</span>
+                    <span class="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100">Run</span>
+                </button>
+                <div class="px-2 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-2">Actions</div>
+                <button onclick="clearChat(); toggleModal('command-palette');" class="w-full text-left p-2 rounded hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-between text-red-600 dark:text-red-400 group">
+                    <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px] text-red-600 dark:text-red-400">restart_alt</span> Reset Chat Session (Ctrl+L)</span>
+                    <span class="text-[10px] text-red-400 opacity-0 group-hover:opacity-100">Exec</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model Selection Modal -->
+    <div id="model-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in" onclick="if(event.target===this) toggleModal('model-modal')">
+        <div class="bg-white border border-slate-200 rounded-xl w-full max-w-md shadow-2xl p-5 animate-slide-up space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-headline-sm text-headline-sm text-sky-700 flex items-center gap-2 font-bold">
+                    <span class="material-symbols-outlined text-[20px]">memory</span> Select LLM Model
+                </h3>
+                <button onclick="toggleModal('model-modal')" class="text-slate-400 hover:text-slate-700">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            <div class="space-y-2 font-code-sm text-code-sm">
+                <div onclick="selectModel('AntigravityCombo')" class="model-option-card border border-sky-500 bg-sky-50 p-3 rounded-lg cursor-pointer hover:border-sky-600 transition-all flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-sky-900">AntigravityCombo (9Router)</div>
+                        <div class="text-[11px] text-slate-500">High-performance multi-provider routing (Default)</div>
+                    </div>
+                    <span class="material-symbols-outlined text-sky-600 text-[18px]">check_circle</span>
+                </div>
+                <div onclick="selectModel('KiloCombo')" class="model-option-card border border-slate-200 bg-slate-50 p-3 rounded-lg cursor-pointer hover:border-sky-500 transition-all flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-slate-800">KiloCombo (9Router)</div>
+                        <div class="text-[11px] text-slate-500">Advanced coding capabilities</div>
+                    </div>
+                </div>
+                <div onclick="selectModel('DeepseekCombo')" class="model-option-card border border-slate-200 bg-slate-50 p-3 rounded-lg cursor-pointer hover:border-sky-500 transition-all flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-slate-800">DeepseekCombo</div>
+                        <div class="text-[11px] text-slate-500">Ultra-fast response & reasoning</div>
+                    </div>
+                </div>
+                <div onclick="selectModel('gemma4:12b')" class="model-option-card border border-slate-200 bg-slate-50 p-3 rounded-lg cursor-pointer hover:border-sky-500 transition-all flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-slate-800">Gemma 4 12B (Ollama Local)</div>
+                        <div class="text-[11px] text-slate-500">Free local offline model</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Modal -->
+    <div id="context-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in" onclick="if(event.target===this) toggleModal('context-modal')">
+        <div class="bg-white border border-slate-200 rounded-xl w-full max-w-lg shadow-2xl p-5 animate-slide-up space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-headline-sm text-headline-sm text-sky-700 flex items-center gap-2 font-bold">
+                    <span class="material-symbols-outlined text-[20px]">add_circle</span> Active Workspace Context
+                </h3>
+                <button onclick="toggleModal('context-modal')" class="text-slate-400 hover:text-slate-700">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            <div class="space-y-3 font-code-sm text-code-sm text-slate-600">
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+                    <div class="font-bold text-slate-800">Git Working Directory</div>
+                    <div class="text-sky-700 font-code-sm text-[11px]">D:\Project\Delta-CLI (branch: main)</div>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+                    <div class="font-bold text-slate-800">Available Tools</div>
+                    <div class="text-[11px]">scan, audit, explain, password, jwt, encode, decode, hash, cve, brute, geoip, file system (read/write/mkdir)</div>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+                    <div class="font-bold text-slate-800">Memory Index</div>
+                    <div class="text-[11px] text-slate-500">Codebase Graph Memory loaded & synchronized</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attach File Modal -->
+    <div id="attach-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in" onclick="if(event.target===this) toggleModal('attach-modal')">
+        <div class="bg-white border border-slate-200 rounded-xl w-full max-w-md shadow-2xl p-5 animate-slide-up space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-headline-sm text-headline-sm text-sky-700 flex items-center gap-2 font-bold">
+                    <span class="material-symbols-outlined text-[20px]">attach_file</span> Quick Context Attachment
+                </h3>
+                <button onclick="toggleModal('attach-modal')" class="text-slate-400 hover:text-slate-700">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            <div class="space-y-2 font-code-sm text-code-sm">
+                <div onclick="attachFilePath('delta/ai/llm.py')" class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-sky-500 transition-all flex items-center justify-between">
+                    <span class="flex items-center gap-2 text-slate-800"><span class="material-symbols-outlined text-[16px] text-sky-600">description</span> delta/ai/llm.py</span>
+                    <span class="text-[10px] text-sky-700 font-bold">Attach</span>
+                </div>
+                <div onclick="attachFilePath('delta/web/server.py')" class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-sky-500 transition-all flex items-center justify-between">
+                    <span class="flex items-center gap-2 text-slate-800"><span class="material-symbols-outlined text-[16px] text-sky-600">description</span> delta/web/server.py</span>
+                    <span class="text-[10px] text-sky-700 font-bold">Attach</span>
+                </div>
+                <div onclick="attachFilePath('delta/web/index.html')" class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:border-sky-500 transition-all flex items-center justify-between">
+                    <span class="flex items-center gap-2 text-slate-800"><span class="material-symbols-outlined text-[16px] text-sky-600">description</span> delta/web/index.html</span>
+                    <span class="text-[10px] text-sky-700 font-bold">Attach</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Branch Modal -->
+    <div id="branch-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in" onclick="if(event.target===this) toggleModal('branch-modal')">
+        <div class="bg-white border border-slate-200 rounded-xl w-full max-w-md shadow-2xl p-5 animate-slide-up space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-headline-sm text-headline-sm text-sky-700 flex items-center gap-2 font-bold">
+                    <span class="material-symbols-outlined text-[20px]">account_tree</span> Git Branch Info
+                </h3>
+                <button onclick="toggleModal('branch-modal')" class="text-slate-400 hover:text-slate-700">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            <div class="font-code-sm text-code-sm space-y-2">
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex justify-between items-center text-slate-800">
+                    <span>Current Branch</span>
+                    <span class="text-sky-700 font-bold">main</span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex justify-between items-center text-slate-800">
+                    <span>Repository Status</span>
+                    <span class="text-sky-700 font-bold">clean / up-to-date</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications Modal -->
+    <div id="notifications-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in" onclick="if(event.target===this) toggleModal('notifications-modal')">
+        <div class="bg-white border border-slate-200 rounded-xl w-full max-w-md shadow-2xl p-5 animate-slide-up space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-headline-sm text-headline-sm text-sky-700 flex items-center gap-2 font-bold">
+                    <span class="material-symbols-outlined text-[20px]">notifications</span> System Notifications
+                </h3>
+                <button onclick="toggleModal('notifications-modal')" class="text-slate-400 hover:text-slate-700">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            <div class="font-code-sm text-code-sm space-y-2">
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1">
+                    <div class="font-bold text-sky-700">Delta Web SSE Online</div>
+                    <div class="text-[11px] text-slate-500">Real-time agentic execution listener active on /api/events</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in" onclick="if(event.target===this) toggleModal('settings-modal')">
+        <div class="bg-white border border-slate-200 rounded-xl w-full max-w-md shadow-2xl p-5 animate-slide-up space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-headline-sm text-headline-sm text-sky-700 flex items-center gap-2 font-bold">
+                    <span class="material-symbols-outlined text-[20px]">settings</span> Settings & Controls
+                </h3>
+                <button onclick="toggleModal('settings-modal')" class="text-slate-400 hover:text-slate-700">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            <div class="space-y-3 font-code-sm text-code-sm">
+                <button onclick="clearChat(); toggleModal('settings-modal');" class="w-full bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 p-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors">
+                    <span class="material-symbols-outlined text-[18px]">restart_alt</span> Reset Chat Session (Ctrl+L)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client Script -->
     <script>
         const container = document.getElementById('messages-container');
         const input = document.getElementById('user-input');
+        const viewContainer = document.getElementById('main-view-container');
+        let executedCommandsCount = 0;
+        let toolCount = 0;
+        let fileCount = 0;
+        let currentNavView = 'execution';
+
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return String(str || '');
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function scrollToBottom() {
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit(e);
+            }
+        }
+
+        function toggleModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                if (id === 'command-palette') {
+                    setTimeout(() => document.getElementById('palette-search-input')?.focus(), 50);
+                }
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function selectModel(modelName) {
+            document.getElementById('inspector-model-name').innerText = modelName;
+            document.getElementById('active-model-btn-text').innerText = `MODEL: ${modelName.split(':')[0]}`;
+            toggleModal('model-modal');
+            appendAiMessage(`[System] Active model changed to ${modelName}`);
+        }
+
+        function attachFilePath(path) {
+            input.value += (input.value ? ' ' : '') + path;
+            toggleModal('attach-modal');
+            input.focus();
+        }
+
+        function runPaletteCmd(cmd) {
+            toggleModal('command-palette');
+            sendPrompt(cmd);
+        }
+
+        function filterCommandPalette() {
+            const val = document.getElementById('palette-search-input').value.toLowerCase();
+            const btns = document.querySelectorAll('#palette-options button');
+            btns.forEach(b => {
+                const txt = b.innerText.toLowerCase();
+                b.style.display = txt.includes(val) ? 'flex' : 'none';
+            });
+        }
+
+        // Sidebar Navigation View Switcher
+        function switchInspectorTab(tabName) {
+            ['context', 'activity', 'logs'].forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const content = document.getElementById(`tab-content-${t}`);
+                if (btn && content) {
+                    if (t === tabName) {
+                        btn.className = 'flex-1 py-2 text-center text-[#10B981] border-b-2 border-[#10B981] font-bold';
+                        content.classList.remove('hidden');
+                    } else {
+                        btn.className = 'flex-1 py-2 text-center text-[#9CA3AF] hover:text-[#F3F4F6]';
+                        content.classList.add('hidden');
+                    }
+                }
+            });
+        }
+            currentNavView = viewName;
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = 'nav-btn w-full text-left flex items-center text-slate-600 dark:text-slate-400 px-3 py-2 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 rounded-xl transition-all duration-200 border-l-2 border-transparent text-xs hover:shadow-sm btn-active-scale group';
+            });
+
+            const activeBtn = document.getElementById(`nav-${viewName}`);
+            if (activeBtn) {
+                activeBtn.className = 'nav-btn active-nav w-full text-left flex items-center text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border-l-2 border-sky-600 rounded-xl px-3 py-2 text-xs transition-all duration-200 shadow-sm btn-active-scale font-medium group';
+            }
+
+            const titleMap = {
+                'files': 'FILES EXPLORER',
+                'tasks': 'TASKS BOARD',
+                'history': 'EXECUTION HISTORY',
+                'agents': 'ACTIVE AGENTS',
+                'tools': 'TOOLS REGISTRY',
+                'mcp': 'MCP SERVER KNOWLEDGE GRAPH'
+            };
+
+            document.getElementById('view-title').innerText = titleMap[viewName] || 'AGENT EXECUTION';
+
+            if (viewName === 'files') {
+                renderFilesView();
+            } else if (viewName === 'tasks') {
+                renderTasksView();
+            } else if (viewName === 'history') {
+                renderHistoryView();
+            } else if (viewName === 'agents') {
+                renderAgentsView();
+            } else if (viewName === 'tools') {
+                renderToolsView();
+            } else if (viewName === 'mcp') {
+                renderMcpView();
+            }
+    
+        function restoreExecutionCanvas() {
+            viewContainer.innerHTML = `<div id="messages-container" class="flex-1 overflow-y-auto p-space-lg flex flex-col gap-5"></div>`;
+            document.getElementById('messages-container').appendChild(container);
+            document.getElementById('view-title').innerText = 'AGENT EXECUTION';
+        }
+
+        function renderFilesView() {
+            viewContainer.innerHTML = `
+                <div class="p-space-lg flex-1 overflow-y-auto space-y-4 animate-fade-in font-code-sm text-code-sm bg-slate-50 dark:bg-slate-950">
+                    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                        <span class="font-bold text-sky-700 dark:text-sky-400 uppercase">Project Directory (D:\\Project\\Delta-CLI)</span>
+                        <button onclick="restoreExecutionCanvas()" class="text-sky-600 dark:text-sky-400 text-[11px] hover:underline font-bold">Back to Canvas</button>
+                    </div>
+                    <div class="space-y-1">
+                        <div onclick="sendPrompt('cat delta/ai/llm.py')" class="p-2 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer flex justify-between items-center shadow-sm">
+                            <span class="flex items-center gap-2 text-slate-800 dark:text-slate-200"><span class="material-symbols-outlined text-[16px] text-sky-600 dark:text-sky-400">description</span> delta/ai/llm.py</span>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">View Code</span>
+                        </div>
+                        <div onclick="sendPrompt('cat delta/web/server.py')" class="p-2 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer flex justify-between items-center shadow-sm">
+                            <span class="flex items-center gap-2 text-slate-800 dark:text-slate-200"><span class="material-symbols-outlined text-[16px] text-sky-600 dark:text-sky-400">description</span> delta/web/server.py</span>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">View Code</span>
+                        </div>
+                        <div onclick="sendPrompt('cat delta/web/index.html')" class="p-2 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer flex justify-between items-center shadow-sm">
+                            <span class="flex items-center gap-2 text-slate-800 dark:text-slate-200"><span class="material-symbols-outlined text-[16px] text-sky-600 dark:text-sky-400">description</span> delta/web/index.html</span>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">View Code</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTasksView() {
+            viewContainer.innerHTML = `
+                <div class="p-space-lg flex-1 overflow-y-auto space-y-4 animate-fade-in font-code-sm text-code-sm bg-slate-50 dark:bg-slate-950">
+                    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                        <span class="font-bold text-sky-700 dark:text-sky-400 uppercase">Active Tasks Plan</span>
+                        <button onclick="restoreExecutionCanvas()" class="text-sky-600 dark:text-sky-400 text-[11px] hover:underline font-bold">Back to Canvas</button>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-xl space-y-2 shadow-sm">
+                        <div class="flex items-center gap-2 text-sky-700 dark:text-sky-400 font-bold"><span class="material-symbols-outlined text-[16px] text-emerald-600 dark:text-emerald-400">check_circle</span> Delta Engine Web Service Online</div>
+                        <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400"><span class="material-symbols-outlined text-[16px]">radio_button_unchecked</span> Cyber Security Assessment Agents Listening</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderHistoryView() {
+            viewContainer.innerHTML = `
+                <div class="p-space-lg flex-1 overflow-y-auto space-y-4 animate-fade-in font-code-sm text-code-sm bg-slate-50 dark:bg-slate-950">
+                    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                        <span class="font-bold text-sky-700 dark:text-sky-400 uppercase">Session History</span>
+                        <button onclick="restoreExecutionCanvas()" class="text-sky-600 dark:text-sky-400 text-[11px] hover:underline font-bold">Back to Canvas</button>
+                    </div>
+                    <div class="text-slate-600 dark:text-slate-400">Total ${executedCommandsCount} commands executed in current session.</div>
+                </div>
+            `;
+        }
+
+        function renderAgentsView() {
+            viewContainer.innerHTML = `
+                <div class="p-space-lg flex-1 overflow-y-auto space-y-4 animate-fade-in font-code-sm text-code-sm bg-slate-50 dark:bg-slate-950">
+                    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                        <span class="font-bold text-sky-700 dark:text-sky-400 uppercase">Available AI Agents</span>
+                        <button onclick="restoreExecutionCanvas()" class="text-sky-600 dark:text-sky-400 text-[11px] hover:underline font-bold">Back to Canvas</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800 p-3 rounded-xl space-y-1 shadow-sm">
+                            <div class="font-bold text-sky-700 dark:text-sky-400 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">smart_toy</span> Delta Core Agent (Active)</div>
+                            <div class="text-[11px] text-slate-600 dark:text-slate-400">General Security Assessment & Cyber CLI orchestrator.</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderToolsView() {
+            viewContainer.innerHTML = `
+                <div class="p-space-lg flex-1 overflow-y-auto space-y-4 animate-fade-in font-code-sm text-code-sm bg-slate-50 dark:bg-slate-950">
+                    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                        <span class="font-bold text-sky-700 dark:text-sky-400 uppercase">Security Tools Registry</span>
+                        <button onclick="restoreExecutionCanvas()" class="text-sky-600 dark:text-sky-400 text-[11px] hover:underline font-bold">Back to Canvas</button>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        <button onclick="sendPrompt('scan localhost'); restoreExecutionCanvas();" class="p-2.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 text-left space-y-1 shadow-sm">
+                            <div class="font-bold text-sky-700 dark:text-sky-400">scan</div>
+                            <div class="text-[10px] text-slate-500 dark:text-slate-400">Port scanner</div>
+                        </button>
+                        <button onclick="sendPrompt('audit localhost'); restoreExecutionCanvas();" class="p-2.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 text-left space-y-1 shadow-sm">
+                            <div class="font-bold text-amber-700 dark:text-amber-400">audit</div>
+                            <div class="text-[10px] text-slate-500 dark:text-slate-400">Full security audit</div>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMcpView() {
+            viewContainer.innerHTML = `
+                <div class="p-space-lg flex-1 overflow-y-auto space-y-4 animate-fade-in font-code-sm text-code-sm bg-slate-50 dark:bg-slate-950">
+                    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                        <span class="font-bold text-sky-700 dark:text-sky-400 uppercase">MCP Server Graph</span>
+                        <button onclick="restoreExecutionCanvas()" class="text-sky-600 dark:text-sky-400 text-[11px] hover:underline font-bold">Back to Canvas</button>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl space-y-2 shadow-sm">
+                        <div class="font-bold text-sky-700 dark:text-sky-400">codebase-memory-mcp</div>
+                        <div class="text-[11px] text-slate-600 dark:text-slate-400">Knowledge graph indexed & ready.</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Health Check & Real Connection Status
+        async function checkBackendHealth() {
+            try {
+                const res = await fetch('/api/health');
+                if (res.ok) {
+                    const data = await res.json();
+                    updateHeaderStatus('Online', '');
+                    if (data.working_directory) {
+                        const targetBadge = document.getElementById('header-target-badge');
+                        if (targetBadge) targetBadge.innerText = `Workspace: ${data.working_directory}`;
+                    }
+                } else {
+                    updateHeaderStatus('Offline', '');
+                }
+            } catch (err) {
+                updateHeaderStatus('Offline', '');
+            }
+        }
+        setInterval(checkBackendHealth, 10000);
+        document.addEventListener('DOMContentLoaded', checkBackendHealth);
+
+        // SSE Event Stream Integration for Agentic UI
+        let eventSource = null;
+        const processedEventIds = new Set();
+
+        function initEventStream() {
+            if (eventSource) return;
+            eventSource = new EventSource('/api/events');
+
+            eventSource.onopen = () => {
+                checkBackendHealth();
+            };
+
+            eventSource.onerror = () => {
+                updateHeaderStatus('Offline', '');
+            };
+
+            eventSource.onmessage = (e) => {
+                try {
+                    const event = JSON.parse(e.data);
+                    if (event.type === 'ping') return;
+                    if (event.type === 'workspace_info' && event.working_directory) {
+                        const targetBadge = document.getElementById('header-target-badge');
+                        if (targetBadge) targetBadge.innerText = `Workspace: ${event.working_directory}`;
+                        return;
+                    }
+                    if (event.event_id) {
+                        if (processedEventIds.has(event.event_id)) return;
+                        processedEventIds.add(event.event_id);
+                        if (processedEventIds.size > 500) {
+                            const firstKey = processedEventIds.values().next().value;
+                            processedEventIds.delete(firstKey);
+                        }
+                    }
+                    handleAgentEvent(event);
+                } catch (err) {}
+            };
+        }
+        initEventStream();
+
+        // Tool Activity Mapper - maps tool names to UI labels & icons
+        const TOOL_MAPPER = {
+            'list_directory': { label: 'Read / Directory', icon: 'folder_open' },
+            'read_file': { label: 'Read', icon: 'description' },
+            'write_file': { label: 'Write', icon: 'edit_note' },
+            'edit_file': { label: 'Edit', icon: 'edit' },
+            'smart_edit': { label: 'Edit', icon: 'edit' },
+            'find_files': { label: 'Search', icon: 'search' },
+            'grep': { label: 'Grep', icon: 'manage_search' },
+            'extract_symbols': { label: 'Analyze', icon: 'code' },
+            'codebase_tree': { label: 'Tree', icon: 'account_tree' },
+            'git_status': { label: 'Git Status', icon: 'commit' },
+            'git_diff': { label: 'Git Diff', icon: 'difference' },
+            'git_log': { label: 'Git Log', icon: 'history' },
+            'git_commit': { label: 'Git Commit', icon: 'check_circle' },
+        };
+
+        function getToolMeta(name) {
+            return TOOL_MAPPER[name] || { label: name || 'Tool', icon: 'terminal' };
+        }
+
+        // Active execution tracking
+        let activeExecutionId = null;
+        let activeTimelineContainer = null;
+        let toolNodesMap = new Map(); // tool_id/event_id -> DOM element
+
+        function getOrCreateExecutionTimeline(execId) {
+            if (activeExecutionId === execId && activeTimelineContainer) {
+                return activeTimelineContainer;
+            }
+
+            activeExecutionId = execId;
+            toolNodesMap.clear();
+
+            const timelineId = `timeline-${execId || 'current'}`;
+            let timelineEl = document.getElementById(timelineId);
+            if (!timelineEl) {
+                const html = `
+                    <div id="${timelineId}" class="bg-white border border-slate-200 shadow-sm rounded-xl p-4 text-code-sm font-code-sm mb-3 animate-slide-up space-y-2 select-none">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2 font-bold text-sky-700">
+                            <span class="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider">
+                                <span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span> Δ AGENT EXECUTION
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-normal hover:underline cursor-pointer" onclick="this.parentElement.nextElementSibling.classList.toggle('hidden')">Toggle Log</span>
+                        </div>
+                        <div class="timeline-nodes space-y-2 text-slate-700 pt-1"></div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+                timelineEl = document.getElementById(timelineId);
+            }
+            activeTimelineContainer = timelineEl.querySelector('.timeline-nodes');
+            return activeTimelineContainer;
+        }
+
+        function handleAgentEvent(event) {
+            const type = event.type;
+            const execId = event.execution_id || event.task_id;
+
+            if (type === 'agent_start' || type === 'agent_status') {
+                updateHeaderStatus('EXECUTING', 'animate-pulse-subtle');
+                const nodesContainer = getOrCreateExecutionTimeline(execId);
+                const stepHtml = `<div class="flex items-center gap-2 text-[12px] text-sky-700 font-medium animate-fade-in"><span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span> ${escapeHtml(event.status_text || 'Agent started execution...')}</div>`;
+                nodesContainer.insertAdjacentHTML('beforeend', stepHtml);
+                scrollToBottom();
+            } else if (type === 'agent_thinking') {
+                updateHeaderStatus('THINKING', 'animate-pulse-subtle');
+                const nodesContainer = getOrCreateExecutionTimeline(execId);
+                const stepHtml = `<div class="flex items-center gap-2 text-[12px] text-slate-500 font-mono italic animate-fade-in"><span class="material-symbols-outlined text-[14px] text-amber-500 animate-spin">sync</span> ${escapeHtml(event.status_text || 'Thinking...')}</div>`;
+                nodesContainer.insertAdjacentHTML('beforeend', stepHtml);
+                scrollToBottom();
+            } else if (type === 'agent_complete') {
+                updateHeaderStatus('COMPLETED', '');
+                const nodesContainer = getOrCreateExecutionTimeline(execId);
+                const stepHtml = `<div class="flex items-center gap-2 text-[12px] text-emerald-700 font-bold animate-fade-in pt-1 border-t border-slate-100"><span class="material-symbols-outlined text-[16px] text-emerald-600">check_circle</span> Execution completed</div>`;
+                nodesContainer.insertAdjacentHTML('beforeend', stepHtml);
+                scrollToBottom();
+            } else if (type === 'tool_start') {
+                updateHeaderStatus('EXECUTING', 'animate-pulse-subtle');
+                const nodesContainer = getOrCreateExecutionTimeline(execId);
+                const meta = getToolMeta(event.tool);
+                const toolKey = event.event_id || `${event.tool}_${Date.now()}`;
+                const targetText = event.input?.path || event.input?.pattern || event.input?.query || (event.input ? JSON.stringify(event.input) : '');
+
+                const nodeHtml = `
+                    <div id="node-${toolKey}" class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-mono space-y-1 animate-slide-up">
+                        <div class="flex items-center justify-between font-semibold text-slate-800">
+                            <span class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[16px] text-sky-600">${meta.icon}</span>
+                                <span>${meta.label}</span>
+                            </span>
+                            <span class="text-[10px] text-sky-600 flex items-center gap-1 font-normal"><span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span> Running</span>
+                        </div>
+                        ${targetText ? `<div class="text-[11px] text-slate-500 truncate pl-6 font-mono">${escapeHtml(strVal(targetText))}</div>` : ''}
+                    </div>
+                `;
+                nodesContainer.insertAdjacentHTML('beforeend', nodeHtml);
+                toolNodesMap.set(toolKey, event);
+                scrollToBottom();
+            } else if (type === 'tool_result') {
+                toolCount++;
+                const toolCountEl = document.getElementById('inspector-tool-count');
+                if (toolCountEl) toolCountEl.innerText = toolCount;
+                const meta = getToolMeta(event.tool);
+                const dur = (event.duration_ms || 0).toFixed(0);
+                const toolKey = event.event_id;
+                let existingNode = toolKey ? document.getElementById(`node-${toolKey}`) : null;
+
+                const statusSymbol = event.success ? '<span class="material-symbols-outlined text-[14px] text-emerald-600">check</span>' : '<span class="material-symbols-outlined text-[14px] text-red-600">close</span>';
+                const statusColor = event.success ? 'text-slate-700' : 'text-red-600';
+                const outStr = event.output ? escapeHtml(strVal(event.output)) : (event.error ? escapeHtml(strVal(event.error)) : '');
+
+                if (existingNode) {
+                    existingNode.className = `bg-slate-50 border ${event.success ? 'border-slate-200' : 'border-red-200'} rounded-lg p-2.5 text-xs font-mono space-y-1 animate-fade-in`;
+                    existingNode.innerHTML = `
+                        <div class="flex items-center justify-between font-semibold ${statusColor}">
+                            <span class="flex items-center gap-2">
+                                ${statusSymbol}
+                                <span>${meta.label}</span>
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-normal">${dur}ms</span>
+                        </div>
+                        ${outStr ? `
+                            <div class="pl-6 pt-1">
+                                <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="text-[10px] text-sky-600 hover:underline flex items-center gap-1 font-sans font-medium">
+                                    <span>Output details</span>
+                                    <span class="material-symbols-outlined text-[12px]">expand_more</span>
+                                </button>
+                                <div class="hidden mt-1 p-2 bg-white rounded border border-slate-200 text-[11px] text-slate-600 max-h-40 overflow-y-auto whitespace-pre-wrap font-mono">${outStr}</div>
+                            </div>
+                        ` : ''}
+                    `;
+                } else {
+                    const nodesContainer = getOrCreateExecutionTimeline(execId);
+                    const nodeHtml = `
+                        <div class="bg-slate-50 border ${event.success ? 'border-slate-200' : 'border-red-200'} rounded-lg p-2.5 text-xs font-mono space-y-1 animate-slide-up">
+                            <div class="flex items-center justify-between font-semibold ${statusColor}">
+                                <span class="flex items-center gap-2">
+                                    ${statusSymbol}
+                                    <span>${meta.label}</span>
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-normal">${dur}ms</span>
+                            </div>
+                            ${outStr ? `
+                                <div class="pl-6 pt-1">
+                                    <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="text-[10px] text-sky-600 hover:underline flex items-center gap-1 font-sans font-medium">
+                                        <span>Output details</span>
+                                        <span class="material-symbols-outlined text-[12px]">expand_more</span>
+                                    </button>
+                                    <div class="hidden mt-1 p-2 bg-white rounded border border-slate-200 text-[11px] text-slate-600 max-h-40 overflow-y-auto whitespace-pre-wrap font-mono">${outStr}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    nodesContainer.insertAdjacentHTML('beforeend', nodeHtml);
+                }
+                scrollToBottom();
+            } else if (type === 'file_update') {
+                fileCount++;
+                const fileCountEl = document.getElementById('inspector-file-count');
+                if (fileCountEl) fileCountEl.innerText = fileCount;
+                renderFileUpdateCard(event);
+            }
+        }
+
+        function updateHeaderStatus(text, animationClass) {
+            const dot = document.getElementById('status-indicator-dot');
+            const txt = document.getElementById('status-indicator-text');
+            if (txt) txt.innerText = text;
+            if (dot) dot.className = `w-2 h-2 rounded-full bg-primary ${animationClass}`;
+        }
+
+        function getOrCreateTimeline() {
+            let timeline = document.getElementById('agent-activity-timeline');
+            if (!timeline) {
+                const html = `
+                    <div id="agent-activity-timeline" class="bg-white border border-slate-200 shadow-sm rounded-xl p-3 text-code-sm font-code-sm mb-2 animate-slide-up space-y-2 select-none">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-1 font-bold text-sky-700">
+                            <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px]">smart_toy</span> AGENT ACTIVITY</span>
+                            <span class="text-[10px] text-slate-400 font-normal hover:underline cursor-pointer" onclick="this.parentElement.nextElementSibling.classList.toggle('hidden')">Toggle Timeline</span>
+                        </div>
+                        <div class="timeline-steps space-y-1 text-slate-600 pl-1"></div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+                timeline = document.getElementById('agent-activity-timeline');
+            }
+            return timeline.querySelector('.timeline-steps');
+        }
+
+        function addTimelineStep(state, text) {
+            const stepsContainer = getOrCreateTimeline();
+            let icon = '<span class="material-symbols-outlined text-[13px] text-sky-600 align-middle mr-1">arrow_forward</span>';
+            let color = 'text-sky-700';
+            if (state === 'done') {
+                icon = '<span class="material-symbols-outlined text-[13px] text-emerald-600 align-middle mr-1">check</span>';
+                color = 'text-slate-600';
+            } else if (state === 'error') {
+                icon = '<span class="material-symbols-outlined text-[13px] text-red-600 align-middle mr-1">close</span>';
+                color = 'text-red-600';
+            }
+            const stepHtml = `<div class="text-[11px] ${color} animate-fade-in">${icon} ${text}</div>`;
+            stepsContainer.insertAdjacentHTML('beforeend', stepHtml);
+            scrollToBottom();
+        }
+
+        function renderAgentStatusCard(event) {
+            const existing = document.getElementById('agent-status-card');
+            const type = event.type;
+            const statusText = escapeHtml(event.status_text || (type === 'agent_complete' ? 'Agent completed' : 'Processing request...'));
+
+            let badgeHtml = '<span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse-subtle"></span> AGENTIC EXECUTION';
+            let streamLabel = 'LIVE STREAM';
+            let badgeColor = 'text-sky-700';
+            let statusIcon = 'smart_toy';
+            let cardBorder = 'border-slate-200';
+
+            if (type === 'agent_complete') {
+                badgeHtml = '✔ AGENTIC EXECUTION';
+                streamLabel = 'COMPLETED';
+                badgeColor = 'text-emerald-700';
+                statusIcon = 'check_circle';
+                cardBorder = 'border-emerald-300';
+                document.getElementById('status-indicator-text').innerText = 'Idle';
+            } else if (event.status === 'failed' || type === 'error') {
+                badgeHtml = '✘ AGENTIC EXECUTION';
+                streamLabel = 'FAILED';
+                badgeColor = 'text-red-600';
+                statusIcon = 'error';
+                cardBorder = 'border-red-300';
+                document.getElementById('status-indicator-text').innerText = 'Error';
+            } else {
+                document.getElementById('status-indicator-text').innerText = 'Running';
+            }
+
+            if (existing) {
+                existing.className = `bg-white border ${cardBorder} shadow-sm rounded-xl p-3 text-code-sm font-code-sm mb-3 animate-fade-in`;
+                existing.querySelector('.badge-container').innerHTML = `
+                    <span class="flex items-center gap-2 ${badgeColor} font-bold">
+                        ${badgeHtml}
+                    </span>
+                    <span class="text-[10px] text-slate-400 font-bold">${streamLabel}</span>
+                `;
+                existing.querySelector('.status-msg').innerHTML = `<span class="material-symbols-outlined text-[14px] align-middle mr-1">${statusIcon}</span> ${statusText}`;
+            } else {
+                const html = `
+                    <div id="agent-status-card" class="bg-white border ${cardBorder} shadow-sm rounded-xl p-3 text-code-sm font-code-sm mb-3 animate-slide-up">
+                        <div class="badge-container flex items-center justify-between font-bold mb-1">
+                            <span class="flex items-center gap-2 ${badgeColor}">
+                                ${badgeHtml}
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-bold">${streamLabel}</span>
+                        </div>
+                        <div class="status-msg text-slate-800"><span class="material-symbols-outlined text-[14px] align-middle mr-1">${statusIcon}</span> ${statusText}</div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+                scrollToBottom();
+            }
+        }
+
+        function renderTaskListCard(event) {
+            let card = document.getElementById('agent-task-list');
+            if (!card) {
+                const html = `
+                    <div id="agent-task-list" class="bg-white border border-slate-200 shadow-sm rounded-xl p-4 text-code-sm font-code-sm space-y-2 mb-3 animate-slide-up">
+                        <div class="text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-100 pb-1">Tasks Plan</div>
+                        <div class="task-items space-y-1.5"></div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+                card = document.getElementById('agent-task-list');
+            }
+
+            const itemsContainer = card.querySelector('.task-items');
+            if (event.tasks) {
+                itemsContainer.innerHTML = event.tasks.map(t => {
+                    let symbol = '<span class="material-symbols-outlined text-[14px] text-slate-400">radio_button_unchecked</span>';
+                    if (t.status === 'running') symbol = '<span class="material-symbols-outlined text-[14px] text-sky-600 animate-pulse">arrow_forward</span>';
+                    else if (t.status === 'completed') symbol = '<span class="material-symbols-outlined text-[14px] text-emerald-600">check</span>';
+                    else if (t.status === 'failed') symbol = '<span class="material-symbols-outlined text-[14px] text-red-600">close</span>';
+
+                    return `<div class="flex items-center space-x-2 text-slate-800">${symbol} <span>${escapeHtml(t.title)}</span></div>`;
+                }).join('');
+            }
+            scrollToBottom();
+        }
+
+        function renderFileUpdateCard(event) {
+            const path = escapeHtml(event.path || 'file');
+            const added = event.added_lines || 0;
+            const removed = event.removed_lines || 0;
+
+            let diffHtml = '';
+            if (event.diff) {
+                const lines = event.diff.split('\n');
+                let currLine = event.start_line || 1;
+                diffHtml = lines.map(line => {
+                    if (line.startsWith('@@') || line.startsWith('---') || line.startsWith('+++')) return '';
+                    if (line.startsWith('+')) {
+                        return `<div class="bg-emerald-50 text-emerald-800 font-code-sm text-[11px] px-2 py-0.5"><span class="inline-block w-8 text-slate-400 select-none">${currLine++}</span> + ${escapeHtml(line.slice(1))}</div>`;
+                    } else if (line.startsWith('-')) {
+                        return `<div class="bg-red-50 text-red-800 font-code-sm text-[11px] px-2 py-0.5"><span class="inline-block w-8 text-slate-400 select-none">${currLine}</span> - ${escapeHtml(line.slice(1))}</div>`;
+                    }
+                    return `<div class="text-slate-600 font-code-sm text-[11px] px-2 py-0.5"><span class="inline-block w-8 text-slate-400 select-none">${currLine++}</span>   ${escapeHtml(line)}</div>`;
+                }).join('');
+            }
+
+            const html = `
+                <div class="bg-white border border-slate-200 shadow-sm rounded-xl p-4 text-code-sm font-code-sm space-y-2 mb-3 animate-slide-up">
+                    <div class="flex justify-between items-center text-slate-800 font-bold">
+                        <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px] text-sky-600">description</span> ${path}</span>
+                        <span class="text-[11px] font-normal text-slate-500">+${added} -${removed}</span>
+                    </div>
+                    ${event.diff ? `<div class="bg-slate-50 border border-slate-200 rounded-lg p-2 overflow-x-auto max-h-60 space-y-0.5">${diffHtml}</div>` : ''}
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            scrollToBottom();
+        }
+
+        function renderToolCallCard(event) {
+            if (event.type === 'tool_start') {
+                const tool = escapeHtml(event.tool || 'Tool');
+                const callId = event.event_id || 'evt-' + Date.now();
+                const inpStr = event.input ? escapeHtml(JSON.stringify(event.input)) : '';
+                const html = `
+                    <div id="tool-${callId}" data-tool-id="${callId}" class="bg-white border border-slate-200 shadow-sm rounded-xl p-3 font-code-md text-code-md text-sky-700 mb-2 animate-slide-up">
+                        <div class="flex items-center justify-between font-bold mb-1">
+                            <span class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[14px] text-sky-600">terminal</span>
+                                <span>&gt; ${tool}</span>
+                            </span>
+                            <span class="text-[10px] text-slate-400">RUNNING</span>
+                        </div>
+                        ${inpStr ? `<div class="text-[11px] text-slate-600 bg-slate-50 p-1.5 rounded-lg border border-slate-200 overflow-x-auto">${inpStr}</div>` : ''}
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            } else if (event.type === 'tool_result') {
+                const callId = event.event_id;
+                let card = callId ? document.getElementById(`tool-${callId}`) : null;
+                const toolName = escapeHtml(event.tool || 'Tool');
+                const dur = (event.duration_ms || 0).toFixed(0);
+
+                if (!card) {
+                    const html = `
+                        <div class="bg-white border border-slate-200 shadow-sm rounded-xl p-3 font-code-md text-code-md mb-2 space-y-1 animate-slide-up">
+                            <div class="flex items-center justify-between font-bold ${event.success ? 'text-sky-700' : 'text-red-600'}">
+                                <span>${event.success ? '✔' : '✘'} ${toolName}</span>
+                                <span class="text-[10px] text-slate-400">${dur}ms</span>
+                            </div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', html);
+                } else {
+                    if (event.success) {
+                        card.className = "bg-white border border-slate-200 shadow-sm rounded-xl p-3 font-code-md text-code-md text-slate-800 mb-2 space-y-1 animate-fade-in";
+                        card.innerHTML = `
+                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-100 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[14px] text-sky-600">terminal</span>
+                                    <span class="text-sky-700">&gt; ${toolName}</span>
+                                </div>
+                                <span class="text-slate-500 text-[11px] flex items-center gap-1">Completed in ${dur}ms <span class="material-symbols-outlined text-[12px]">expand_more</span></span>
+                            </div>
+                            ${event.output ? `<div class="text-[11px] text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-200 max-h-40 overflow-y-auto whitespace-pre-wrap">${escapeHtml(strVal(event.output))}</div>` : ''}
+                        `;
+                    } else {
+                        card.className = "bg-white border border-red-200 shadow-sm rounded-xl p-3 font-code-md text-code-md text-red-600 mb-2 space-y-1 animate-fade-in";
+                        const errMsg = escapeHtml(event.error?.message || 'Execution error');
+                        card.innerHTML = `
+                            <div class="flex items-center justify-between font-bold text-red-600">
+                                <span>✘ ${toolName} failed</span>
+                                <span class="text-[10px] text-red-400">${dur}ms</span>
+                            </div>
+                            <div class="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">${errMsg}</div>
+                        `;
+                    }
+                }
+            }
+            scrollToBottom();
+        }
+
+        function strVal(val) {
+            if (typeof val === 'string') return val;
+            return JSON.stringify(val, null, 2);
+        }
+
+        function renderDiagnosticCard(event) {
+            const count = event.count || 0;
+            const sev = escapeHtml(event.severity || 'warning');
+            const html = `
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-code-sm font-code-sm text-amber-800 mb-3 flex items-center justify-between animate-slide-up shadow-sm">
+                    <span>⚠ Found ${count} diagnostic issues (${sev})</span>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            scrollToBottom();
+        }
+
+        function renderCommandCard(event) {
+            if (event.type === 'command_start') {
+                const html = `
+                    <div class="bg-white border border-slate-200 shadow-sm rounded-xl p-3 text-code-sm font-code-sm text-slate-800 mb-3 animate-slide-up">
+                        <div class="font-bold text-slate-500 mb-1">● Run command</div>
+                        <div class="bg-slate-50 p-2 rounded-lg border border-slate-200 text-sky-700">${escapeHtml(event.command || '')}</div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+                scrollToBottom();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key.toLowerCase() === 'l') {
+                e.preventDefault();
+                clearChat();
+            } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                toggleModal('command-palette');
+            } else if (e.key === 'Escape') {
+                ['command-palette', 'model-modal', 'context-modal', 'attach-modal', 'branch-modal', 'notifications-modal', 'settings-modal'].forEach(id => {
+                    document.getElementById(id)?.classList.add('hidden');
+                });
+            }
+        });
 
         function appendUserMessage(text) {
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const msgHtml = `
-                <div class="flex items-start justify-end space-x-3.5">
-                    <div class="bg-cyber-userBubble border border-cyber-border rounded-2xl rounded-tr-none p-4 max-w-xl shadow-sm text-slate-100 text-sm">
-                        ${escapeHtml(text)}
+                <div class="flex justify-end my-2 animate-slide-up">
+                    <div class="bg-emerald-600 dark:bg-[#064E3B] border border-emerald-500/30 text-white dark:text-[#F3F4F6] rounded-[10px] p-4 max-w-xl shadow-md space-y-1.5 transition-all">
+                        <div class="flex items-center justify-between text-[11px] font-mono border-b border-white/20 dark:border-[#10B981]/20 pb-1 gap-4">
+                            <span class="text-emerald-100 dark:text-[#10B981] font-bold tracking-wider">COMMAND</span>
+                            <span class="text-emerald-200 dark:text-[#9CA3AF]">${timeStr}</span>
+                        </div>
+                        <div class="font-sans text-sm leading-relaxed">${escapeHtml(text)}</div>
                     </div>
                 </div>
             `;
@@ -156,38 +1325,31 @@
         }
 
         function appendAiMessage(text, isError = false) {
-            const colorClass = isError ? 'text-rose-400' : 'text-slate-200';
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const colorClass = isError
+                ? 'text-red-700 dark:text-red-300 border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40'
+                : 'text-slate-800 dark:text-[#F3F4F6] border-slate-200 dark:border-[#374151] border-l-4 border-l-emerald-600 dark:border-l-[#10B981] bg-white dark:bg-[#111827] shadow-sm';
+
             const msgHtml = `
-                <div class="flex items-start space-x-3.5">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
-                        Δ
+                <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-[#374151] border-l-4 border-l-emerald-600 dark:border-l-[#10B981] rounded-[10px] p-4 my-2 text-slate-800 dark:text-[#F3F4F6] shadow-md space-y-2 animate-slide-up">
+                    <div class="flex items-center justify-between text-[11px] font-mono border-b border-slate-100 dark:border-[#374151] pb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span class="text-emerald-600 dark:text-[#10B981] font-bold uppercase tracking-wider">DELTA AGENT</span>
+                        </div>
+                        <span class="text-slate-400 dark:text-[#9CA3AF]">${timeStr}</span>
                     </div>
-                    <div class="bg-cyber-aiBubble border border-cyber-border rounded-2xl rounded-tl-none p-4 max-w-2xl shadow-sm ${colorClass} text-sm space-y-2">
-                        <pre class="whitespace-pre-wrap font-sans leading-relaxed">${escapeHtml(text)}</pre>
-                    </div>
+                    <div class="font-mono text-sm leading-relaxed whitespace-pre-wrap">${escapeHtml(text)}</div>
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', msgHtml);
             scrollToBottom();
         }
 
-        function appendTypingIndicator() {
-            const id = 'typing-' + Date.now();
-            const html = `
-                <div id="${id}" class="flex items-start space-x-3.5">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
-                        Δ
-                    </div>
-                    <div class="bg-cyber-aiBubble border border-cyber-border rounded-2xl rounded-tl-none p-4 shadow-sm text-slate-400 text-xs flex items-center space-x-1.5">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-bounce"></span>
-                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:0.2s]"></span>
-                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:0.4s]"></span>
-                    </div>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', html);
-            scrollToBottom();
-            return id;
+        function sendPrompt(text) {
+            restoreExecutionCanvas();
+            input.value = text;
+            handleSubmit(new Event('submit'));
         }
 
         async function handleSubmit(e) {
@@ -195,52 +1357,76 @@
             const text = input.value.trim();
             if (!text) return;
 
-            appendUserMessage(text);
-            input.value = '';
+            if (currentNavView !== 'execution') {
+                restoreExecutionCanvas();
+            }
 
-            const typingId = appendTypingIndicator();
+            input.value = '';
+            appendUserMessage(text);
+
+            // Immediate execution placeholder node so canvas is NEVER blank
+            const execId = `exec-${Date.now()}`;
+            const nodesContainer = getOrCreateExecutionTimeline(execId);
+            const initialThinkingHtml = `<div id="init-thinking-${execId}" class="flex items-center gap-2 text-[12px] text-sky-700 dark:text-sky-400 font-mono italic animate-fade-in"><span class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></span> ⠋ Initializing agent...</div>`;
+            nodesContainer.insertAdjacentHTML('beforeend', initialThinkingHtml);
+            scrollToBottom();
+            updateHeaderStatus('THINKING', 'animate-pulse-subtle');
 
             try {
-                const res = await fetch('/api/execute', {
+                const response = await fetch('/api/execute', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ command: text })
                 });
-                const data = await res.json();
 
-                document.getElementById(typingId)?.remove();
-                appendAiMessage(data.output || 'Tidak ada respons.');
+                document.getElementById(`init-thinking-${execId}`)?.remove();
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    appendAiMessage(`Unable to reach Delta agent (HTTP ${response.status})\nEndpoint: POST /api/execute\n${errText}`, true);
+                    updateHeaderStatus('ERROR', '');
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.is_task) {
+                    executedCommandsCount++;
+                    const summaryEl = document.getElementById('inspector-changes-summary');
+                    if (summaryEl) summaryEl.innerText = `${executedCommandsCount} commands executed`;
+                    const taskDisplay = document.getElementById('current-task-display');
+                    if (taskDisplay) taskDisplay.innerText = `Task: "${text}"`;
+                }
+
+                if (data.output) {
+                    appendAiMessage(data.output);
+                } else if (data.response) {
+                    appendAiMessage(data.response);
+                } else if (data.error) {
+                    appendAiMessage(data.error, true);
+                }
+                updateHeaderStatus('COMPLETED', '');
             } catch (err) {
-                document.getElementById(typingId)?.remove();
-                appendAiMessage('Gagal terhubung ke Delta engine server.', true);
+                document.getElementById(`init-thinking-${execId}`)?.remove();
+                appendAiMessage('Failed to connect to Delta Engine. Please verify backend is online.', true);
+                updateHeaderStatus('ERROR', '');
             }
         }
 
-        function sendPrompt(promptText) {
-            input.value = promptText;
-            handleSubmit();
-        }
-
         function clearChat() {
+            restoreExecutionCanvas();
             container.innerHTML = `
-                <div class="flex items-start space-x-3.5">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
-                        Δ
-                    </div>
-                    <div class="bg-cyber-aiBubble border border-cyber-border rounded-2xl rounded-tl-none p-4 max-w-2xl shadow-sm text-slate-200 text-sm space-y-2">
-                        <p class="font-medium text-emerald-400">Chat dibersihkan!</p>
-                        <p class="text-slate-300">Ada topik atau perintah lain yang ingin Anda jalankan?</p>
+                <div class="flex flex-col gap-3 animate-slide-up">
+                    <div class="flex items-start gap-3">
+                        <div class="w-7 h-7 rounded-lg bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center shrink-0 mt-0.5 shadow-sm font-bold text-sm">⚡</div>
+                        <div class="text-sm text-slate-800">
+                            <p class="mb-1 font-bold text-sky-700">DELTA SYSTEM RESTARTED</p>
+                            <p class="text-slate-500">Session context reset. Ready for new commands, Tuan.</p>
+                        </div>
                     </div>
                 </div>
             `;
-        }
-
-        function scrollToBottom() {
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function escapeHtml(str) {
-            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+            document.getElementById('current-task-display').innerText = 'Task: "Ready for user commands..."';
         }
     </script>
 </body>
