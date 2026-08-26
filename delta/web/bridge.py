@@ -1,3 +1,4 @@
+# Refactor: web bridge
 """Bridge between Delta CLI Engine and Web Interface."""
 import io
 import json
