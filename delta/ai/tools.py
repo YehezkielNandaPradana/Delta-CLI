@@ -1,3 +1,4 @@
+# Refactor: tools registry
 # delta/ai/tools.py
 
 """
