@@ -100,6 +100,11 @@ class FileSystemModule:
 
             return os.path.abspath(self.cwd)
 
+        # Allow absolute paths on any drive (Windows C:\, D:\ or Unix /...)
+        if os.path.isabs(path):
+
+            return os.path.abspath(path)
+
         return os.path.abspath(os.path.join(self.cwd, path))
 
     @staticmethod
@@ -210,7 +215,13 @@ class FileSystemModule:
 
     def edit(self, path: str, old: str, new: str = "") -> Tuple[bool, str]:
 
-        """Ganti teks pertama yang cocok di dalam file (tanpa konfirmasi)."""
+        """Ganti teks yang cocok di dalam file (menggunakan fuzzy line matching jika presisi)."""
+
+        return self.smart_edit(path, old, new)
+
+    def smart_edit(self, path: str, old: str, new: str = "") -> Tuple[bool, str]:
+
+        """Smart file editor supporting exact match, fuzzy block matching, and syntax checking."""
 
         if not path or not old:
 
@@ -224,19 +235,81 @@ class FileSystemModule:
 
         try:
 
-            with open(target, "r", encoding="utf-8") as f:
+            with open(target, "r", encoding="utf-8", errors="replace") as f:
 
                 content = f.read()
 
-            if old not in content:
+            new_text = _decode_newlines(new)
 
-                return False, f"Teks tidak ditemukan di {target}: '{old}'"
+            # 1. Try exact replacement first
 
-            content = content.replace(old, _decode_newlines(new), 1)
+            if old in content:
+
+                updated_content = content.replace(old, new_text, 1)
+
+            else:
+
+                # 2. Try fuzzy block replacement via difflib
+
+                import difflib
+
+                lines = content.splitlines(keepends=True)
+
+                old_lines = old.splitlines(keepends=True)
+
+                if not old_lines:
+
+                    return False, f"Target edit text empty."
+
+                # Find best matching slice of lines
+
+                best_ratio = 0.0
+
+                best_slice = None
+
+                n_old = len(old_lines)
+
+                for i in range(len(lines) - n_old + 1):
+
+                    window = "".join(lines[i:i + n_old])
+
+                    ratio = difflib.SequenceMatcher(None, window, old).ratio()
+
+                    if ratio > best_ratio:
+
+                        best_ratio = ratio
+
+                        best_slice = (i, i + n_old)
+
+                if best_ratio >= 0.85 and best_slice:
+
+                    start, end = best_slice
+
+                    lines[start:end] = [new_text + ("\n" if not new_text.endswith("\n") else "")]
+
+                    updated_content = "".join(lines)
+
+                else:
+
+                    return False, f"Teks tidak ditemukan di {target} (fuzzy match score: {best_ratio:.2f} < 0.85)"
+
+            # 3. Post-edit syntax check for Python files
+
+            if target.endswith(".py"):
+
+                import ast
+
+                try:
+
+                    ast.parse(updated_content, filename=target)
+
+                except SyntaxError as syn_err:
+
+                    return False, f"Edit ditolak karena menyebabkan SyntaxError pada baris {syn_err.lineno}: {syn_err.msg}"
 
             with open(target, "w", encoding="utf-8") as f:
 
-                f.write(content)
+                f.write(updated_content)
 
             return True, f"File diperbarui: {target}"
 
