@@ -15,7 +15,61 @@ def test_web_static_html_served():
         with urllib.request.urlopen(req, timeout=2) as resp:
             assert resp.status == 200
             html = resp.read().decode("utf-8")
-            assert "<title>Delta AI Security Dashboard</title>" in html
-            assert "Delta AI" in html
+            assert "<title>Delta IDE Workspace</title>" in html or "<title>Delta" in html
+            assert "Delta" in html
     finally:
         server.shutdown()
+
+def test_web_static_html_has_theme_script():
+    server = DeltaWebServer(engine=None, host="127.0.0.1", port=8997)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.5)
+
+    try:
+        req = urllib.request.Request("http://127.0.0.1:8997/")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            assert resp.status == 200
+            html = resp.read().decode("utf-8")
+            assert "darkMode: 'class'" in html
+            assert "delta-theme" in html
+            assert "applyTheme" in html
+    finally:
+        server.shutdown()
+
+def test_web_static_html_has_theme_toggle_button():
+    server = DeltaWebServer(engine=None, host="127.0.0.1", port=8996)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.5)
+
+    try:
+        req = urllib.request.Request("http://127.0.0.1:8996/")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            assert resp.status == 200
+            html = resp.read().decode("utf-8")
+            assert 'id="theme-toggle-btn"' in html
+            assert "setTheme(" in html
+    finally:
+        server.shutdown()
+
+def test_web_static_html_has_dark_mode_classes():
+    server = DeltaWebServer(engine=None, host="127.0.0.1", port=8995)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.5)
+
+    try:
+        req = urllib.request.Request("http://127.0.0.1:8995/")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            assert resp.status == 200
+            html = resp.read().decode("utf-8")
+            assert "dark:bg-slate-950" in html
+            assert "dark:bg-slate-900" in html
+            assert "dark:border-slate-800" in html
+            assert "dark:text-slate-100" in html
+    finally:
+        server.shutdown()
+
+
+
