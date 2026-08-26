@@ -184,7 +184,7 @@ _VK_SPECIAL = {
 
 # ---------------------------------------------------------------------------
 
-# Palette (Hostile AI — Blood Red / Void Black Truecolor)
+# Palette (Delta Web IDE Theme — Emerald / Dark Slate / Sky Truecolor)
 
 # ---------------------------------------------------------------------------
 
@@ -198,73 +198,53 @@ class T:
 
     ITALIC = "\033[3m"
 
-    BG = (5, 5, 5)                # #050505 — near-total void
+    BG = (15, 23, 42)             # #0F172A — Slate Canvas
 
-    BORDER = (220, 0, 30)         # Blood Red #DC001E
+    BORDER = (16, 185, 129)       # Primary Emerald #10B981
 
-    BORDER_DIM = (70, 10, 14)     # Dried-blood red for inner lines
+    BORDER_DIM = (51, 65, 85)     # Subtle Slate #374151
 
-    TEXT = (225, 220, 215)        # Bone white
+    TEXT = (241, 245, 249)        # Slate Light Text
 
-    MUTED = (120, 100, 100)       # Ash gray with a red tint
+    MUTED = (148, 163, 184)       # Muted Slate
 
-    FAINT = (60, 40, 40)          # hints / tiny text
+    FAINT = (71, 85, 105)         # Faint Slate
 
-    USER_BORDER = (255, 30, 30)   # Hot arterial red for user box
+    USER_BORDER = (16, 185, 129)  # Emerald Border
 
-    RED = (255, 20, 20)           # Arterial Red
+    RED = (239, 68, 68)           # Danger Red #EF4444
 
-    YELLOW = (255, 170, 0)        # Warning Amber
+    YELLOW = (245, 158, 11)       # Amber Warning
 
-    GREEN = (120, 200, 90)        # Sickly green (rare — used sparingly)
+    GREEN = (16, 185, 129)        # Emerald Primary
 
-    SUCCESS = (200, 230, 210)     # Bone white with a green whisper
+    SUCCESS = (209, 250, 229)     # Emerald Fixed
 
-    CYAN = (200, 60, 60)          # "Info" repurposed as dull red
+    CYAN = (14, 165, 233)         # Sky Blue
 
-    ORANGE = (255, 90, 0)         # Venomous orange for agent lines
+    ORANGE = (139, 92, 246)       # Secondary Violet #8B5CF6
 
-    TOOL = (180, 0, 0)            # Dark arterial red for tool calls
+    TOOL = (14, 165, 233)         # Sky Blue Tool Accent
 
-    THINK = (255, 20, 20)         # thinking/hunting indicator
+    THINK = (14, 165, 233)        # Sky Blue Thinking Indicator
 
-    AI_BORDER = (190, 40, 90)     # Magenta-red border for AI response box
+    AI_BORDER = (16, 185, 129)    # Emerald AI Border
 
-    CODE = (200, 230, 210)        # Bone-white-green for inline code
+    CODE = (125, 211, 252)       # Light Sky Code
 
     LOGO = [
 
-        (255, 30, 30), (220, 0, 30), (150, 0, 20), (90, 10, 15),
-
-        (255, 90, 0), (255, 170, 0), (60, 0, 0),
+        (16, 185, 129), (14, 165, 233), (139, 92, 246),
 
     ]
 
-# Blocky hostile skull glyph (User Provided)
+# Web IDE Style Banner Rows
 
 SKULL_ROWS = [
 
-    "⠀⠀⠀⠀⢀⣀⣤⣤⣤⣤⣄⡀⠀⠀⠀⠀",
+    " ⚡ DELTA IDE WORKSPACE ",
 
-    "⠀⢀⣤⣾⣿⣾⣿⣿⣿⣿⣿⣿⣷⣄⠀⠀",
-
-    "⢠⣾⣿⢛⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡀",
-
-    "⣾⣯⣷⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧",
-
-    "⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿",
-
-    "⣿⡿⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠻⢿⡵",
-
-    "⢸⡇⠀⠀⠉⠛⠛⣿⣿⠛⠛⠉⠀⠀⣿⡇",
-
-    "⢸⣿⣀⠀⢀⣠⣴⡇⠹⣦⣄⡀⠀⣠⣿⡇",
-
-    "⠈⠻⠿⠿⣟⣿⣿⣦⣤⣼⣿⣿⠿⠿⠟⠀",
-
-    "⠀⠀⠀⠀⠸⡿⣿⣿⢿⡿⢿⠇⠀⠀⠀⠀",
-
-    "⠀⠀⠀⠀⠀⠀⠈⠁⠈⠁⠀⠀⠀⠀⠀⠀",
+    " ────────────────────── ",
 
 ]
 
@@ -784,35 +764,37 @@ class DeltaTUI:
 
         titles = [
 
-            f"{T.BOLD}{_fg(*T.BORDER)}▐{_fg(*T.RED)} DELTA // HOSTILE AGENT {_fg(*T.BORDER)}▌{T.RESET}",
+            f"{T.BOLD}{_fg(*T.BORDER)}⚡ DELTA // SOC CYBER OPS WORKSPACE{T.RESET}",
 
-            f"{_fg(*T.MUTED)}[ {_fg(*T.RED)}CORE{_fg(*T.MUTED)}  : {_fg(*T.YELLOW)}{model}{_fg(*T.MUTED)} ]{T.RESET}",
+            f"{_fg(*T.MUTED)}[ {_fg(*T.GREEN)}AGENT{_fg(*T.MUTED)} : {_fg(*T.CYAN)}{model}{_fg(*T.MUTED)} ]{T.RESET}",
 
-            f"{_fg(*T.MUTED)}[ {_fg(*T.RED)}TARGET{_fg(*T.MUTED)}: {_fg(*T.YELLOW)}{self._clip(cwd, w - text_x - 4)}{_fg(*T.MUTED)} ]{T.RESET}",
+            f"{_fg(*T.MUTED)}[ {_fg(*T.GREEN)}TARGET{_fg(*T.MUTED)}: {_fg(*T.CYAN)}{self._clip(cwd, w - text_x - 4)}{_fg(*T.MUTED)} ]{T.RESET}",
 
         ]
 
         t = time.monotonic()
-
         pulse = (math.sin(t * 1.5) + 1) / 2
-
         r = int(160 + 95 * pulse)
-
         g = int(10 + 15 * pulse)
-
         b = int(15 + 15 * pulse)
-
         skull_color = _fg(r, g, b)
 
         for i, art in enumerate(SKULL_ROWS):
+            line_color = skull_color
+            if glitch and not self._processing:
+                rand_val = random.random()
+                if rand_val > 0.75:
+                    line_color = random.choice([
+                        _fg(255, 30, 35),   # Neon Red
+                        _fg(0, 240, 255),   # Cyber Cyan
+                        _fg(255, 0, 180),   # Glitch Magenta
+                        _fg(255, 255, 255), # Flash White
+                    ])
+                if rand_val > 0.85:
+                    offset = random.choice([1, 2])
+                    art = " " * offset + art
 
-            if glitch and not self._processing and random.random() > 0.92:
-
-                offset = random.randint(0, 1)
-
-                art = " " * offset + art
-
-            line = " " * pad + f"{skull_color}{art}{T.RESET}" + " " * 2
+            line = " " * pad + f"{line_color}{art}{T.RESET}" + " " * 2
 
             row = 2 + i
 
