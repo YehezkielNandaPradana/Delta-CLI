@@ -1,3 +1,4 @@
+# Refactor: react loop
 # delta/ai/react_loop.py
 """
 ReAct Agentic Loop Engine for Delta AI Coding Agent.
