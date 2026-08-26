@@ -1,3 +1,4 @@
+# Refactor: chat handler
 """
 Delta Web Chat Interface
 
