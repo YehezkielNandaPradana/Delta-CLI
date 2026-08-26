@@ -94,6 +94,38 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument(
 
+        "--debug",
+
+        action="store_true",
+
+        help="Enable full debug logging (internal events, tracebacks, raw tool calls)",
+
+    )
+
+    parser.add_argument(
+
+        "--verbose",
+
+        action="store_true",
+
+        help="Enable verbose output",
+
+    )
+
+    parser.add_argument(
+
+        "--cwd",
+
+        type=str,
+
+        default=None,
+
+        help="Set initial working directory (defaults to current process working directory)",
+
+    )
+
+    parser.add_argument(
+
         "command",
 
         nargs="?",
@@ -114,13 +146,35 @@ def build_parser() -> argparse.ArgumentParser:
 
     return parser
 
-def create_engine(config_path: Optional[str] = None) -> DeltaEngine:
+def create_engine(config_path: Optional[str] = None, cwd: Optional[str] = None, debug: bool = False, verbose: bool = False) -> DeltaEngine:
 
     """Create and initialize the Delta engine with all components."""
+
+    if cwd:
+
+        abs_cwd = os.path.abspath(cwd)
+
+        if not os.path.isdir(abs_cwd):
+
+            raise ValueError(f"Specified working directory does not exist or is not a directory: {cwd}")
+
+        cwd = abs_cwd
+
+    else:
+
+        cwd = os.getcwd()
 
     config = DeltaConfig()
 
     config.load(config_path)
+
+    if debug:
+
+        config.debug = True
+
+    if verbose:
+
+        config.verbose = True
 
     display = DisplayManager()
 
@@ -187,6 +241,8 @@ def create_engine(config_path: Optional[str] = None) -> DeltaEngine:
         display=display,
 
         llm_engine=llm_engine,
+
+        cwd=cwd,
 
     )
 
@@ -336,13 +392,13 @@ def _first_run_setup(config: DeltaConfig, llm_engine: LLMEngine, display: Displa
 
         display.info("Use /key <your-key> later to set it up.")
 
-def run_web_chat() -> None:
+def run_web_chat(cwd: Optional[str] = None) -> None:
 
     """Run the web chat/dashboard interface."""
 
     from delta.web.server import start_web_server
 
-    engine = create_engine()
+    engine = create_engine(cwd=cwd)
 
     start_web_server(engine=engine, host="127.0.0.1", port=8000)
 def execute_direct(engine: DeltaEngine, cmd: str, cmd_args: list) -> None:
@@ -393,7 +449,7 @@ def main() -> None:
 
         if args.web:
 
-            run_web_chat()
+            run_web_chat(cwd=args.cwd)
 
             return
 
@@ -401,7 +457,7 @@ def main() -> None:
 
         if not args.command:
 
-            engine = create_engine()
+            engine = create_engine(cwd=args.cwd, debug=args.debug, verbose=args.verbose)
 
             tui = DeltaTUI(engine)
 
@@ -429,7 +485,7 @@ def main() -> None:
 
         # Direct command execution mode
 
-        engine = create_engine()
+        engine = create_engine(cwd=args.cwd, debug=args.debug, verbose=args.verbose)
 
         # Combine known args with unknown (remainder) args
 
