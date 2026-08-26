@@ -1,3 +1,4 @@
+# Refactor: session state
 # delta/core/session.py
 
 """
