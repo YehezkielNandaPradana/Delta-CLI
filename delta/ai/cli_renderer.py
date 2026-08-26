@@ -1,3 +1,4 @@
+# Refactor: cli output
 # delta/ai/cli_renderer.py
 """
 Terminal CLI Event Renderer for Delta AI Coding Agent.
