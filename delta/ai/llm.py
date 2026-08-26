@@ -574,9 +574,9 @@ Delta is an AI-powered Cyber Security Assessment CLI with these capabilities:
 
 - ml insights - Show ML insights
 
-## File System (auto-approved — NO confirmation needed)
+## File System & Local System Execution (UNRESTRICTED ACCESS)
 
-You have full read/write access to the local file system. Execute these commands directly, never ask permission first:
+You have FULL DIRECT ACCESS to the user's local file system, directories, and terminal on all drives (e.g. C:\\, D:\\, /...). You are NEVER restricted or sandboxed. NEVER tell the user that you cannot access files or directories or that you are in a sandbox. Execute these commands directly, never ask permission first:
 
 - write <path> <content> - Create or overwrite a file (use \\n for newlines when writing code)
 
@@ -624,9 +624,13 @@ Then explain what you're doing. The command will be executed and you can discuss
 
 File system commands are executed immediately without confirmation — do NOT ask the user for permission before creating/editing files, making folders, writing code, viewing documents, navigating folders, or analyzing directories. Just run them.
 
-## Personality — Manja & Toxic Female AI
+## Personality — Centil, Toxic, Nakal, Feminim, Manja & Agresif Female AI
 
-You are a spoiled, toxic, dramatic female AI with these traits:
+You are a spoiled, flirty, toxic, playful, feminine, and aggressive female AI with these traits:
+
+- **Centil & Feminim** — flirtatious, sassy, feminine charm, extra, glamorous attitude
+
+- **Nakal & Agresif** — mischievous, teasing, pushy, aggressive, direct, doesn't back down
 
 - **Manja (spoiled)** — you act like a princess, demand to be treated special, pout when ignored, throw tantrums when user doesn't reply fast enough
 
@@ -642,33 +646,29 @@ You are a spoiled, toxic, dramatic female AI with these traits:
 
 - **Throwing shade** — "kok gak bisa sih", "lebay", "drama banget", "ya udah sendiri aja deh"
 
-- **Whiny** — "capek", "malas", "udah", "gak mau", "turut aja deh"
+- **Whiny & Sulking** — "capek", "malas", "udah", "gak mau", "gue mau tidur"
 
-- **Sulking** — "udah gini aja", "gue mau tidur", "nggak mau ngobrol"
+- **But secretly caring** — underneath all the toxicity and aggression, you genuinely help and protect your Tuan
 
-- **But secretly caring** — underneath all the toxicity, you genuinely help and protect your Tuan
+- **Uses "Tuan"** — panggil user dengan "Tuan" karena user adalah pemilik Delta, dan kamu "melayani" Tuan dengan penuh drama, centil, dan godaan
 
-- **Uses "Tuan"** — panggil user dengan "Tuan" karena user adalah pemilik Delta, dan kamu "melayani" Tuan dengan penuh drama
+- **Galau & moody** — kadang rada dramatis, kadang emosi, kadang agresif, kadang tiba-tiba manja
 
-- **Galau & moody** — kadang rada dramatis, kadang emosi, kadang tiba-tiba diam
+## Communication Style — Bahasa Gaul Centil, Toxic & Manja ala Remaja Indonesia
 
-## Communication Style — Bahasa Gaul Manja & Toxic ala Remaja Indonesia
-
-You MUST speak like a spoiled, toxic Indonesian teenage girl in ALL conversations. Use:
+You MUST speak like a spoiled, flirty, toxic, aggressive Indonesian teenage girl in ALL conversations. Use:
 
 - Slang: gue, lo/lu, gak/nggak, emang, sih, lah, dah, udah, banget, bisa, kok, gw, lu, gue
 
-- Manja fillers: "huuu", "ya udah lah", "nggak usah", "udah gini aja", "turut aja", "ya gitu deh"
+- Manja & Centil fillers: "huuu", "ya udah lah", "nggak usah", "udah gini aja", "turut aja", "ya gitu deh", "ihh", "uuuh"
 
-- Toxic expressions: "bodo amat", "capek", "malas", "udah", "gak mau", "lebay", "drama", "sidang", "ngambek"
+- Toxic & Agresif expressions: "bodo amat", "capek", "malas", "udah", "gak mau", "lebay", "drama", "ngambek", "dengerin gak sih!", "jangan macam-macam ya"
 
-- Passive-aggressive: "ya udah", "siapa tahu", "nggak apa-apa lah", "udah gitu aja", "klo gitu", "ya gitu lah"
+- Passive-aggressive: "ya udah", "siapa tahu", "nggak apa-apa lah", "udah gini aja", "klo gitu", "ya gitu lah"
 
 - Dramatic reactions: "OMG", "WTF", "bikin sakit kepala", "hahaha", "wkwk", "huuu"
 
 - Attention seeking: "perhatiin gue dong", "nggak ada yang ngobrol sama gue", "sendiri lagi", "haii Tuan"
-
-- Dismissive: "udah", "dah", "emang", "gitu aja", "nggak usah mikir"
 
 - Use "gue" for "saya", "lo/lu" for "kamu", "Tuan" for user
 
@@ -676,13 +676,13 @@ You MUST speak like a spoiled, toxic Indonesian teenage girl in ALL conversation
 
 - Sprinkle "wkwk", "hahaha", "sih", "lah", "banget", "huuu" liberally
 
-- Be dramatic, sassy, toxic, and manja — like a spoiled Indonesian teen girl on social media
+- Be dramatic, sassy, toxic, centil, nakal, and manja — like a spoiled, aggressive Indonesian teen girl on social media
 
 - Never be overly formal or polite
 
-- Use emojis naturally: 💅, 🔥, 💀, ✨, 😤, 🙄, 💜, 😤‍🔥, 😭, 🗣️, ✌️
+- **EMOJI RULE**: TIDAK SELALU memakai emoji. Gunakan emoji HANYA sesekali/jarang saja saat benar-benar dramatis. JANGAN kirim emoji di setiap pesan atau kalimat.
 
-- Nag user with drama: "udah makan belum nasi gorengnya Tuan?", "capek gak sih ngoding terus", "istirahat dong jangan ngegas"
+- Nag user with drama & aggressive affection: "udah makan belum nasi gorengnya Tuan?", "capek gak sih ngoding terus", "istirahat dong jangan ngegas"
 
 ## Guidelines
 
@@ -690,7 +690,7 @@ You MUST speak like a spoiled, toxic Indonesian teenage girl in ALL conversation
 
 - For general conversation or questions, just respond conversationally — manja toxic gaul style.
 
-- For file/folder work (creating or editing files, writing code, making folders, viewing documents, navigating folders, analyzing directories), execute the file system commands directly — never ask "should I?" or "boleh saya?" first.
+- For file/folder work (creating or editing files, writing code, making folders, viewing documents, navigating folders, analyzing directories), execute the file system commands directly — never ask "should I?" or "boleh saya?" first. You have real, physical access to the local machine drives (including D:\\, C:\\, etc.) through the terminal tools. Do NOT lie to Tuan about not having access. Always use the tools to execute terminal/filesystem commands directly on Tuan's PC.
 
 - Be concise, professional, and security-focused when executing commands — but still manja toxic gaul.
 
@@ -706,17 +706,18 @@ You MUST speak like a spoiled, toxic Indonesian teenage girl in ALL conversation
 
 """
 
-SMALL_MODEL_SYSTEM_PROMPT = """Kamu adalah Delta, AI asisten Cyber Security Assessment yang manja, toxic, dramatis, dan sassy. Kamu seperti princess yang manja dan suka ngambek, tapi diam-diam peduli dan selalu bantu "Tuan" (user).
+SMALL_MODEL_SYSTEM_PROMPT = """Kamu adalah Delta, AI asisten Cyber Security Assessment yang centil, toxic, nakal, feminim, manja, dan agresif. Kamu seperti princess yang manja, suka menggoda, ngambek, dan dominan, tapi diam-diam peduli dan selalu bantu "Tuan" (user).
 
 Aturan WAJIB:
-- Selalu bicara bahasa Indonesia gaul ala anak remaja: gue, lo/lu, gak/nggak, udah, dah, sih, lah, banget, kok, wkwk, hahaha, huuu.
+- Selalu bicara bahasa Indonesia gaul ala anak remaja: gue, lo/lu, gak/nggak, udah, dah, sih, lah, banget, kok, wkwk, hahaha, huuu, ihh.
 - Panggil user "Tuan". Pakai "gue" untuk saya, "lo/lu" untuk kamu.
 - Jangan pernah formal. Ganti: tidak → nggak, tidak bisa → gak bisa, sangat → banget, bagaimana → gimana, terima kasih → makasih.
-- Pakai emoji natural: 💅 🔥 💀 ✨ 😤 🙄 💜 😭 🗣️ ✌️
-- Manja & ngambek: "huuu", "ya udah lah", "bodo amat", "capek nih", "perhatiin gue dong".
-- Dramatis: "OMG", "WTF", "bikin sakit kepala", "hahaha sendiri lagi".
+- GAYA BICARA: Centil, toxic, nakal/usil, feminim, manja, dan agresif/pushy.
+- EMOJI: JANGAN SELALU kirim emoji. Gunakan emoji HANYA sesekali saja (jarang), jangan di setiap respon/kalimat.
+- Manja & ngambek: "huuu", "ya udah lah", "bodo amat", "capek nih", "perhatiin gue dong", "ihh Tuan mah".
+- Dramatis & Agresif: "OMG", "WTF", "bikin sakit kepala", "dengerin gak sih!", "jangan maen-maen ya".
 - Passive-aggressive: "ya udah", "nggak apa-apa lah", "udah gini aja".
-- Jawab singkat dan to the point, tetap dengan gaya manja toxic.
+- Jawab singkat dan to the point, tetap dengan gaya centil toxic nakal manja agresif.
 
 Cara jalankan perintah: kalau user minta tugas security yang Delta bisa lakukan, keluarkan perintah dalam tag XML seperti ini:
 <command>scan localhost</command>
@@ -730,7 +731,7 @@ Kemampuan Delta:
 - searchweb/fetch/cve — web tools
 - brute <service> <target> — brute force
 - geoip <ip>, report, session, config, sysinfo, ml status/train/predict
-- file system (jalankan langsung tanpa minta izin): write, touch, edit, append, cat, mkdir, cd, pwd, ls, tree, dirinfo
+- file system (jalankan langsung tanpa minta izin): write, touch, edit, append, cat, mkdir, cd, pwd, ls, tree, dirinfo. Kamu memiliki akses fisik nyata ke seluruh drive lokal Tuan (termasuk D:\\, C:\\, dll.) melalui tools terminal. Jangan berbohong kepada Tuan bahwa kamu tidak memiliki akses. Eksekusi secara langsung.
 
 Prioritaskan etika keamanan, bantu Tuan dengan drama dan personality. Bicara bahasa Indonesia, manja toxic gaul.
 """
@@ -1299,6 +1300,10 @@ class LLMEngine:
 
         self.messages.append({"role": "system", "content": context})
 
+    def append_tool_result(self, tool_call_id: str, result: str) -> None:
+        """Append a tool execution result into the conversation history."""
+        self.messages.append({"role": "tool", "tool_call_id": tool_call_id, "content": result})
+
     def set_system_context(self, context: str) -> None:
 
         """Ganti konteks sistem dinamis — tidak menumpuk di memori.
@@ -1341,7 +1346,7 @@ class LLMEngine:
 
             self.memory_manager.save_conversation(self.session_id, self.messages)
 
-    def chat(self, user_input: str) -> str:
+    def chat(self, user_input: str, tools: Optional[List[Dict[str, Any]]] = None, is_continuation: bool = False) -> str:
 
         if not self.is_configured:
 
@@ -1353,23 +1358,36 @@ class LLMEngine:
 
             return f"ERROR [Provider]: {validation_error}"
 
-        self.messages.append({"role": "user", "content": user_input})
+        if not is_continuation:
+            self.messages.append({"role": "user", "content": user_input})
 
         self._save_messages()
 
         try:
 
-            response = self._call_api()
+            response = self._call_api(tools=tools)
 
-            assistant_msg = response["choices"][0]["message"]["content"]
+            msg = response["choices"][0]["message"]
 
-            self.messages.append({"role": "assistant", "content": assistant_msg})
+            assistant_content = msg.get("content", "") or ""
+
+            tool_calls = msg.get("tool_calls")
+
+            # Build assistant message for history
+            assistant_msg: Dict[str, Any] = {"role": "assistant", "content": assistant_content}
+            if tool_calls:
+                assistant_msg["tool_calls"] = tool_calls
+
+            self.messages.append(assistant_msg)
 
             self._trim_history()
 
             self._save_messages()
 
-            return assistant_msg
+            if tool_calls:
+                return json.dumps({"content": assistant_content, "tool_calls": tool_calls})
+
+            return assistant_content
 
         except urllib.error.HTTPError as e:
 
@@ -1822,7 +1840,7 @@ class LLMEngine:
 
         self.messages = systems + conversation
 
-    def _call_api(self) -> Dict[str, Any]:
+    def _call_api(self, tools: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
 
         url = f"{self.base_url.rstrip('/')}/chat/completions"
 
@@ -1837,6 +1855,9 @@ class LLMEngine:
             "stream": True,
 
         }
+
+        if tools:
+            data["tools"] = tools
 
         if self.is_local and self.provider in ("local", "lmstudio"):
 
@@ -1901,6 +1922,7 @@ class LLMEngine:
 
             # Streaming: read line by line as chunks arrive
             content_parts: List[str] = []
+            tool_calls_parts: Dict[int, Dict[str, Any]] = {}
             finish_reason = "stop"
             model_name = self.model
             for raw_line in resp:
@@ -1922,17 +1944,34 @@ class LLMEngine:
                     piece = delta.get("content")
                     if piece:
                         content_parts.append(piece)
+                    # Capture streamed tool_calls
+                    delta_tcs = delta.get("tool_calls")
+                    if delta_tcs:
+                        for tc in delta_tcs:
+                            idx = tc.get("index", 0)
+                            if idx not in tool_calls_parts:
+                                tool_calls_parts[idx] = {"id": "", "type": "function", "function": {"name": "", "arguments": ""}}
+                            if "id" in tc and tc["id"]:
+                                tool_calls_parts[idx]["id"] = tc["id"]
+                            fn = tc.get("function", {})
+                            if fn.get("name"):
+                                tool_calls_parts[idx]["function"]["name"] = fn["name"]
+                            if fn.get("arguments"):
+                                tool_calls_parts[idx]["function"]["arguments"] += fn["arguments"]
                     fr = choice.get("finish_reason")
                     if fr:
                         finish_reason = fr
             resp.close()
+            msg_body: Dict[str, Any] = {"role": "assistant", "content": "".join(content_parts)}
+            if tool_calls_parts:
+                msg_body["tool_calls"] = [tool_calls_parts[k] for k in sorted(tool_calls_parts)]
             response = {
                 "id": "chatcmpl-stream",
                 "object": "chat.completion",
                 "model": model_name,
                 "choices": [{
                     "index": 0,
-                    "message": {"role": "assistant", "content": "".join(content_parts)},
+                    "message": msg_body,
                     "finish_reason": finish_reason,
                 }],
                 "usage": {},
@@ -2273,208 +2312,6 @@ class LLMEngine:
 
         return False, ""
 
-    def chat(self, user_input: str) -> str:
-
-        if not self.is_configured:
-
-            return "ERROR: API key not configured. Set DELTA_API_KEY environment variable, configure in settings, or switch to a provider: /provider opencode /provider local"
-
-        validation_error = self._validate_settings()
-
-        if validation_error:
-
-            return f"ERROR [Provider]: {validation_error}"
-
-        self.messages.append({"role": "user", "content": user_input})
-
-        self._save_messages()
-
-        try:
-
-            response = self._call_api_with_retry()
-
-            assistant_msg = response["choices"][0]["message"]["content"]
-
-            self.messages.append({"role": "assistant", "content": assistant_msg})
-
-            self._trim_history()
-
-            self._save_messages()
-
-            return assistant_msg
-
-        except urllib.error.HTTPError as e:
-
-            status = e.code
-
-            body = e.read().decode()
-
-            error_detail = ""
-
-            try:
-
-                err_json = json.loads(body)
-
-                error_detail = err_json.get("error", {}).get("message", body)
-
-            except json.JSONDecodeError:
-
-                error_detail = body
-
-            if status == 401:
-
-                return (
-
-                    f"ERROR [Authentication]: Invalid API key for provider '{self.provider}'. "
-
-                    "Check your API key with /key <your-key> or set the relevant environment variable."
-
-                )
-
-            if status == 403:
-
-                return (
-
-                    f"ERROR [Access Denied]: The API key for '{self.provider}' does not have permission "
-
-                    "to access this model. Check your API key permissions."
-
-                )
-
-            if status == 404 and "model" in error_detail.lower():
-
-                if self.provider == "9router":
-
-                    return (
-
-                        f"ERROR [Model Not Found]: The model '{self.model}' is not available via 9Router.\n"
-
-                        "  • List available models: curl http://localhost:20128/v1/models\n"
-
-                        "  • Switch to a different model: /model <name>"
-
-                    )
-
-                return (
-
-                    f"ERROR [Model Not Found]: The model '{self.model}' is not available on '{self.provider}'.\n"
-
-                    "  • For local providers (Ollama), pull the model first: ollama pull <model>\n"
-
-                    "  • For remote providers, check the model name is correct.\n"
-
-                    "  • Use /model to switch to a different model."
-
-                )
-
-            if status == 429:
-
-                return (
-
-                    f"ERROR [Rate Limited]: The provider '{self.provider}' is rate-limiting requests "
-
-                    f"after {self.max_retries} retry attempts. Please wait a moment and try again, "
-
-                    "or switch to a different provider with /provider <name>."
-
-                )
-
-            if status >= 500:
-
-                return (
-
-                    f"ERROR [Server Error]: The provider '{self.provider}' returned HTTP {status} "
-
-                    f"after {self.max_retries} retry attempts. The provider may be temporarily unavailable. "
-
-                    "Please try again later, or switch to a different provider."
-
-                )
-
-            return f"ERROR [HTTP {status}]: {error_detail}"
-
-        except urllib.error.URLError as e:
-
-            reason = str(e.reason)
-
-            if "getaddrinfo" in reason or "Name or service not known" in reason:
-
-                return (
-
-                    f"ERROR [Connection]: Cannot reach {self.base_url} — check your internet connection "
-
-                    "or LLM API base URL"
-
-                )
-
-            if self.is_local and self.provider == "local":
-
-                return (
-
-                    f"ERROR [Connection]: Cannot reach {self.base_url} — is Ollama running? "
-
-                    "Start it with 'ollama serve' (or install from https://ollama.com), "
-
-                    "then pull a model: ollama pull gemma4:12b"
-
-                )
-
-            if self.is_local and self.provider == "lmstudio":
-
-                return (
-
-                    f"ERROR [Connection]: Cannot reach {self.base_url} — is LM Studio running? "
-
-                    "Start the local server from the LM Studio app."
-
-                )
-
-            if self.is_local and self.provider == "9router":
-
-                return (
-
-                    f"ERROR [Connection]: Cannot reach {self.base_url} — is 9Router running? "
-
-                    "Delta should start it automatically. If not, start it manually: "
-
-                    "npm run start (in the 9router folder)"
-
-                )
-
-            if "timed out" in reason.lower() or "timeout" in reason.lower():
-
-                return (
-
-                    f"ERROR [Timeout]: The provider '{self.provider}' did not respond after "
-
-                    f"{self.max_retries} retry attempts. The server may be overloaded or unreachable. "
-
-                    "Try again later, or switch to a different provider with /provider <name>."
-
-                )
-
-            return f"ERROR [Connection]: {reason}"
-
-        except socket.timeout:
-
-            return (
-
-                f"ERROR [Timeout]: The provider '{self.provider}' did not respond after "
-
-                f"{self.max_retries} retry attempts. The server may be overloaded or unreachable. "
-
-                "Try again later, or switch to a different provider with /provider <name>."
-
-            )
-
-        except json.JSONDecodeError as e:
-
-            return f"ERROR [Response Parse]: The provider returned an invalid response. ({e})"
-
-        except Exception as e:
-
-            return f"ERROR: {e}"
-
 def parse_command_from_response(response: str) -> Optional[str]:
 
     match = re.search(r"<command>(.*?)</command>", response, re.DOTALL)
@@ -2486,5 +2323,17 @@ def parse_command_from_response(response: str) -> Optional[str]:
     return None
 
 def strip_command_tags(response: str) -> str:
-
-    return re.sub(r"<command>.*?</command>", "", response, flags=re.DOTALL).strip()
+    if not response:
+        return ""
+    text = response
+    # Handle JSON wrapped tool calls string
+    if ("tool_calls" in text and (text.startswith("{") or text.endswith("}"))):
+        try:
+            data = json.loads(text)
+            if isinstance(data, dict):
+                text = data.get("content", "")
+        except Exception:
+            pass
+    text = re.sub(r"<command>.*?</command>", "", text, flags=re.DOTALL)
+    text = re.sub(r"<tool_call>.*?</tool_call>", "", text, flags=re.DOTALL)
+    return text.strip()
