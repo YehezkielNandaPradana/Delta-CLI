@@ -1,3 +1,4 @@
+# Refactor: protocol definitions
 """
 Protocol and configuration contracts for Delta AI components.
 
