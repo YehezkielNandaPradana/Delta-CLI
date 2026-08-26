@@ -46,6 +46,8 @@ class SessionContext:
 
     """
 
+    working_directory: str = ""
+
     current_host: str = ""
 
     current_ports: str = ""
@@ -77,6 +79,8 @@ class SessionContext:
         """Convert to dictionary."""
 
         return {
+
+            "working_directory": self.working_directory,
 
             "current_host": self.current_host,
 
@@ -145,6 +149,8 @@ class SessionManager:
             ctx = current.get("context", {})
 
             self.context = SessionContext(
+
+                working_directory=ctx.get("working_directory", ""),
 
                 current_host=ctx.get("current_host", ""),
 
