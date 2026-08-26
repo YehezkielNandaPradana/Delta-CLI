@@ -1,3 +1,4 @@
+# Refactor: event payload
 # delta/ai/events.py
 """
 Structured Agent Event System & Event Bus for Delta AI Coding Agent.
