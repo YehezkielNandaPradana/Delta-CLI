@@ -244,9 +244,32 @@ CHAT_TEMPLATE = """
             margin-bottom: 8px;
             color: var(--accent-green);
             font-style: italic;
+            border: 1px solid rgba(0,255,136,0.3);
+            animation: pulseGlow 1.5s ease-in-out infinite;
         }
         .typing-indicator.show {
-            display: block;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 4px rgba(0,255,136,0.2); }
+            50% { box-shadow: 0 0 12px rgba(0,255,136,0.5); }
+        }
+        .dot-bounce {
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            display: inline-block;
+            animation: dotBounce 1.4s infinite ease-in-out both;
+        }
+        .dot-bounce:nth-child(1) { animation-delay: -0.32s; }
+        .dot-bounce:nth-child(2) { animation-delay: -0.16s; }
+        .dot-bounce:nth-child(3) { animation-delay: 0s; }
+        @keyframes dotBounce {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+            40% { transform: scale(1); opacity: 1; }
         }
         .input-container {
             padding: 20px 24px;
@@ -377,7 +400,10 @@ CHAT_TEMPLATE = """
             </div>
 
             <div class="typing-indicator" id="typingIndicator">
-                💅 Delta AI is typing...
+                <span>💅 Delta AI sedang berpikir...</span>
+                <span class="dot-bounce"></span>
+                <span class="dot-bounce"></span>
+                <span class="dot-bounce"></span>
             </div>
 
             <div class="input-container">
@@ -701,8 +727,10 @@ class DeltaChatInterface:
 
         @self.app.route('/api/status')
         def status_api():
+            cwd = getattr(self.engine, "cwd", None) or os.getcwd() if self.engine else os.getcwd()
             status = {
                 'engine_running': True,
+                'working_directory': cwd,
                 'llm_configured': self.engine.llm_engine.is_configured if self.engine else False,
                 'provider': self.engine.llm_engine.provider if self.engine and self.engine.llm_engine else 'none',
                 'model': self.engine.llm_engine.model if self.engine and self.engine.llm_engine else 'none'
