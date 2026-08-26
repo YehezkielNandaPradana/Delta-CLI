@@ -1,173 +1,186 @@
 ---
-name: Cognitive Minimalist
+name: Delta
 colors:
-  surface: '#0b1326'
-  surface-dim: '#0b1326'
-  surface-bright: '#31394d'
-  surface-container-lowest: '#060e20'
-  surface-container-low: '#131b2e'
-  surface-container: '#171f33'
-  surface-container-high: '#222a3d'
-  surface-container-highest: '#2d3449'
-  on-surface: '#dae2fd'
-  on-surface-variant: '#c7c4d7'
-  inverse-surface: '#dae2fd'
-  inverse-on-surface: '#283044'
-  outline: '#908fa0'
-  outline-variant: '#464554'
-  surface-tint: '#c0c1ff'
-  primary: '#c0c1ff'
-  on-primary: '#1000a9'
-  primary-container: '#8083ff'
-  on-primary-container: '#0d0096'
-  inverse-primary: '#494bd6'
-  secondary: '#4cd7f6'
-  on-secondary: '#003640'
-  secondary-container: '#03b5d3'
-  on-secondary-container: '#00424e'
-  tertiary: '#ffafd3'
-  on-tertiary: '#620040'
-  tertiary-container: '#e364a7'
-  on-tertiary-container: '#560038'
+  surface: '#101416'
+  surface-dim: '#101416'
+  surface-bright: '#363a3c'
+  surface-container-lowest: '#0b0f11'
+  surface-container-low: '#191c1e'
+  surface-container: '#1d2022'
+  surface-container-high: '#272a2d'
+  surface-container-highest: '#323538'
+  on-surface: '#e0e3e6'
+  on-surface-variant: '#bbc9ce'
+  inverse-surface: '#e0e3e6'
+  inverse-on-surface: '#2d3133'
+  outline: '#869398'
+  outline-variant: '#3c494d'
+  surface-tint: '#41d7fa'
+  primary: '#84e4ff'
+  on-primary: '#003641'
+  primary-container: '#2ccbee'
+  on-primary-container: '#005262'
+  inverse-primary: '#00687b'
+  secondary: '#c5c6cb'
+  on-secondary: '#2e3134'
+  secondary-container: '#494c4f'
+  on-secondary-container: '#babcc0'
+  tertiary: '#ffcd9c'
+  on-tertiary: '#492900'
+  tertiary-container: '#ffa73f'
+  on-tertiary-container: '#6d4000'
   error: '#ffb4ab'
   on-error: '#690005'
   error-container: '#93000a'
   on-error-container: '#ffdad6'
-  primary-fixed: '#e1e0ff'
-  primary-fixed-dim: '#c0c1ff'
-  on-primary-fixed: '#07006c'
-  on-primary-fixed-variant: '#2f2ebe'
-  secondary-fixed: '#acedff'
-  secondary-fixed-dim: '#4cd7f6'
-  on-secondary-fixed: '#001f26'
-  on-secondary-fixed-variant: '#004e5c'
-  tertiary-fixed: '#ffd8e7'
-  tertiary-fixed-dim: '#ffafd3'
-  on-tertiary-fixed: '#3d0026'
-  on-tertiary-fixed-variant: '#85145a'
-  background: '#0b1326'
-  on-background: '#dae2fd'
-  surface-variant: '#2d3449'
+  primary-fixed: '#afecff'
+  primary-fixed-dim: '#41d7fa'
+  on-primary-fixed: '#001f27'
+  on-primary-fixed-variant: '#004e5d'
+  secondary-fixed: '#e1e2e7'
+  secondary-fixed-dim: '#c5c6cb'
+  on-secondary-fixed: '#191c1f'
+  on-secondary-fixed-variant: '#44474a'
+  tertiary-fixed: '#ffdcbd'
+  tertiary-fixed-dim: '#ffb86d'
+  on-tertiary-fixed: '#2c1600'
+  on-tertiary-fixed-variant: '#683c00'
+  background: '#101416'
+  on-background: '#e0e3e6'
+  surface-variant: '#323538'
 typography:
-  display-lg:
-    fontFamily: Geist
-    fontSize: 48px
-    fontWeight: '700'
-    lineHeight: 56px
-    letterSpacing: -0.02em
-  headline-md:
-    fontFamily: Geist
-    fontSize: 24px
-    fontWeight: '600'
-    lineHeight: 32px
-    letterSpacing: -0.01em
   headline-sm:
     fontFamily: Geist
-    fontSize: 20px
-    fontWeight: '600'
-    lineHeight: 28px
-  body-lg:
-    fontFamily: Inter
     fontSize: 18px
-    fontWeight: '400'
-    lineHeight: 28px
-  body-md:
-    fontFamily: Inter
-    fontSize: 16px
-    fontWeight: '400'
+    fontWeight: '600'
     lineHeight: 24px
-  body-sm:
-    fontFamily: Inter
+    letterSpacing: -0.01em
+  body-md:
+    fontFamily: Geist
     fontSize: 14px
     fontWeight: '400'
     lineHeight: 20px
-  code-snippet:
+  body-sm:
+    fontFamily: Geist
+    fontSize: 13px
+    fontWeight: '400'
+    lineHeight: 18px
+  code-md:
     fontFamily: JetBrains Mono
-    fontSize: 14px
-    fontWeight: '450'
-    lineHeight: 22px
-  label-caps:
+    fontSize: 13px
+    fontWeight: '400'
+    lineHeight: 20px
+  code-sm:
     fontFamily: JetBrains Mono
     fontSize: 12px
-    fontWeight: '600'
+    fontWeight: '400'
     lineHeight: 16px
+  label-caps:
+    fontFamily: JetBrains Mono
+    fontSize: 11px
+    fontWeight: '500'
+    lineHeight: 14px
     letterSpacing: 0.05em
 rounded:
-  sm: 0.25rem
-  DEFAULT: 0.5rem
-  md: 0.75rem
-  lg: 1rem
-  xl: 1.5rem
+  sm: 0.125rem
+  DEFAULT: 0.25rem
+  md: 0.375rem
+  lg: 0.5rem
+  xl: 0.75rem
   full: 9999px
 spacing:
-  container-max: 800px
-  edge-margin-desktop: 40px
-  edge-margin-mobile: 16px
-  bubble-padding: 16px 20px
-  stack-gap: 24px
-  section-gap: 48px
+  space-xs: 0.25rem
+  space-sm: 0.5rem
+  space-md: 1rem
+  space-lg: 1.5rem
+  sidebar-width: 240px
+  inspector-width: 320px
+  gutter: 1px
 ---
 
 ## Brand & Style
-The design system is built on a foundation of **Modern Minimalism** infused with **Glassmorphism** to reflect the ethereal yet precise nature of artificial intelligence. It targets high-productivity users who require a focused, distraction-free environment that feels both high-tech and human-centric.
 
-The visual narrative centers on "The Intelligent Void"—using deep, expansive backgrounds contrasted with vibrant, glowing elements that represent AI activity. The emotional goal is to evoke feelings of clarity, calm, and limitless potential. Interfaces should feel lightweight, using subtle transparency and motion to communicate state changes rather than heavy borders or solid fills.
+The design system is a high-utility, developer-centric framework built for speed, precision, and deep focus. It targets power users who prioritize information density and system transparency over decorative elements.
+
+The aesthetic is **Technical Minimalism**. It draws inspiration from high-performance productivity tools like modern IDEs and command-line interfaces. The emotional response should be one of "quiet competence"—the UI stays out of the way, providing a stable, low-distraction environment for complex AI-assisted workflows.
+
+Visual principles:
+- **Density:** High information density with compact spacing and reduced visual noise.
+- **Precision:** Mathematical alignment, 1px strokes, and monospaced accents.
+- **Subtlety:** Interaction feedback is communicated through slight tonal shifts rather than heavy shadows or vibrant colors.
+- **Utility:** Every element serves a functional purpose; decorative flourishes are strictly avoided.
 
 ## Colors
-The palette utilizes a "Deep Space" foundation to minimize eye strain and maximize the impact of accent colors. 
 
-- **Primary (Electric Indigo):** Used for primary actions and the user's presence. It represents intent and direction.
-- **Secondary (Cyber Cyan):** Reserved for AI response states, highlights, and "thinking" indicators.
-- **Tertiary (Soft Rose):** An accent for delicate interactions, error states, or special features.
-- **Neutrals:** A range of Slate and Zinc grays from `#020617` (background) to `#94A3B8` (secondary text) are used to build depth.
+The palette is a strictly "dark-first" implementation designed for long-duration use without eye strain. 
 
-Backgrounds should use a subtle radial gradient of the primary color at 5% opacity to prevent the UI from feeling "dead" black.
+- **Primary Background:** #0B0D0F is the foundation, providing a deep, near-black canvas.
+- **Secondary Background:** #111417 is used for structural panels (sidebars, inspector, footer).
+- **Accents:** A restrained technical teal (#2CCBEE) represents Delta’s presence. It is used sparingly for active states, notifications, and success indicators.
+- **Borders:** #24282D provides structural definition without high-contrast distraction.
+- **Typography:** Three tiers of grey ensure a clear information hierarchy, moving from high-contrast white (#E6E8EB) to a deeply muted charcoal (#5F6670) for non-essential metadata.
 
 ## Typography
-The typography strategy prioritizes technical precision and effortless readability. 
 
-**Geist** is used for headlines to provide a sharp, geometric feel that aligns with modern developer tools. **Inter** handles the bulk of conversational text, chosen for its exceptional legibility at various weights in digital interfaces. **JetBrains Mono** is utilized for labels, metadata, and code blocks to reinforce the high-tech, systematic nature of the product.
+This design system utilizes a dual-font strategy to balance readability with a technical feel.
 
-For mobile devices, `display-lg` should scale down to 32px to maintain visual balance within the narrower viewport.
+- **Primary UI (Geist):** Used for most interface elements, navigation, and primary content. It provides excellent legibility at small sizes.
+- **Technical/Code (JetBrains Mono):** Used for execution logs, file paths, terminal blocks, and status indicators. 
+
+Avoid large font sizes; the maximum size for typical headers is 18px. Data-heavy views should default to `body-sm` (13px) to maximize screen real estate. Use `label-caps` for metadata headers and sidebar categories to provide distinct visual separation.
 
 ## Layout & Spacing
-The layout follows a **Centered Fluid** model. Chat threads are constrained to a maximum width of 800px to ensure optimal line lengths for reading. 
 
-Horizontal white space is used aggressively to separate the user's intent from the AI's response. A consistent 8px grid governs all spacing increments. 
+The layout follows a strict **Fixed-Panel Grid** system. The workspace is divided into functional regions (Sidebar, Editor/Main, Inspector, Terminal) separated by 1px borders.
 
-- **Desktop:** A three-pane layout (History Sidebar / Active Chat / Contextual Panel) where the Sidebar and Panel can be collapsed to focus entirely on the conversation.
-- **Mobile:** A single-column view with a floating input bar. Sidebars transition to full-screen overlays or bottom sheets.
+- **Sidebar:** Fixed width (240px), collapsible.
+- **Main Area:** Fluid, adapts to fill remaining space between panels.
+- **Gutter:** Use the 1px border (#24282D) as the primary divider between all major components.
+- **Rhythm:** An 8px base unit is used for padding and margins, but 4px increments are allowed for tight technical components like status bars or terminal lines.
+
+Elements should be aligned to the pixel grid to maintain the crisp, "engineered" appearance.
 
 ## Elevation & Depth
-Depth is conveyed through **Tonal Layers** and **Backdrop Blurs**. Shadows are avoided in favor of subtle inner borders that simulate light catching the edge of a glass pane.
 
-1.  **Level 0 (Base):** The main background (`#020617`).
-2.  **Level 1 (Surface):** Chat bubbles and sidebars use a semi-transparent fill (`rgba(30, 41, 59, 0.5)`) with a `20px` backdrop blur.
-3.  **Level 2 (Active):** Hovered states or active inputs increase the opacity of the surface fill and add a `1px` stroke of the primary color at 20% opacity.
-4.  **Floating Elements:** Modals and tooltips use a more opaque background with a very subtle, large-radius ambient glow in the primary color (shadow-spread: 20px, blur: 40px, opacity: 0.1).
+This design system rejects traditional shadows and depth. It uses a **Tonal Layering** approach to convey hierarchy.
+
+- **Surface 0 (Base):** #0B0D0F for the main background.
+- **Surface 1 (Panels):** #111417 for sidebars, headers, and footer bars.
+- **Surface 2 (Active/Popup):** #1C2025 for tooltips, menus, and modals.
+
+Instead of shadows, use 1px solid borders (#24282D) to define boundaries. Active states or focused inputs may use a 1px teal border or a subtle background tint, but never a glow or blur effect.
 
 ## Shapes
-The shape language is "Soft-Modern." While the system is precise, the `0.5rem` (8px) base radius ensures the interface feels approachable and "cushioned."
 
-- **Chat Bubbles:** Use `rounded-lg` (16px). User bubbles are traditionally aligned with sharp bottom-right corners, while AI bubbles have a sharp bottom-left corner.
-- **Input Fields:** Use `rounded-xl` (24px) to create a soft, pill-like container for text entry.
-- **Buttons:** Use `rounded-md` (8px) for a slightly more structured, "tool-like" appearance.
+The shape language is industrial and geometric.
+
+- **Base Radius:** 4px to 6px is used for buttons, input fields, and container corners.
+- **Interactive Elements:** Use a consistent 4px radius (`rounded-sm`).
+- **Outer Containers:** Large modal or panel containers use a 6px radius (`rounded-lg`).
+- **Icons:** Use sharp or minimally rounded 16px icons with a 1.5pt stroke weight.
 
 ## Components
-### Chat Bubbles
-User bubbles should be secondary-neutral backgrounds with white text. AI bubbles use the glassmorphic style (low-opacity fill + blur) with a subtle vertical accent border on the left side in the `secondary_color`.
 
 ### Buttons
-Primary buttons are solid `primary_color` with white text. Secondary buttons are ghost-style (no fill) with a white `1px` border at 10% opacity.
+- **Primary:** Solid teal background with black text. No gradients.
+- **Secondary:** Subtle border (#24282D) with high-contrast text. Background fills slightly on hover.
+- **Ghost:** No border or background. Teal text only on hover or active state.
 
-### Input Bar
-A persistent floating bar at the bottom of the screen. It should use a `Level 2` elevation. The send button remains disabled and low-contrast until text is detected, then glows with the `primary_color`.
+### Input Fields (Command-Line Style)
+- Inputs should be flush with the bottom of the workspace or panel.
+- Use a prompt prefix (e.g., `>`) in JetBrains Mono.
+- No heavy focus rings; use a 1px teal border on focus.
 
-### Chips / Suggestions
-Small, pill-shaped triggers used for "quick replies." These should have a `1px` border of `primary_color_hex` at 30% opacity and no fill, turning solid on hover.
+### Terminal & Execution Blocks
+- Use the secondary background (#111417).
+- Content must be monospaced.
+- Use distinct colors for log levels: `dim` for verbose, `teal` for info, `amber` for warnings, and `red` for errors.
 
-### Code Blocks
-Deep black backgrounds (`#000000`) with syntax highlighting using the full accent palette (Cyan, Indigo, Rose). Include a "Copy" button in the top-right corner that appears only on hover.
+### Sidebar & Lists
+- Compact list items (28px - 32px height).
+- Icons should be 16px and muted (#8B929A), turning white on hover.
+- Active items are indicated by a 2px vertical teal line on the left edge.
 
-### Typing Indicator
-Three oscillating dots using the `secondary_color_hex`, rendered with a soft outer glow to simulate the AI "breathing" or thinking.
+### Status Indicators
+- Small, uppercase, monospaced text.
+- Use dot indicators for status (Teal for "Active/Running", Dim for "Idle").
