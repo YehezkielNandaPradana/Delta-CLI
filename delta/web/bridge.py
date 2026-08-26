@@ -34,6 +34,12 @@ class EngineBridge:
         if self.engine:
             self.engine.web_mode = True
 
+    def cancel_execution(self) -> Dict[str, Any]:
+        if self.engine and hasattr(self.engine, "_stop_event") and self.engine._stop_event:
+            self.engine._stop_event.set()
+            return {"status": "ok", "message": "Stop signal sent"}
+        return {"status": "error", "message": "No active execution to stop"}
+
     def get_status(self) -> Dict[str, Any]:
         cwd = getattr(self.engine, "cwd", None) or os.getcwd()
         return {
@@ -55,10 +61,16 @@ class EngineBridge:
         old_stdout = sys.stdout
         try:
             sys.stdout = output_capture
+            import threading
+            self.engine._stop_event = threading.Event()
             res = self.engine._process_input(cmd)
-            # If engine returns structured dict (e.g. from _process_with_llm)
+            
+            # Extract structured response from _process_input dictionary
             if isinstance(res, dict):
-                output = res.get("response") or res.get("error") or ""
+                output_str = res.get("response") or res.get("error") or ""
+                if not output_str and res.get("command"):
+                    output_str = f"Executed: {res['command']}"
+                output = output_str if output_str else output_capture.getvalue()
                 is_task = res.get("is_task", False)
                 task_id = res.get("task_id")
             else:
@@ -67,6 +79,7 @@ class EngineBridge:
                 task_id = None
         finally:
             sys.stdout = old_stdout
+            self.engine._stop_event = None
             self.engine.web_mode = original_web_mode
 
         return {

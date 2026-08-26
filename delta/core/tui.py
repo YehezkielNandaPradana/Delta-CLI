@@ -1927,6 +1927,11 @@ class DeltaTUI:
 
             if ch == "\x03":
 
+                if self._processing and hasattr(self.engine, "_stop_event") and self.engine._stop_event:
+                    self.engine._stop_event.set()
+                    self._notice("Stop requested (Ctrl+C)...", color="yellow")
+                    return ("", None)
+
                 if self.input_text:
 
                     self.input_text, self.input_pos = "", 0
@@ -2207,6 +2212,8 @@ class DeltaTUI:
 
         self._processing = True
 
+        self.engine._stop_event = threading.Event()
+
         spin_stop = threading.Event()
 
         spinner = threading.Thread(
@@ -2226,7 +2233,6 @@ class DeltaTUI:
             captured, result = self._process_captured(
 
                 lambda: self.engine._process_input(text)
-
             )
 
         except KeyboardInterrupt:
@@ -2242,6 +2248,9 @@ class DeltaTUI:
                 import traceback
 
                 traceback.print_exc()
+
+        finally:
+            self.engine._stop_event = None
 
         spin_stop.set()
 

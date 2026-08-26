@@ -6,67 +6,18 @@
     <title>Delta IDE Workspace</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
     <script id="tailwind-config">
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             "colors": {
-              "on-surface-variant": "#475569",
-              "secondary": "#475569",
-              "primary-fixed": "#e0f2fe",
-              "outline-variant": "#e2e8f0",
-              "primary-fixed-dim": "#bae6fd",
-              "surface": "#ffffff",
-              "on-surface": "#0f172a",
-              "surface-variant": "#f1f5f9",
-              "error": "#ef4444",
-              "error-container": "#fef2f2",
-              "on-primary": "#ffffff",
-              "surface-container-low": "#f8fafc",
-              "surface-container": "#f1f5f9",
-              "secondary-container": "#e2e8f0",
-              "on-secondary": "#0f172a",
-              "on-primary-container": "#075985",
-              "tertiary-container": "#fef3c7",
-              "outline": "#cbd5e1",
-              "surface-dim": "#f8fafc",
-              "surface-container-highest": "#e2e8f0",
-              "on-error-container": "#991b1b",
-              "primary": "#0284c7",
-              "on-primary-fixed": "#075985",
-              "surface-container-lowest": "#ffffff",
-              "tertiary": "#d97706",
-              "primary-container": "#e0f2fe",
-              "background": "#f8fafc"
-            },
-            "borderRadius": {
-              "sm": "0.25rem",
-              "DEFAULT": "0.5rem",
-              "md": "0.5rem",
-              "lg": "0.75rem",
-              "xl": "1rem"
-            },
-            "spacing": {
-              "space-lg": "1.5rem",
-              "space-md": "1rem",
-              "space-sm": "0.5rem",
-              "sidebar-width": "240px",
-              "space-xs": "0.25rem",
-              "inspector-width": "320px"
+              "accent": "#6366F1", /* Indigo untuk aksen utama */
             },
             "fontFamily": {
               "code": ["JetBrains Mono", "monospace"],
-              "sans": ["Geist", "sans-serif"]
-            },
-            "fontSize": {
-              "code-sm": ["12px", { "lineHeight": "16px" }],
-              "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500" }],
-              "body-md": ["14px", { "lineHeight": "20px" }],
-              "code-md": ["13px", { "lineHeight": "20px" }],
-              "body-sm": ["13px", { "lineHeight": "18px" }],
-              "headline-sm": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+              "sans": ["Inter", "sans-serif"]
             }
           }
         }
@@ -76,91 +27,106 @@
       (function() {
         function applyTheme() {
           const savedTheme = localStorage.getItem('delta-theme') || 'light';
-          if (savedTheme === 'dark') document.documentElement.classList.add('dark');
-          else document.documentElement.classList.remove('dark');
+          const isDark = savedTheme === 'dark';
+          document.documentElement.classList.toggle('dark', isDark);
         }
         window.applyTheme = applyTheme;
         applyTheme();
       })();
-      function cycleTheme() {
-        const isDark = document.documentElement.classList.toggle('dark');
-        localStorage.setItem('delta-theme', isDark ? 'dark' : 'light');
-        document.getElementById('theme-toggle-icon').textContent = isDark ? 'dark_mode' : 'light_mode';
+
+      function setTheme(mode) {
+        localStorage.setItem('delta-theme', mode);
+        window.applyTheme();
+        updateThemeIcon();
       }
+
+      function cycleTheme() {
+        const current = localStorage.getItem('delta-theme') || 'light';
+        const next = current === 'light' ? 'dark' : 'light';
+        setTheme(next);
+      }
+
+      function updateThemeIcon() {
+        const iconEl = document.getElementById('theme-toggle-icon');
+        if (!iconEl) return;
+        const isDark = document.documentElement.classList.contains('dark');
+        iconEl.textContent = isDark ? 'dark_mode' : 'light_mode';
+      }
+      
+      document.addEventListener('DOMContentLoaded', updateThemeIcon);
+      window.setTheme = setTheme;
+      window.cycleTheme = cycleTheme;
     </script>
     <style>
-        body { font-family: 'Geist', sans-serif; }
-        .font-code { font-family: 'JetBrains Mono', monospace; }
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
         
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #3f3f46; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
 
-        .transition-base { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        /* Subtle transitions */
+        .transition-base { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
         
+        /* Minimal Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(4px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.2; }
-        }
-        .animate-blink { animation: blink 1s infinite; }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .animate-spin-slow { animation: spin 1s linear infinite; }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col font-sans text-body-sm antialiased bg-surface-container-low text-on-surface">
+<body class="h-screen w-screen overflow-hidden flex flex-col text-sm antialiased bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 selection:bg-indigo-500/20">
 
     <!-- TopAppBar -->
-    <header class="bg-surface border-b border-outline-variant flex justify-between items-center h-12 px-space-md z-50 shrink-0 select-none">
-        <div class="flex items-center gap-space-md">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="switchNav('execution')">
-                <div class="w-8 h-8 rounded-lg bg-primary text-on-primary flex items-center justify-center shadow-sm font-bold">D</div>
-                <div class="flex flex-col leading-none">
-                    <span class="text-sm font-semibold tracking-tight text-on-surface">Delta Workspace</span>
-                    <span class="text-[10px] font-code text-on-surface-variant mt-0.5">Cyber Ops Edition</span>
-                </div>
+    <header class="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center h-12 px-4 w-full z-50 shrink-0 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2.5 cursor-pointer group" onclick="switchNav('execution')">
+                <div class="w-7 h-7 rounded-lg bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center font-bold text-xs shadow-md transition-all duration-300 group-hover:scale-105 group-hover:rotate-3">D</div>
             </div>
             
-            <div class="h-6 w-px bg-outline-variant mx-1"></div>
+            <div class="h-5 w-px bg-zinc-200 dark:bg-zinc-800 mx-1"></div>
 
-            <button onclick="toggleModal('command-palette')" class="flex items-center bg-surface-container border border-outline-variant hover:border-primary rounded-md px-2.5 py-1.5 text-on-surface-variant font-code text-code-sm transition-base group">
-                <span class="material-symbols-outlined text-[16px] mr-2 text-outline group-hover:text-primary">search</span>
-                <span>Search...</span>
-                <kbd class="ml-12 text-[10px] bg-surface-container-highest px-1.5 py-0.5 rounded text-on-surface-variant font-code">⌘K</kbd>
+            <button onclick="toggleModal('command-palette')" class="flex items-center bg-zinc-50 dark:bg-zinc-850 border border-zinc-200/80 dark:border-zinc-800 hover:border-indigo-500/40 dark:hover:border-indigo-500/40 hover:bg-white dark:hover:bg-zinc-800 rounded-lg px-2.5 py-1 text-zinc-400 dark:text-zinc-500 font-mono text-xs transition-base group w-60 shadow-inner">
+                <span class="material-symbols-outlined text-[15px] mr-1.5 text-zinc-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">search</span>
+                <span class="text-left flex-1 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">Search command...</span>
+                <kbd class="text-[8px] bg-zinc-200/60 dark:bg-zinc-700/60 px-1.2 py-0.2 rounded text-zinc-500 dark:text-zinc-400 font-mono font-bold shadow-sm">⌘K</kbd>
             </button>
         </div>
-        <div class="flex items-center gap-2 text-on-surface-variant">
-            <div class="hidden md:flex items-center gap-2 font-code text-[11px] text-on-surface-variant mr-2">
-                <span class="px-2 py-0.5 rounded border border-outline-variant bg-surface" id="header-target-badge">localhost</span>
+
+        <div class="flex items-center gap-2.5 text-zinc-500 dark:text-zinc-400">
+            <div class="hidden md:flex items-center gap-1.5 font-mono text-[10px]">
+                <span class="px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 text-zinc-500 dark:text-zinc-400 flex items-center gap-1 font-semibold">
+                    <span class="material-symbols-outlined text-[12px] text-zinc-400">dns</span>
+                    <span id="header-target-badge">localhost</span>
+                </span>
             </div>
             
-            <div class="flex items-center gap-1.5 text-[11px] font-code text-primary px-2 py-1 rounded border border-primary/30 bg-primary-container/50">
-                <div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
-                <span class="font-medium uppercase tracking-wider" id="status-indicator-text">Idle</span>
+            <div class="flex items-center gap-1 text-[10px] font-mono text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 font-semibold">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span class="tracking-wider uppercase" id="status-indicator-text">Online</span>
             </div>
 
-            <button title="Branch Info" onclick="toggleModal('branch-modal')" class="hover:bg-surface-variant transition-base p-1.5 rounded-md">
-                <span class="material-symbols-outlined text-[20px]">account_tree</span>
-            </button>
-            <button title="Notifications" onclick="toggleModal('notifications-modal')" class="hover:bg-surface-variant transition-base p-1.5 rounded-md relative">
-                <span class="material-symbols-outlined text-[20px]">notifications</span>
-                <span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-error"></span>
-            </button>
-            <button title="Settings" onclick="toggleModal('settings-modal')" class="hover:bg-surface-variant transition-base p-1.5 rounded-md">
-                <span class="material-symbols-outlined text-[20px]">settings</span>
-            </button>
-            <button id="theme-toggle-btn" title="Toggle Theme" onclick="cycleTheme()" class="hover:bg-surface-variant transition-base p-1.5 rounded-md">
-                <span class="material-symbols-outlined text-[20px]" id="theme-toggle-icon">light_mode</span>
-            </button>
+            <div class="h-5 w-px bg-zinc-200 dark:bg-zinc-800 mx-0.5"></div>
+
+            <div class="flex items-center gap-0.5">
+                <button title="Branch Info" onclick="toggleModal('branch-modal')" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-base p-1.5 rounded-lg">
+                    <span class="material-symbols-outlined text-[18px]">account_tree</span>
+                </button>
+                <button title="Notifications" onclick="toggleModal('notifications-modal')" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-base p-1.5 rounded-lg relative">
+                    <span class="material-symbols-outlined text-[18px]">notifications</span>
+                    <span class="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-500 border border-white dark:border-zinc-900"></span>
+                </button>
+                <button title="Settings (Ctrl+L)" onclick="toggleModal('settings-modal')" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-base p-1.5 rounded-lg">
+                    <span class="material-symbols-outlined text-[18px]">settings</span>
+                </button>
+                <button id="theme-toggle-btn" title="Toggle Theme" onclick="cycleTheme()" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-base p-1.5 rounded-lg">
+                    <span class="material-symbols-outlined text-[18px]" id="theme-toggle-icon">desktop_windows</span>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -168,449 +134,973 @@
     <div class="flex flex-1 overflow-hidden">
 
         <!-- Left Sidebar -->
-        <aside class="bg-surface border-r border-outline-variant w-sidebar-width shrink-0 flex flex-col h-full z-40 hidden md:flex select-none">
-            <div class="p-space-sm border-b border-outline-variant">
-                <h2 class="text-label-caps font-bold text-on-surface-variant mb-1 uppercase tracking-wider">Project</h2>
-                <p class="text-on-surface font-code text-code-sm flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-[14px] text-primary">circle</span>
-                    delta-cyber-ops
-                </p>
+        <aside class="bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 w-64 shrink-0 flex flex-col h-full z-40 hidden md:flex">
+            <!-- Sidebar Header / Agent Profile Card -->
+            <div class="p-3.5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+                <div class="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 bg-white dark:bg-zinc-800/40 shadow-sm space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center font-bold text-sm shadow-md">
+                                Δ
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
+                                    DELTA CORE
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                </div>
+                                <div class="text-[10px] font-mono text-zinc-500 dark:text-zinc-400">SOC Agent v1.0</div>
+                            </div>
+                        </div>
+                        <span class="text-[9px] font-mono bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 px-1.5 py-0.5 rounded font-semibold">ARMED</span>
+                    </div>
+                    <div class="pt-1.5 border-t border-zinc-100 dark:border-zinc-700/50 flex justify-between items-center text-[10px] font-mono text-zinc-500 dark:text-zinc-400">
+                        <span>Mode: <b class="text-zinc-700 dark:text-zinc-300">ReAct AI</b></span>
+                        <span>Scope: <b class="text-emerald-600 dark:text-emerald-400">Full Access</b></span>
+                    </div>
+                </div>
             </div>
-            <nav class="flex-1 overflow-y-auto p-space-sm flex flex-col gap-1" id="sidebar-nav">
-                <button onclick="switchView('execution')" id="nav-execution" class="nav-btn flex items-center text-on-surface bg-surface-variant px-3 py-2 rounded-md transition-base text-body-sm font-medium w-full text-left">
-                    <span class="material-symbols-outlined text-[18px] mr-2" style="font-variation-settings: 'FILL' 1;">terminal</span>
-                    Execution
-                </button>
-                <button onclick="switchView('files')" id="nav-files" class="nav-btn flex items-center text-on-surface-variant px-3 py-2 hover:bg-surface-variant hover:text-on-surface rounded-md transition-base text-body-sm font-medium w-full text-left">
-                    <span class="material-symbols-outlined text-[18px] mr-2">folder_open</span>
-                    Files
-                </button>
-                <button onclick="switchView('tasks')" id="nav-tasks" class="nav-btn flex items-center text-on-surface-variant px-3 py-2 hover:bg-surface-variant hover:text-on-surface rounded-md transition-base text-body-sm font-medium w-full text-left">
-                    <span class="material-symbols-outlined text-[18px] mr-2">checklist</span>
-                    Tasks
-                </button>
-                <button onclick="switchView('history')" id="nav-history" class="nav-btn flex items-center text-on-surface-variant px-3 py-2 hover:bg-surface-variant hover:text-on-surface rounded-md transition-base text-body-sm font-medium w-full text-left">
-                    <span class="material-symbols-outlined text-[18px] mr-2">history</span>
-                    History
-                </button>
 
-                <div class="mt-4 px-3 mb-2 text-label-caps font-bold text-on-surface-variant uppercase">Workspace</div>
-                <button onclick="switchView('agents')" id="nav-agents" class="nav-btn flex items-center text-on-surface-variant px-3 py-2 hover:bg-surface-variant hover:text-on-surface rounded-md transition-base text-body-sm font-medium w-full text-left">
-                    <span class="material-symbols-outlined text-[18px] mr-2">smart_toy</span>
-                    Agents
-                </button>
-                <button onclick="switchView('tools')" id="nav-tools" class="nav-btn flex items-center text-on-surface-variant px-3 py-2 hover:bg-surface-variant hover:text-on-surface rounded-md transition-base text-body-sm font-medium w-full text-left">
-                    <span class="material-symbols-outlined text-[18px] mr-2">build</span>
-                    Tools
-                </button>
-                <button onclick="switchView('mcp')" id="nav-mcp" class="nav-btn flex items-center text-on-surface-variant px-3 py-2 hover:bg-surface-variant hover:text-on-surface rounded-md transition-base text-body-sm font-medium w-full text-left">
-                    <span class="material-symbols-outlined text-[18px] mr-2">extension</span>
-                    MCP
-                </button>
-                <button onclick="toggleModal('settings-modal')" class="nav-btn flex items-center text-on-surface-variant px-3 py-2 hover:bg-surface-variant hover:text-on-surface rounded-md transition-base text-body-sm font-medium w-full text-left mt-auto">
-                    <span class="material-symbols-outlined text-[18px] mr-2">settings</span>
-                    Settings
-                </button>
+            <nav class="flex-1 overflow-y-auto p-3 space-y-5 text-xs">
+                <!-- Navigation Zone -->
+                <div class="space-y-1">
+                    <div class="px-2 mb-1.5 text-[10px] font-mono tracking-wider text-zinc-400 dark:text-zinc-500 uppercase font-semibold flex items-center justify-between">
+                        <span>Navigation</span>
+                        <span class="material-symbols-outlined text-[14px]">explore</span>
+                    </div>
+                    <button onclick="switchNav('execution')" id="nav-execution" class="nav-btn active-nav w-full text-left flex items-center justify-between text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 rounded-lg px-3 py-2 text-xs font-medium transition-base shadow-sm">
+                        <span class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-[18px]">terminal</span>
+                            <span>Execution Canvas</span>
+                        </span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
+                    </button>
+                    <button onclick="switchNav('files')" id="nav-files" class="nav-btn w-full text-left flex items-center justify-between text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg px-3 py-2 transition-base border border-transparent text-xs font-medium">
+                        <span class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-[18px]">folder_open</span>
+                            <span>Files Explorer</span>
+                        </span>
+                    </button>
+                    <button onclick="switchNav('tasks')" id="nav-tasks" class="nav-btn w-full text-left flex items-center justify-between text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg px-3 py-2 transition-base border border-transparent text-xs font-medium">
+                        <span class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-[18px]">checklist</span>
+                            <span>Tasks Board</span>
+                        </span>
+                    </button>
+                    <button onclick="switchNav('history')" id="nav-history" class="nav-btn w-full text-left flex items-center justify-between text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg px-3 py-2 transition-base border border-transparent text-xs font-medium">
+                        <span class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-[18px]">history</span>
+                            <span>Execution Log</span>
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Quick Actions Arsenal -->
+                <div class="space-y-1.5">
+                    <div class="px-2 mb-1.5 text-[10px] font-mono tracking-wider text-zinc-400 dark:text-zinc-500 uppercase font-semibold flex items-center justify-between">
+                        <span>Arsenal</span>
+                        <span class="material-symbols-outlined text-[14px]">bolt</span>
+                    </div>
+                    <div class="grid grid-cols-1 gap-1.5 font-mono">
+                        <button onclick="sendPrompt('scan localhost')" class="w-full text-left flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/30 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-300 dark:hover:border-indigo-500/30 rounded-lg p-2.5 transition-base group">
+                            <span class="flex items-center gap-2 truncate">
+                                <span class="material-symbols-outlined text-[16px] text-indigo-500 group-hover:scale-110 transition-transform">radar</span>
+                                <span class="truncate text-[11px] font-medium text-zinc-700 dark:text-zinc-300">scan localhost</span>
+                            </span>
+                            <span class="material-symbols-outlined text-[14px] text-zinc-400 group-hover:text-indigo-500">play_arrow</span>
+                        </button>
+                        <button onclick="sendPrompt('audit example.com')" class="w-full text-left flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/30 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 border border-zinc-200 dark:border-zinc-800 hover:border-indigo-300 dark:hover:border-indigo-500/30 rounded-lg p-2.5 transition-base group">
+                            <span class="flex items-center gap-2 truncate">
+                                <span class="material-symbols-outlined text-[16px] text-emerald-500 group-hover:scale-110 transition-transform">security</span>
+                                <span class="truncate text-[11px] font-medium text-zinc-700 dark:text-zinc-300">audit example.com</span>
+                            </span>
+                            <span class="material-symbols-outlined text-[14px] text-zinc-400 group-hover:text-indigo-500">play_arrow</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- System & Modules -->
+                <div class="space-y-1">
+                    <div class="px-2 mb-1.5 text-[10px] font-mono tracking-wider text-zinc-400 dark:text-zinc-500 uppercase font-semibold flex items-center justify-between">
+                        <span>Modules</span>
+                        <span class="material-symbols-outlined text-[14px]">tune</span>
+                    </div>
+                    <button onclick="switchNav('agents')" id="nav-agents" class="nav-btn w-full text-left flex items-center justify-between text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg px-3 py-2 transition-base border border-transparent text-xs font-medium">
+                        <span class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-[18px]">smart_toy</span>
+                            <span>Active Agents</span>
+                        </span>
+                        <span class="text-[10px] font-mono text-zinc-400 font-semibold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">3</span>
+                    </button>
+                    <button onclick="switchNav('tools')" id="nav-tools" class="nav-btn w-full text-left flex items-center justify-between text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg px-3 py-2 transition-base border border-transparent text-xs font-medium">
+                        <span class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-[18px]">build</span>
+                            <span>Tools Registry</span>
+                        </span>
+                        <span class="text-[10px] font-mono text-zinc-400 font-semibold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">14</span>
+                    </button>
+                    <button onclick="toggleModal('settings-modal')" class="nav-btn w-full text-left flex items-center justify-between text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg px-3 py-2 transition-base border border-transparent text-xs font-medium">
+                        <span class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-[18px]">settings</span>
+                            <span>Settings</span>
+                        </span>
+                    </button>
+                </div>
             </nav>
+
+            <!-- Bottom System Status Card -->
+            <div class="p-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+                <div class="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 bg-white dark:bg-zinc-800/40 shadow-sm space-y-2 font-mono text-[11px]">
+                    <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+                        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> 9Router</span>
+                        <span class="text-emerald-600 dark:text-emerald-400 font-semibold">Active</span>
+                    </div>
+                    <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+                        <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500"></span> Model</span>
+                        <span class="text-zinc-800 dark:text-zinc-200 font-semibold">Antigravity</span>
+                    </div>
+                </div>
+            </div>
         </aside>
 
         <!-- Main Workspace -->
-        <main class="flex-1 flex flex-col min-w-0 bg-surface-container-low">
+        <main class="flex-1 flex flex-col min-w-0 bg-zinc-50 dark:bg-zinc-950 relative">
+
             <!-- Workspace Header -->
-            <div class="h-12 border-b border-outline-variant flex items-center px-space-md justify-between shrink-0 bg-surface">
-                <div class="flex items-center gap-space-md">
-                    <h1 class="font-headline-sm text-headline-sm text-on-surface" id="view-title">Agent Execution</h1>
-                    <div class="flex items-center gap-2 border border-outline-variant rounded-md px-2 py-1 bg-surface-container-lowest">
-                        <div class="w-1.5 h-1.5 rounded-full bg-primary" id="status-dot"></div>
-                        <span class="font-code text-code-sm text-on-surface-variant uppercase tracking-wider" id="status-text">Ready</span>
-                    </div>
+            <div class="h-11 border-b border-zinc-200 dark:border-zinc-800 flex items-center px-4 justify-between shrink-0 bg-white dark:bg-zinc-900">
+                <div class="flex items-center gap-3">
+                    <h1 class="font-semibold text-zinc-800 dark:text-zinc-100 text-sm flex items-center gap-2" id="view-title">
+                        Execution Canvas
+                    </h1>
                 </div>
-                <div class="font-code text-code-sm text-on-surface-variant bg-surface-container-lowest px-3 py-1.5 rounded-md border border-outline-variant max-w-md truncate" id="task-display">
-                    Waiting for input...
+                <div class="font-mono text-xs text-zinc-500 dark:text-zinc-500 truncate" id="current-task-display" onclick="toggleModal('context-modal')">
+                    Idle - Waiting for input
                 </div>
             </div>
 
-            <!-- Dynamic View Container -->
-            <div id="main-view" class="flex-1 overflow-hidden flex flex-col">
-                <!-- Execution Canvas View -->
-                <div id="execution-view" class="flex-1 overflow-y-auto p-space-lg flex flex-col gap-6">
-                    <div id="messages-container" class="flex flex-col gap-6">
-                        <!-- Initial State -->
-                        <div class="flex flex-col items-center justify-center h-full text-center text-on-surface-variant mt-20" id="initial-state">
-                            <div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center mb-4">
-                                <span class="material-symbols-outlined text-[28px]">smart_toy</span>
-                            </div>
-                            <h3 class="text-on-surface font-semibold mb-1">Delta Agent Ready</h3>
-                            <p class="font-code text-code-sm">Execute a command below to start the workflow.</p>
-                        </div>
-                    </div>
+            <!-- Main Dynamic View Container -->
+            <div id="main-view-container" class="flex-1 overflow-hidden flex flex-col">
+                <!-- Execution Canvas -->
+                <div id="messages-container" class="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+                    <!-- Messages will appear here -->
                 </div>
             </div>
 
-            <!-- Command Input -->
-            <div class="p-space-md border-t border-outline-variant bg-surface shrink-0">
-                <form id="chat-form" onsubmit="event.preventDefault(); handleSubmit()" class="bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary transition-base overflow-hidden">
+            <!-- Command Input Area -->
+            <div class="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
+                <form id="chat-form" onsubmit="event.preventDefault(); handleSubmit(event)" class="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-base overflow-hidden">
                     <textarea
                         id="user-input"
-                        class="w-full bg-transparent border-none text-on-surface font-sans text-body-md resize-none focus:ring-0 p-3 h-[60px] outline-none placeholder-on-surface-variant"
-                        placeholder="Ask Delta to modify files, scan targets, or execute commands..."
+                        class="w-full bg-transparent border-none text-zinc-900 dark:text-zinc-100 text-sm resize-none p-3 h-[60px] focus:outline-none focus:ring-0 placeholder-zinc-400 dark:placeholder-zinc-500"
+                        placeholder="Ask Delta to execute commands, audit, or write code..."
                         onkeydown="handleKeyDown(event)"
                     ></textarea>
-                    <div class="flex justify-between items-center p-2 border-t border-outline-variant bg-surface">
-                        <div class="flex gap-1">
-                            <button type="button" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-variant p-1.5 rounded-md flex items-center justify-center transition-base">
-                                <span class="material-symbols-outlined text-[18px]">attach_file</span>
+                    <div class="flex justify-between items-center px-3 py-2 border-t border-zinc-200 dark:border-zinc-700 text-xs font-mono text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-900/50">
+                        <button type="button" onclick="toggleModal('model-modal')" class="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 px-2.5 py-1 rounded text-[11px] flex items-center gap-1.5 transition-base">
+                            <span class="material-symbols-outlined text-[14px]">memory</span>
+                            <span id="active-model-btn-text">Model: Antigravity</span>
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" id="stop-btn" onclick="handleStopExecution()" class="hidden bg-red-600 text-white hover:bg-red-700 px-3 h-8 rounded-md font-medium text-xs flex items-center gap-1 transition-base shadow-sm">
+                                <span class="material-symbols-outlined text-[14px]">stop</span>
+                                <span>Stop</span>
                             </button>
-                            <button type="button" onclick="toggleModal('model-modal')" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-variant p-1.5 rounded-md flex items-center justify-center transition-base text-code-sm font-code">
-                                <span class="material-symbols-outlined text-[16px] mr-1">memory</span>
-                                Antigravity
+                            <button type="submit" id="run-btn" class="bg-indigo-600 text-white hover:bg-indigo-700 px-4 h-8 rounded-md font-medium text-xs flex items-center gap-1.5 transition-base shadow-sm">
+                                <span>Run</span>
+                                <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
                             </button>
                         </div>
-                        <button type="submit" class="bg-primary text-on-primary px-4 py-2 rounded-md flex items-center gap-1.5 font-label-caps uppercase hover:bg-primary-fixed-dim transition-base">
-                            Send
-                            <span class="material-symbols-outlined text-[16px]">send</span>
-                        </button>
                     </div>
                 </form>
             </div>
         </main>
 
-        <!-- Right Inspector -->
-        <aside class="bg-surface border-l border-outline-variant w-inspector-width shrink-0 flex flex-col h-full z-40 hidden lg:flex select-none">
-            <div class="p-space-sm border-b border-outline-variant flex justify-between items-center">
-                <div>
-                    <h2 class="text-label-caps font-bold text-primary uppercase tracking-wider">Inspector</h2>
-                    <p class="text-on-surface-variant font-code text-code-sm">active-context</p>
-                </div>
-                <button class="text-on-surface-variant hover:text-on-surface transition-base">
-                    <span class="material-symbols-outlined text-[18px]">open_in_new</span>
-                </button>
+        <!-- Right Inspector Panel -->
+        <aside class="bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 w-80 shrink-0 flex flex-col h-full z-40 hidden lg:flex">
+        <div class="h-11 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 bg-white dark:bg-zinc-900 shrink-0">
+            <h2 class="text-sm font-semibold text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-indigo-500">analytics</span> Analytics & Metrics
+            </h2>
+            <button onclick="toggleModal('context-modal')" class="text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-base">
+                <span class="material-symbols-outlined text-[16px]">fullscreen</span>
+            </button>
+        </div>
+
+            <div class="flex border-b border-zinc-200 dark:border-zinc-800 text-xs font-medium">
+                <button onclick="switchInspectorTab('metrics')" id="tab-btn-metrics" class="flex-1 py-2.5 text-center text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/5">Metrics</button>
+                <button onclick="switchInspectorTab('context')" id="tab-btn-context" class="flex-1 py-2.5 text-center text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 border-b-2 border-transparent">Context</button>
+                <button onclick="switchInspectorTab('logs')" id="tab-btn-logs" class="flex-1 py-2.5 text-center text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 border-b-2 border-transparent">Logs</button>
             </div>
-            <div class="flex-1 overflow-y-auto p-space-sm">
-                <!-- Context Section -->
-                <div class="mb-6">
-                    <div class="flex items-center gap-2 text-on-surface mb-3 px-1">
-                        <span class="material-symbols-outlined text-[18px]">description</span>
-                        <h3 class="text-label-caps font-bold uppercase tracking-wider">Context</h3>
+
+            <div class="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+                <!-- Metrics Tab (Default) -->
+                <div id="tab-content-metrics" class="space-y-4">
+                    <!-- Line Chart Card: Latency & Stream Speed -->
+                    <div class="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 bg-zinc-50 dark:bg-zinc-800/30 shadow-sm space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[15px] text-indigo-500">show_chart</span> Token Latency (ms)
+                            </span>
+                            <span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold" id="current-latency-display">~24ms</span>
+                        </div>
+                        
+                        <!-- SVG Line Chart -->
+                        <div class="h-20 w-full relative pt-1">
+                            <svg class="w-full h-full overflow-visible" viewBox="0 0 200 60" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#6366F1" stop-opacity="0.3"/>
+                                        <stop offset="100%" stop-color="#6366F1" stop-opacity="0.0"/>
+                                    </linearGradient>
+                                </defs>
+                                <!-- Area under curve -->
+                                <path d="M 0,50 Q 30,25 60,35 T 120,20 T 170,38 T 200,15 L 200,60 L 0,60 Z" fill="url(#lineGrad)"/>
+                                <!-- Smooth Curve -->
+                                <path d="M 0,50 Q 30,25 60,35 T 120,20 T 170,38 T 200,15" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round"/>
+                                <!-- Data points -->
+                                <circle cx="60" cy="35" r="3" class="fill-indigo-500"/>
+                                <circle cx="120" cy="20" r="3" class="fill-indigo-500"/>
+                                <circle cx="200" cy="15" r="4" class="fill-indigo-600 stroke-white dark:stroke-zinc-900" stroke-width="1.5"/>
+                            </svg>
+                        </div>
+                        <div class="flex justify-between items-center text-[10px] font-mono text-zinc-400 dark:text-zinc-500 pt-1">
+                            <span>-60s</span><span>-30s</span><span>Now</span>
+                        </div>
                     </div>
-                    <ul class="flex flex-col gap-1 font-code text-code-sm">
-                        <li class="flex justify-between items-center px-2 py-2 text-on-surface-variant hover:bg-surface-variant rounded-md transition-base cursor-pointer">
-                            <span>4 Files in Memory</span>
-                            <span class="text-[10px] bg-surface-container-highest px-1.5 py-0.5 rounded text-on-surface">view</span>
-                        </li>
-                        <li class="flex justify-between items-center px-2 py-2 text-on-surface-variant hover:bg-surface-variant rounded-md transition-base cursor-pointer">
-                            <span>2 Tools Attached</span>
-                            <span class="text-[10px] bg-surface-container-highest px-1.5 py-0.5 rounded text-on-surface">view</span>
-                        </li>
-                        <li class="flex justify-between items-center px-2 py-2 text-on-surface-variant rounded-md">
-                            <span>Git Status</span>
-                            <span class="text-emerald-600 font-medium">clean</span>
-                        </li>
-                    </ul>
+
+                    <!-- Bar Chart Card: Tool Activity -->
+                    <div class="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 bg-zinc-50 dark:bg-zinc-800/30 shadow-sm space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[15px] text-indigo-500">bar_chart</span> Tool Usage Distribution
+                            </span>
+                            <span class="text-[10px] font-mono text-zinc-500 dark:text-zinc-400">Total: <b id="total-tools-label" class="text-zinc-800 dark:text-zinc-200">0</b></span>
+                        </div>
+                        <div class="space-y-2 font-mono text-[11px]">
+                            <div>
+                                <div class="flex justify-between text-zinc-600 dark:text-zinc-400 mb-1">
+                                    <span>fs_read / cat</span><span id="bar-val-read">0</span>
+                                </div>
+                                <div class="w-full bg-zinc-200 dark:bg-zinc-700 h-2 rounded-full overflow-hidden">
+                                    <div id="bar-progress-read" class="bg-indigo-500 h-full rounded-full transition-all duration-500" style="width: 5%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-zinc-600 dark:text-zinc-400 mb-1">
+                                    <span>terminal / exec</span><span id="bar-val-exec">0</span>
+                                </div>
+                                <div class="w-full bg-zinc-200 dark:bg-zinc-700 h-2 rounded-full overflow-hidden">
+                                    <div id="bar-progress-exec" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 5%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-zinc-600 dark:text-zinc-400 mb-1">
+                                    <span>edit / write</span><span id="bar-val-edit">0</span>
+                                </div>
+                                <div class="w-full bg-zinc-200 dark:bg-zinc-700 h-2 rounded-full overflow-hidden">
+                                    <div id="bar-progress-edit" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 5%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Donut Chart / System Health Card -->
+                    <div class="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 bg-zinc-50 dark:bg-zinc-800/30 shadow-sm space-y-3">
+                        <span class="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[15px] text-indigo-500">pie_chart</span> Session Resource Alloc
+                        </span>
+                        <div class="flex items-center gap-4">
+                            <!-- SVG Donut Chart -->
+                            <div class="relative w-16 h-16 shrink-0 flex items-center justify-center">
+                                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                                    <path class="text-zinc-200 dark:text-zinc-700" stroke-width="3.8" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path class="text-indigo-500" stroke-dasharray="65, 100" stroke-width="3.8" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path class="text-emerald-500" stroke-dasharray="20, 100" stroke-dashoffset="-65" stroke-width="3.8" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                </svg>
+                                <span class="absolute text-[10px] font-bold font-mono text-zinc-800 dark:text-zinc-100">85%</span>
+                            </div>
+                            <div class="space-y-1.5 text-[11px] font-mono flex-1">
+                                <div class="flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span> LLM Context
+                                    </span>
+                                    <span class="font-medium text-zinc-800 dark:text-zinc-200">65%</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Memory
+                                    </span>
+                                    <span class="font-medium text-zinc-800 dark:text-zinc-200">20%</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+                                        <span class="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600"></span> Buffer
+                                    </span>
+                                    <span class="font-medium text-zinc-800 dark:text-zinc-200">15%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Agent Info Section -->
-                <div class="mb-6">
-                    <div class="flex items-center gap-2 text-on-surface mb-3 px-1">
-                        <span class="material-symbols-outlined text-[18px]">info</span>
-                        <h3 class="text-label-caps font-bold uppercase tracking-wider">Agent Info</h3>
-                    </div>
-                    <div class="flex flex-col gap-3 font-code text-code-sm px-1">
-                        <div class="flex justify-between items-center">
-                            <span class="text-on-surface-variant">Model</span>
-                            <span class="text-on-surface bg-surface-variant px-2 py-0.5 rounded">Antigravity</span>
+                <!-- Context Tab -->
+                <div id="tab-content-context" class="hidden space-y-3">
+                    <div class="border border-zinc-200 dark:border-zinc-800 rounded-md p-3 space-y-2 bg-zinc-50 dark:bg-zinc-800/30">
+                        <div class="text-[10px] uppercase text-zinc-400 dark:text-zinc-500 font-semibold tracking-wider">Engine Context</div>
+                        <div class="flex justify-between items-center font-mono">
+                            <span class="text-zinc-500 dark:text-zinc-400">Protocol</span>
+                            <span class="text-indigo-600 dark:text-indigo-400 font-medium">9Router</span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-on-surface-variant">Mode</span>
-                            <span class="text-primary">Autonomous</span>
+                        <div class="flex justify-between items-center font-mono">
+                            <span class="text-zinc-500 dark:text-zinc-400">Agent</span>
+                            <span class="text-indigo-600 dark:text-indigo-400 font-medium">Delta Core</span>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-on-surface-variant">Tokens</span>
-                            <span class="text-on-surface">0 / 2M</span>
+                        <div class="flex justify-between items-center font-mono">
+                            <span class="text-zinc-500 dark:text-zinc-400">Git</span>
+                            <span class="text-emerald-600 dark:text-emerald-500 font-medium">Clean</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Changes Section -->
-                <div>
-                    <div class="flex items-center gap-2 text-on-surface mb-3 px-1">
-                        <span class="material-symbols-outlined text-[18px]">difference</span>
-                        <h3 class="text-label-caps font-bold uppercase tracking-wider">Changes</h3>
+                <!-- Logs Tab -->
+                <div id="tab-content-logs" class="hidden space-y-2">
+                    <div class="font-mono text-[11px] text-zinc-500 dark:text-zinc-500 space-y-1 max-h-96 overflow-y-auto pr-2">
+                        <div class="text-emerald-600">[system] SSE Stream active on /api/events</div>
+                        <div class="text-zinc-400">[system] Active model initialized</div>
                     </div>
-                    <div class="px-1 font-code text-code-sm mb-3 text-on-surface-variant" id="changes-summary">
-                        No files modified yet.
-                    </div>
-                    <div id="diff-list" class="flex flex-col gap-2"></div>
                 </div>
             </div>
         </aside>
     </div>
 
-    <!-- Modals -->
-    <div id="universal-modal" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-start justify-center pt-24 hidden animate-fade-in" onclick="if(event.target===this) toggleModal('universal-modal')">
-        <div class="bg-surface border border-outline-variant rounded-xl w-full max-w-xl shadow-2xl overflow-hidden animate-fade-in">
-            <div class="p-3 border-b border-outline-variant flex items-center gap-2 bg-surface-container-low">
-                <span class="material-symbols-outlined text-primary text-[20px]">search</span>
-                <input type="text" id="palette-input" onkeyup="filterPalette()" placeholder="Type a command or search..." class="w-full bg-transparent border-none text-on-surface text-body-md focus:ring-0 focus:outline-none placeholder-on-surface-variant">
-                <kbd class="text-[10px] bg-surface-variant px-1.5 py-0.5 rounded text-on-surface-variant font-code">ESC</kbd>
+    <!-- MODALS -->
+    <div id="universal-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-start justify-center pt-24 hidden animate-fade-in" onclick="if(event.target===this) toggleModal('universal-modal')">
+        <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg w-full max-w-xl shadow-xl overflow-hidden animate-fade-in">
+            <div class="p-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2 bg-zinc-50 dark:bg-zinc-800/30">
+                <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[20px]">search</span>
+                <input type="text" id="palette-search-input" onkeyup="filterCommandPalette()" placeholder="Type a command or search..." class="w-full bg-transparent border-none text-zinc-800 dark:text-zinc-100 text-sm focus:ring-0 focus:outline-none placeholder-zinc-400">
+                <kbd class="text-[10px] bg-zinc-200 dark:bg-zinc-700 px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-300 font-mono">ESC</kbd>
             </div>
-            <div class="max-h-80 overflow-y-auto p-2 space-y-1 font-code text-code-sm" id="palette-options">
-                <div class="px-2 py-1 text-label-caps font-bold text-on-surface-variant uppercase">Quick Commands</div>
-                <button onclick="executeFromPalette('scan localhost')" class="w-full text-left p-2 rounded-md hover:bg-surface-variant flex items-center justify-between text-on-surface group">
-                    <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">radar</span> scan localhost</span>
-                    <span class="text-[10px] text-on-surface-variant opacity-0 group-hover:opacity-100">↵</span>
+            <div class="max-h-80 overflow-y-auto p-2 space-y-1 text-sm" id="palette-options">
+                <div class="px-2 py-1 text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Quick Commands</div>
+                <button onclick="runPaletteCmd('scan localhost')" class="w-full text-left p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-between text-zinc-800 dark:text-zinc-100 group">
+                    <span class="flex items-center gap-2 text-xs font-mono"><span class="material-symbols-outlined text-[16px] text-indigo-500">radar</span> scan localhost</span>
+                    <span class="text-[10px] text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity">↵</span>
                 </button>
-                <button onclick="executeFromPalette('audit example.com')" class="w-full text-left p-2 rounded-md hover:bg-surface-variant flex items-center justify-between text-on-surface group">
-                    <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">security</span> audit example.com</span>
-                    <span class="text-[10px] text-on-surface-variant opacity-0 group-hover:opacity-100">↵</span>
+                <button onclick="runPaletteCmd('audit example.com')" class="w-full text-left p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-between text-zinc-800 dark:text-zinc-100 group">
+                    <span class="flex items-center gap-2 text-xs font-mono"><span class="material-symbols-outlined text-[16px] text-indigo-500">security</span> audit example.com</span>
+                    <span class="text-[10px] text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity">↵</span>
                 </button>
-                <button onclick="executeFromPalette('refactor auth middleware')" class="w-full text-left p-2 rounded-md hover:bg-surface-variant flex items-center justify-between text-on-surface group">
-                    <span class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-primary">code</span> refactor auth middleware</span>
-                    <span class="text-[10px] text-on-surface-variant opacity-0 group-hover:opacity-100">↵</span>
+                <button onclick="runPaletteCmd('explain SQL injection')" class="w-full text-left p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-between text-zinc-800 dark:text-zinc-100 group">
+                    <span class="flex items-center gap-2 text-xs font-mono"><span class="material-symbols-outlined text-[16px] text-indigo-500">menu_book</span> explain SQL injection</span>
+                    <span class="text-[10px] text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity">↵</span>
+                </button>
+                <div class="px-2 py-1 text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mt-2">Actions</div>
+                <button onclick="clearChat(); toggleModal('universal-modal');" class="w-full text-left p-2 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-between text-red-600 dark:text-red-400 group">
+                    <span class="flex items-center gap-2 text-xs font-mono"><span class="material-symbols-outlined text-[16px]">restart_alt</span> Clear Session (Ctrl+L)</span>
+                    <span class="text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">↵</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Generic Info Modal -->
-    <div id="info-modal" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in" onclick="if(event.target===this) toggleModal('info-modal')">
-        <div class="bg-surface border border-outline-variant rounded-xl w-full max-w-md shadow-xl p-6 animate-fade-in space-y-4">
-            <div class="flex justify-between items-center border-b border-outline-variant pb-3">
-                <h3 class="text-headline-sm text-on-surface flex items-center gap-2 font-semibold" id="info-modal-title">
-                    <span class="material-symbols-outlined text-[20px] text-primary">settings</span> Settings
+    <!-- Generic Info Modal (Used for Settings, Context, Model, etc.) -->
+    <div id="info-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center hidden animate-fade-in" onclick="if(event.target===this) toggleModal('info-modal')">
+        <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg w-full max-w-md shadow-xl p-6 animate-fade-in space-y-4">
+            <div class="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                <h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2" id="info-modal-title">
+                    <span class="material-symbols-outlined text-[20px] text-indigo-600">settings</span> Settings
                 </h3>
-                <button onclick="toggleModal('info-modal')" class="text-on-surface-variant hover:text-on-surface">
+                <button onclick="toggleModal('info-modal')" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
-            <div id="info-modal-content" class="text-body-sm text-on-surface-variant space-y-3"></div>
+            <div id="info-modal-content" class="text-sm text-zinc-600 dark:text-zinc-400 space-y-3">
+                <!-- Dynamic Content Injected Here -->
+            </div>
         </div>
     </div>
 
+    <!-- Client Script -->
     <script>
-        // Utility & State
-        const messagesContainer = document.getElementById('messages-container');
-        const userInput = document.getElementById('user-input');
-        const taskDisplay = document.getElementById('task-display');
-        const statusText = document.getElementById('status-text');
-        const statusDot = document.getElementById('status-dot');
-        let isExecuting = false;
+        let container = document.getElementById('messages-container');
+        const input = document.getElementById('user-input');
+        const viewContainer = document.getElementById('main-view-container');
+        let executedCommandsCount = 0;
+        let toolCount = 0;
+        let fileCount = 0;
+        let currentNavView = 'execution';
 
-        function escapeHtml(str) { return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-        function scrollToBottom() { const view = document.getElementById('execution-view'); if(view) view.scrollTop = view.scrollHeight; }
-        function handleKeyDown(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }
-        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+        function escapeHtml(str) {
+            if (typeof str !== 'string') return String(str || '');
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
 
-        function toggleModal(id) {
-            if(id === 'command-palette') return toggleModal('universal-modal');
-            if(id === 'model-modal' || id === 'context-modal' || id === 'settings-modal' || id === 'branch-modal' || id === 'notifications-modal') {
-                return showInfoModal(id);
-            }
-            const modal = document.getElementById(id);
-            if(modal) {
-                modal.classList.toggle('hidden');
-                if (!modal.classList.contains('hidden') && id === 'universal-modal') document.getElementById('palette-input').focus();
+        function scrollToBottom() { container.scrollTop = container.scrollHeight; }
+
+        function handleKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault(); e.stopPropagation(); handleSubmit(e);
             }
         }
 
-        function showInfoModal(type) {
-            let title = "Info", icon = "info", content = "";
-            if(type === 'model-modal') {
-                title = "Select Model"; icon = "memory";
-                content = `
-                    <div class="space-y-2">
-                        <div onclick="selectModel('Antigravity')" class="border border-primary bg-primary-container/50 p-3 rounded-md cursor-pointer flex justify-between items-center transition-base">
-                            <div><div class="font-semibold text-on-primary-container text-sm">AntigravityCombo</div><div class="text-xs text-on-surface-variant mt-1">High-performance routing</div></div>
-                            <span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
-                        </div>
-                        <div class="border border-outline-variant bg-surface-container-low p-3 rounded-md cursor-pointer hover:border-primary transition-base">
-                            <div class="font-semibold text-on-surface text-sm">DeepseekCombo</div>
-                            <div class="text-xs text-on-surface-variant mt-1">Ultra-fast response & reasoning</div>
-                        </div>
-                    </div>`;
-            } else if(type === 'settings-modal') {
-                title = "Workspace Settings"; icon = "settings";
-                content = `<button onclick="clearChat(); toggleModal('info-modal');" class="w-full bg-error-container text-on-error-container border border-error/20 p-3 rounded-md font-medium flex items-center justify-center gap-2 transition-base"><span class="material-symbols-outlined text-[20px]">restart_alt</span> Clear Session Context</button>`;
-            } else if(type === 'branch-modal') {
-                title = "Git Branch"; icon = "account_tree";
-                content = `<div class="font-code text-code-sm space-y-2"><div class="bg-surface-container-low p-3 rounded-md border border-outline-variant flex justify-between items-center text-on-surface"><span>Current Branch</span><span class="text-primary font-semibold">main</span></div></div>`;
-            } else if(type === 'notifications-modal') {
-                title = "Notifications"; icon = "notifications";
-                content = `<div class="bg-surface-container-low p-3 rounded-md border border-outline-variant space-y-1"><div class="font-semibold text-primary text-sm">System Online</div><div class="text-xs text-on-surface-variant font-code">Real-time listener active on /api/events</div></div>`;
+        function toggleModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden') && id === 'universal-modal') {
+                setTimeout(() => document.getElementById('palette-search-input')?.focus(), 50);
             }
-            document.getElementById('info-modal-title').innerHTML = `<span class="material-symbols-outlined text-[20px] text-primary">${icon}</span> ${title}`;
-            document.getElementById('info-modal-content').innerHTML = content;
-            document.getElementById('info-modal').classList.remove('hidden');
+        }
+        window.toggleModal = toggleModal;
+
+        function showInfoModal(title, icon, contentHtml) {
+            document.getElementById('info-modal-title').innerHTML = `<span class="material-symbols-outlined text-[20px] text-indigo-600">${icon}</span> ${title}`;
+            document.getElementById('info-modal-content').innerHTML = contentHtml;
+            toggleModal('info-modal');
+        }
+
+        function toggleModelModal() {
+            const content = `
+                <div class="space-y-2">
+                    <div onclick="selectModel('Antigravity')" class="model-opt border border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 p-3 rounded-md cursor-pointer flex justify-between items-center transition-base">
+                        <div><div class="font-semibold text-indigo-900 dark:text-indigo-300 text-sm">Antigravity (9Router)</div><div class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">High-performance routing</div></div>
+                        <span class="material-symbols-outlined text-indigo-600 text-[18px]">check_circle</span>
+                    </div>
+                    <div onclick="selectModel('Deepseek')" class="model-opt border border-zinc-200 dark:border-zinc-700 hover:border-indigo-500 bg-white dark:bg-zinc-800/30 p-3 rounded-md cursor-pointer transition-base">
+                        <div class="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">Deepseek Combo</div>
+                        <div class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">Ultra-fast response & reasoning</div>
+                    </div>
+                    <div onclick="selectModel('Gemma4:12b')" class="model-opt border border-zinc-200 dark:border-zinc-700 hover:border-indigo-500 bg-white dark:bg-zinc-800/30 p-3 rounded-md cursor-pointer transition-base">
+                        <div class="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">Gemma 4 12B (Local)</div>
+                        <div class="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">Free local offline model</div>
+                    </div>
+                </div>`;
+            showInfoModal('Select Model', 'memory', content);
+        }
+
+        function toggleContextModal() {
+            const content = `
+                <div class="space-y-3 font-mono text-xs">
+                    <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-md border border-zinc-200 dark:border-zinc-700 space-y-1">
+                        <div class="font-semibold text-zinc-800 dark:text-zinc-200 text-[13px] font-sans">Git Directory</div>
+                        <div class="text-indigo-600 dark:text-indigo-400">D:\\Project\\Delta-CLI (branch: main)</div>
+                    </div>
+                    <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-md border border-zinc-200 dark:border-zinc-700 space-y-1">
+                        <div class="font-semibold text-zinc-800 dark:text-zinc-200 text-[13px] font-sans">Active Tools</div>
+                        <div class="text-zinc-500 dark:text-zinc-400">scan, audit, jwt, hash, cve, fs_ops</div>
+                    </div>
+                </div>`;
+            showInfoModal('Workspace Context', 'add_circle', content);
+        }
+
+        function toggleSettingsModal() {
+            const content = `
+                <button onclick="clearChat(); toggleModal('info-modal');" class="w-full bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 p-3 rounded-md font-medium flex items-center justify-center gap-2 transition-base text-sm">
+                    <span class="material-symbols-outlined text-[18px]">restart_alt</span> Reset Chat Session
+                </button>`;
+            showInfoModal('Settings', 'settings', content);
+        }
+
+        function toggleBranchModal() {
+            const content = `
+                <div class="font-mono text-xs space-y-2">
+                    <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-md border border-zinc-200 dark:border-zinc-700 flex justify-between items-center text-zinc-800 dark:text-zinc-200">
+                        <span>Current Branch</span><span class="text-indigo-600 dark:text-indigo-400 font-semibold">main</span>
+                    </div>
+                    <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-md border border-zinc-200 dark:border-zinc-700 flex justify-between items-center text-zinc-800 dark:text-zinc-200">
+                        <span>Repository Status</span><span class="text-emerald-600 dark:text-emerald-500 font-semibold">Clean / Up-to-date</span>
+                    </div>
+                </div>`;
+            showInfoModal('Git Branch', 'account_tree', content);
+        }
+
+        function toggleNotificationsModal() {
+            const content = `
+                <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3 rounded-md border border-zinc-200 dark:border-zinc-700 space-y-1">
+                    <div class="font-semibold text-indigo-600 dark:text-indigo-400 text-sm">Delta Web SSE Online</div>
+                    <div class="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">Real-time agentic execution listener active on /api/events</div>
+                </div>`;
+            showInfoModal('Notifications', 'notifications', content);
+        }
+
+        // Override original generic toggle calls
+        const originalToggleModal = toggleModal;
+        window.toggleModal = function(id) {
+            if (id === 'command-palette' || id === 'universal-modal') return originalToggleModal('universal-modal');
+            if (id === 'model-modal') return toggleModelModal();
+            if (id === 'context-modal') return toggleContextModal();
+            if (id === 'settings-modal') return toggleSettingsModal();
+            if (id === 'branch-modal') return toggleBranchModal();
+            if (id === 'notifications-modal') return toggleNotificationsModal();
+            if (id === 'attach-modal') return; // Disabled for brevity
+            originalToggleModal(id);
         }
 
         function selectModel(modelName) {
+            document.getElementById('active-model-btn-text').innerText = `Model: ${modelName.split(':')[0]}`;
             toggleModal('info-modal');
             appendAiMessage(`[System] Active model changed to ${modelName}`);
         }
 
-        function filterPalette() {
-            const val = document.getElementById('palette-input').value.toLowerCase();
-            document.querySelectorAll('#palette-options button').forEach(b => b.style.display = b.innerText.toLowerCase().includes(val) ? 'flex' : 'none');
-        }
+        function runPaletteCmd(cmd) { toggleModal('universal-modal'); sendPrompt(cmd); }
 
-        function executeFromPalette(cmd) {
-            toggleModal('universal-modal');
-            userInput.value = cmd;
-            handleSubmit();
-        }
-
-        document.addEventListener('keydown', (e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); toggleModal('universal-modal'); }
-            else if (e.key === 'Escape') { document.querySelectorAll('.fixed.inset-0').forEach(m => m.classList.add('hidden')); }
-        });
-
-        // Navigation
-        function switchView(viewName) {
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.className = 'nav-btn flex items-center text-on-surface-variant px-3 py-2 hover:bg-surface-variant hover:text-on-surface rounded-md transition-base text-body-sm font-medium w-full text-left';
-                btn.querySelector('span').removeAttribute('style');
+        function filterCommandPalette() {
+            const val = document.getElementById('palette-search-input').value.toLowerCase();
+            document.querySelectorAll('#palette-options button').forEach(b => {
+                b.style.display = b.innerText.toLowerCase().includes(val) ? 'flex' : 'none';
             });
+        }
+
+        function switchInspectorTab(tabName) {
+            ['metrics', 'context', 'logs'].forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const content = document.getElementById(`tab-content-${t}`);
+                if (!btn || !content) return;
+                if (t === tabName) {
+                    btn.className = 'flex-1 py-2.5 text-center text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/5 font-medium';
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = 'flex-1 py-2.5 text-center text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 border-b-2 border-transparent font-medium';
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
+        function switchNav(viewName) {
+            currentNavView = viewName;
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = 'nav-btn w-full text-left flex items-center justify-between text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-lg px-3 py-2 transition-base border border-transparent text-xs font-medium';
+            });
+
             const activeBtn = document.getElementById(`nav-${viewName}`);
             if (activeBtn) {
-                activeBtn.className = 'nav-btn flex items-center text-on-surface bg-surface-variant px-3 py-2 rounded-md transition-base text-body-sm font-medium w-full text-left';
-                activeBtn.querySelector('span').setAttribute('style', "font-variation-settings: 'FILL' 1;");
+                activeBtn.className = 'nav-btn active-nav w-full text-left flex items-center justify-between text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 rounded-lg px-3 py-2 text-xs font-medium transition-base shadow-sm';
             }
-            
-            const titles = { execution: 'Agent Execution', files: 'File Explorer', tasks: 'Task Board', history: 'Execution History', agents: 'Agent Registry', tools: 'Tools & MCP', mcp: 'MCP Servers' };
-            document.getElementById('view-title').innerText = titles[viewName];
-            
+
+            const titleMap = {
+                'execution': 'Execution Canvas',
+                'files': 'Files Explorer',
+                'tasks': 'Tasks Board',
+                'history': 'Execution History',
+                'agents': 'Active Agents',
+                'tools': 'Tools Registry'
+            };
+
+            document.getElementById('view-title').innerText = titleMap[viewName] || 'Execution Canvas';
+
             if (viewName === 'execution') {
-                document.getElementById('main-view').innerHTML = `<div id="execution-view" class="flex-1 overflow-y-auto p-space-lg flex flex-col gap-6"><div id="messages-container" class="flex flex-col gap-6"></div></div>`;
-                clearChat();
+                restoreExecutionCanvas();
             } else {
-                document.getElementById('main-view').innerHTML = `
-                    <div class="flex-1 overflow-y-auto p-space-lg flex flex-col items-center justify-center text-center text-on-surface-variant">
-                        <span class="material-symbols-outlined text-[48px] mb-4 opacity-50">construction</span>
-                        <h3 class="text-on-surface font-semibold text-lg">${titles[viewName]}</h3>
-                        <p class="font-code text-code-sm mt-2">This module is under construction. Switch back to Execution to test the agent.</p>
-                    </div>
-                `;
+                renderStaticView(viewName);
             }
         }
+        window.switchNav = switchNav;
 
-        // Agent Execution Flow
-        async function handleSubmit() {
-            if (isExecuting) return;
-            const text = userInput.value.trim();
-            if (!text) return;
+        function restoreExecutionCanvas() {
+            viewContainer.innerHTML = `<div id="messages-container" class="flex-1 overflow-y-auto p-6 flex flex-col gap-4"></div>`;
+            container = document.getElementById('messages-container');
+            if (!container.innerHTML.trim()) clearChat();
+        }
 
-            isExecuting = true;
-            userInput.value = '';
+        function renderStaticView(viewName) {
+            let html = `<div class="p-6 flex-1 overflow-y-auto space-y-4 animate-fade-in text-sm">`;
+            html += `<div class="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3"><h3 class="font-semibold text-zinc-800 dark:text-zinc-100 uppercase tracking-wider text-xs">${viewName}</h3><button onclick="switchNav('execution')" class="text-indigo-600 dark:text-indigo-400 text-xs hover:underline font-medium">Back to Canvas</button></div>`;
+            
+            if (viewName === 'files') {
+                html += `<div class="space-y-2 font-mono text-xs">
+                            <div onclick="sendPrompt('cat delta/ai/llm.py')" class="p-3 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-md border border-zinc-200 dark:border-zinc-800 cursor-pointer flex justify-between items-center transition-base">
+                                <span class="flex items-center gap-2 text-zinc-800 dark:text-zinc-200"><span class="material-symbols-outlined text-[16px] text-indigo-500">description</span> delta/ai/llm.py</span>
+                                <span class="text-[10px] text-zinc-400">View</span>
+                            </div>
+                         </div>`;
+            } else if (viewName === 'tools') {
+                html += `<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <button onclick="sendPrompt('scan localhost'); switchNav('execution');" class="p-4 bg-white dark:bg-zinc-900 hover:border-indigo-500 rounded-md border border-zinc-200 dark:border-zinc-800 text-left transition-base">
+                                <div class="font-semibold text-indigo-600 dark:text-indigo-400 text-sm">scan</div>
+                                <div class="text-[10px] text-zinc-500 mt-1 font-mono">Port scanner</div>
+                            </button>
+                         </div>`;
+            } else {
+                html += `<div class="text-zinc-500 dark:text-zinc-400 text-xs font-mono">No active data for ${viewName}.</div>`;
+            }
+            html += `</div>`;
+            viewContainer.innerHTML = html;
+        }
 
-            const initialState = document.getElementById('initial-state');
-            if (initialState) initialState.remove();
-
-            appendUserMessage(text);
-            taskDisplay.innerText = `Task: "${text}"`;
-            statusText.innerText = 'Thinking';
-            statusText.className = 'font-code text-code-sm text-tertiary uppercase tracking-wider';
-            statusDot.className = 'w-1.5 h-1.5 rounded-full bg-tertiary animate-blink';
-
+        // Health Check
+        async function checkBackendHealth() {
             try {
-                const response = await fetch('/api/execute', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command: text })
-                });
+                const res = await fetch('/api/health');
+                updateHeaderStatus(res.ok ? 'Online' : 'Offline');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.working_directory) document.getElementById('header-target-badge').innerText = data.working_directory;
+                }
+            } catch { updateHeaderStatus('Offline'); }
+        }
+        setInterval(checkBackendHealth, 10000);
+        document.addEventListener('DOMContentLoaded', checkBackendHealth);
 
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
+        // SSE Integration
+        let eventSource = null;
+        const processedEventIds = new Set();
 
-                const reply = data.output || data.response || data.error || 'Done';
-                appendAiMessage(reply);
+        function initEventStream() {
+            if (eventSource) return;
+            eventSource = new EventSource('/api/events');
+            eventSource.onmessage = (e) => {
+                try {
+                    const event = JSON.parse(e.data);
+                    if (event.type === 'ping') return;
+                    if (event.event_id && processedEventIds.has(event.event_id)) return;
+                    if (event.event_id) {
+                        processedEventIds.add(event.event_id);
+                        if (processedEventIds.size > 500) processedEventIds.delete(processedEventIds.values().next().value);
+                    }
+                    handleAgentEvent(event);
+                } catch {}
+            };
+        }
+        initEventStream();
 
-                statusText.innerText = 'Completed';
-                statusText.className = 'font-code text-code-sm text-emerald-600 uppercase tracking-wider';
-                statusDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-600';
-            } catch (err) {
-                appendAiMessage(`Failed to connect to Delta Engine: ${err.message}`);
-                statusText.innerText = 'Error';
-                statusText.className = 'font-code text-code-sm text-error uppercase tracking-wider';
-                statusDot.className = 'w-1.5 h-1.5 rounded-full bg-error';
-            } finally {
-                isExecuting = false;
+        function handleAgentEvent(event) {
+            const type = event.type;
+            const execId = event.execution_id || 'current';
+
+            if (type === 'message_delta') {
+                const assistantMsgId = `assistant-msg-${execId}`;
+                let msgEl = document.getElementById(assistantMsgId);
+                if (!msgEl) {
+                    appendStreamingAiMessagePlaceholder(assistantMsgId);
+                    msgEl = document.getElementById(assistantMsgId);
+                }
+                const contentEl = msgEl.querySelector('.msg-content');
+                if (contentEl && event.content !== undefined) {
+                    if (contentEl.textContent === 'Thinking...') contentEl.textContent = '';
+                    contentEl.textContent += event.content;
+                    scrollToBottom();
+                }
+            } else if (type === 'message_complete') {
+                const assistantMsgId = `assistant-msg-${execId}`;
+                let msgEl = document.getElementById(assistantMsgId);
+                if (msgEl) {
+                    const contentEl = msgEl.querySelector('.msg-content');
+                    if (contentEl && event.content !== undefined) {
+                        contentEl.textContent = event.content;
+                        scrollToBottom();
+                    }
+                }
+                document.getElementById('stop-btn').classList.add('hidden');
+                document.getElementById('run-btn').classList.remove('hidden');
+            } else if (type === 'agent_thinking') {
+                const statusEl = document.getElementById(`status-${execId}`);
+                if (statusEl) {
+                    statusEl.textContent = `⠋ ${event.status_text || 'Thinking...'}`;
+                }
+            } else if (type === 'agent_complete') {
+                const statusEl = document.getElementById(`status-${execId}`);
+                if (statusEl) {
+                    statusEl.remove();
+                }
+                document.getElementById('stop-btn').classList.add('hidden');
+                document.getElementById('run-btn').classList.remove('hidden');
+                updateHeaderStatus('Online');
+            } else if (type === 'tool_start') {
+                updateHeaderStatus('Executing');
+                const nodesContainer = getOrCreateExecutionTimeline(execId);
+                const toolKey = event.event_id || `${event.tool}_${Date.now()}`;
+                const targetText = event.input?.path || event.input?.pattern || event.input?.query || '';
+                const nodeHtml = `
+                    <div id="node-${toolKey}" class="bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-700 rounded-md p-2.5 text-xs space-y-1 animate-fade-in font-mono">
+                        <div class="flex items-center justify-between text-zinc-800 dark:text-zinc-200">
+                            <span class="flex items-center gap-2 font-medium">
+                                <span class="material-symbols-outlined text-[14px] text-indigo-500">terminal</span>
+                                ${escapeHtml(event.tool || 'Tool')}
+                            </span>
+                            <span class="text-[10px] text-indigo-500 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Running</span>
+                        </div>
+                        ${targetText ? `<div class="text-[11px] text-zinc-500 dark:text-zinc-400 truncate pl-6">${escapeHtml(strVal(targetText))}</div>` : ''}
+                    </div>`;
+                nodesContainer.insertAdjacentHTML('beforeend', nodeHtml);
                 scrollToBottom();
+                
+                // Update bar charts dynamically based on tool
+                updateToolBarCharts(event.tool);
+            } else if (type === 'tool_result') {
+                toolCount++;
+                document.getElementById('total-tools-label').innerText = toolCount;
+                const toolKey = event.event_id;
+                const existingNode = toolKey ? document.getElementById(`node-${toolKey}`) : null;
+                const statusSymbol = event.success ? '<span class="material-symbols-outlined text-[14px] text-emerald-500">check</span>' : '<span class="material-symbols-outlined text-[14px] text-red-500">close</span>';
+                const outStr = event.output ? escapeHtml(strVal(event.output)) : (event.error ? escapeHtml(strVal(event.error)) : '');
+
+                if (existingNode) {
+                    existingNode.className = `bg-zinc-50 dark:bg-zinc-800/30 border ${event.success ? 'border-zinc-200 dark:border-zinc-700' : 'border-red-300 dark:border-red-800/50'} rounded-md p-2.5 text-xs space-y-1 animate-fade-in font-mono`;
+                    existingNode.innerHTML = `
+                        <div class="flex items-center justify-between ${event.success ? 'text-zinc-800 dark:text-zinc-200' : 'text-red-600 dark:text-red-400'} font-medium">
+                            <span class="flex items-center gap-2">${statusSymbol} ${escapeHtml(event.tool || 'Tool')}</span>
+                            <span class="text-[10px] text-zinc-400 font-normal">${(event.duration_ms || 0).toFixed(0)}ms</span>
+                        </div>
+                        ${outStr ? `<div class="pl-6 pt-1"><div class="text-[11px] text-zinc-500 dark:text-zinc-400 max-h-24 overflow-y-auto whitespace-pre-wrap bg-white dark:bg-zinc-900 p-2 rounded border border-zinc-200 dark:border-zinc-800 mt-1">${outStr}</div></div>` : ''}
+                    `;
+                    
+                    // Trigger fake latency graph variation on tool completion
+                    simulateLatencySpike();
+                }
+                updateHeaderStatus('Online');
+                scrollToBottom();
+            } else if (type === 'file_update') {
+                fileCount++;
+                document.getElementById('inspector-file-count').innerText = fileCount;
+                renderFileUpdateCard(event);
             }
         }
+        
+        let toolReadCount = 0;
+        let toolExecCount = 0;
+        let toolEditCount = 0;
+        
+        function updateToolBarCharts(toolName) {
+            const name = toolName.toLowerCase();
+            let cat = '';
+            if (name.includes('read') || name.includes('cat') || name.includes('search') || name.includes('find')) {
+                toolReadCount++; cat = 'read';
+            } else if (name.includes('write') || name.includes('edit') || name.includes('append')) {
+                toolEditCount++; cat = 'edit';
+            } else {
+                toolExecCount++; cat = 'exec';
+            }
+            
+            const total = toolReadCount + toolExecCount + toolEditCount;
+            if (total === 0) return;
+            
+            if (cat === 'read') {
+                document.getElementById('bar-val-read').innerText = toolReadCount;
+                document.getElementById('bar-progress-read').style.width = \`\${Math.max(5, (toolReadCount/total)*100)}%\`;
+            } else if (cat === 'exec') {
+                document.getElementById('bar-val-exec').innerText = toolExecCount;
+                document.getElementById('bar-progress-exec').style.width = \`\${Math.max(5, (toolExecCount/total)*100)}%\`;
+            } else if (cat === 'edit') {
+                document.getElementById('bar-val-edit').innerText = toolEditCount;
+                document.getElementById('bar-progress-edit').style.width = \`\${Math.max(5, (toolEditCount/total)*100)}%\`;
+            }
+        }
+        
+        function simulateLatencySpike() {
+            const val = Math.floor(Math.random() * 40) + 15;
+            document.getElementById('current-latency-display').innerText = \`~\${val}ms\`;
+            const path = document.querySelector('#tab-content-metrics svg path[fill="none"]');
+            if(path) {
+                // Randomize curve slightly
+                const q1 = 20 + Math.random() * 15;
+                const q2 = 15 + Math.random() * 20;
+                path.setAttribute('d', \`M 0,50 Q 30,\${q1} 60,35 T 120,20 T 170,\${q2} T 200,15\`);
+            }
+        }
+
+        function updateHeaderStatus(text) {
+            document.getElementById('status-indicator-text').innerText = text;
+        }
+
+        function getOrCreateExecutionTimeline(execId) {
+            const timelineId = `timeline-${execId}`;
+            let timelineEl = document.getElementById(timelineId);
+            if (!timelineEl) {
+                const html = `
+                    <div id="${timelineId}" class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 mb-3 animate-fade-in space-y-3 font-mono text-xs">
+                        <div class="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2 text-zinc-800 dark:text-zinc-200 font-semibold text-[11px] uppercase tracking-wider">
+                            <span class="flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Agent Execution
+                            </span>
+                        </div>
+                        <div class="timeline-nodes space-y-2"></div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', html);
+                timelineEl = document.getElementById(timelineId);
+            }
+            return timelineEl.querySelector('.timeline-nodes');
+        }
+
+        function renderFileUpdateCard(event) {
+            const html = `
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 mb-3 animate-fade-in text-xs space-y-2 font-mono">
+                    <div class="flex justify-between items-center text-zinc-800 dark:text-zinc-200 font-semibold">
+                        <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px] text-indigo-500">edit_note</span> ${escapeHtml(event.path || 'file')}</span>
+                        <span class="text-[11px] font-normal text-emerald-500">+${event.added_lines || 0} -${event.removed_lines || 0}</span>
+                    </div>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+            scrollToBottom();
+        }
+
+        function strVal(val) { return typeof val === 'string' ? val : JSON.stringify(val, null, 2); }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key.toLowerCase() === 'l') { e.preventDefault(); clearChat(); }
+            else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); toggleModal('universal-modal'); }
+            else if (e.key === 'Escape') { document.getElementById('universal-modal')?.classList.add('hidden'); document.getElementById('info-modal')?.classList.add('hidden'); }
+        });
 
         function appendUserMessage(text) {
-            const html = `
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            container.insertAdjacentHTML('beforeend', `
                 <div class="flex justify-end animate-fade-in">
-                    <div class="bg-primary text-on-primary rounded-lg px-4 py-2 max-w-xl shadow-sm">
-                        <div class="flex items-center justify-between text-[10px] font-code opacity-80 border-b border-on-primary/20 pb-1 mb-1 gap-4">
-                            <span>USER COMMAND</span>
+                    <div class="bg-indigo-600 text-white rounded-lg px-4 py-2 max-w-xl shadow-sm">
+                        <div class="flex items-center justify-between text-[10px] font-mono opacity-80 border-b border-white/20 pb-1 mb-1 gap-4">
+                            <span>USER</span><span>${timeStr}</span>
                         </div>
-                        <div class="text-body-md font-sans text-on-primary">${escapeHtml(text)}</div>
+                        <div class="text-sm leading-relaxed font-sans">${escapeHtml(text)}</div>
                     </div>
                 </div>
-            `;
-            messagesContainer.insertAdjacentHTML('beforeend', html);
+            `);
             scrollToBottom();
         }
 
-        function appendAiMessage(text) {
-            const html = `
+        function appendAiMessage(text, isError = false) {
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const colorClass = isError ? 'border-red-500' : 'border-indigo-500';
+            container.insertAdjacentHTML('beforeend', `
                 <div class="flex justify-start animate-fade-in">
-                    <div class="bg-surface border border-outline-variant rounded-lg px-4 py-2 max-w-xl shadow-sm w-full">
-                        <div class="flex items-center justify-between text-[10px] font-code border-b border-outline-variant pb-1 mb-1 gap-4">
-                            <span class="text-primary font-semibold">DELTA AGENT</span>
+                    <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 border-l-4 ${colorClass} rounded-lg px-4 py-2 max-w-xl shadow-sm w-full">
+                        <div class="flex items-center justify-between text-[10px] font-mono border-b border-zinc-100 dark:border-zinc-800 pb-1 mb-1 gap-4">
+                            <span class="text-indigo-600 dark:text-indigo-400 font-semibold">DELTA AGENT</span>
+                            <span class="text-zinc-400">${timeStr}</span>
                         </div>
-                        <div class="text-body-md font-sans text-on-surface whitespace-pre-wrap">${escapeHtml(text)}</div>
+                        <div class="text-sm leading-relaxed font-mono whitespace-pre-wrap text-zinc-800 dark:text-zinc-200">${escapeHtml(text)}</div>
                     </div>
                 </div>
-            `;
-            messagesContainer.insertAdjacentHTML('beforeend', html);
+            `);
             scrollToBottom();
         }
 
-        function updateInspectorChanges(filename, added, removed) {
-            document.getElementById('changes-summary').innerText = '1 file modified';
-            document.getElementById('changes-summary').classList.remove('text-on-surface-variant');
-            document.getElementById('changes-summary').classList.add('text-on-surface');
+        async function handleStopExecution() {
+            try {
+                const response = await fetch('/api/cancel', { method: 'POST' });
+                if (!response.ok) throw new Error('HTTP Error');
+                const data = await response.json();
+                document.getElementById('stop-btn').classList.add('hidden');
+                document.getElementById('run-btn').classList.remove('hidden');
+                updateHeaderStatus('Online');
+            } catch (err) {
+                console.error('Failed to stop execution:', err);
+            }
+        }
+
+        async function handleSubmit(e) {
+            if (e) e.preventDefault();
+            const text = input.value.trim();
+            if (!text) return;
+
+            if (currentNavView !== 'execution') switchNav('execution');
+
+            input.value = '';
+            appendUserMessage(text);
             
-            const diffHtml = `
-                <div class="flex justify-between items-center px-2 py-1.5 bg-surface-container-low border border-outline-variant rounded-md animate-fade-in">
-                    <span class="text-on-surface font-code text-code-sm flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[14px] text-on-surface-variant">description</span>
-                        ${filename}
-                    </span>
-                    <div class="flex gap-1 font-code text-[10px]">
-                        <span class="text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">+${added}</span>
-                        <span class="text-error bg-error-container px-1.5 py-0.5 rounded">-${removed}</span>
+            document.getElementById('run-btn').classList.add('hidden');
+            document.getElementById('stop-btn').classList.remove('hidden');
+
+            const execId = `exec-${Date.now()}`;
+            const nodesContainer = getOrCreateExecutionTimeline(execId);
+            nodesContainer.insertAdjacentHTML('beforeend', `<div class="text-indigo-500 italic animate-fade-in" id="status-${execId}">⠋ Initializing agent...</div>`);
+            updateHeaderStatus('Thinking');
+            scrollToBottom();
+
+            // Set up placeholder for assistant streaming response
+            const assistantMsgId = `assistant-msg-${execId}`;
+            appendStreamingAiMessagePlaceholder(assistantMsgId);
+
+            try {
+                const response = await fetch('/api/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: text }) });
+                if (!response.ok) throw new Error('HTTP Error');
+                const data = await response.json();
+                
+                const finalReply = data.output || data.response || data.error || '';
+                const msgEl = document.getElementById(assistantMsgId);
+                if (msgEl) {
+                    const contentEl = msgEl.querySelector('.msg-content');
+                    if (contentEl && (contentEl.textContent === 'Thinking...' || !contentEl.textContent)) {
+                        contentEl.textContent = finalReply;
+                    }
+                } else if (finalReply) {
+                    appendAiMessage(finalReply);
+                }
+                updateHeaderStatus('Online');
+                document.getElementById('stop-btn').classList.add('hidden');
+                document.getElementById('run-btn').classList.remove('hidden');
+            } catch (err) {
+                const msgEl = document.getElementById(assistantMsgId);
+                if (msgEl) {
+                    const contentEl = msgEl.querySelector('.msg-content');
+                    if (contentEl) contentEl.textContent = `Error: ${err.message}`;
+                } else {
+                    appendAiMessage(`Failed to connect to Delta Engine: ${err.message}`, true);
+                }
+                updateHeaderStatus('Offline');
+                document.getElementById('stop-btn').classList.add('hidden');
+                document.getElementById('run-btn').classList.remove('hidden');
+            }
+        }
+
+        function appendStreamingAiMessagePlaceholder(msgId) {
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            container.insertAdjacentHTML('beforeend', `
+                <div class="flex justify-start animate-fade-in" id="${msgId}">
+                    <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 border-l-4 border-indigo-500 rounded-lg px-4 py-2 max-w-xl shadow-sm w-full">
+                        <div class="flex items-center justify-between text-[10px] font-mono border-b border-zinc-100 dark:border-zinc-800 pb-1 mb-1 gap-4">
+                            <span class="text-indigo-600 dark:text-indigo-400 font-semibold">DELTA AGENT</span>
+                            <span class="text-zinc-400">${timeStr}</span>
+                        </div>
+                        <div class="text-sm leading-relaxed font-mono whitespace-pre-wrap text-zinc-800 dark:text-zinc-200 msg-content">Thinking...</div>
                     </div>
                 </div>
-            `;
-            document.getElementById('diff-list').innerHTML = diffHtml;
+            `);
+            scrollToBottom();
         }
+
+        function sendPrompt(text) { input.value = text; handleSubmit(); }
 
         function clearChat() {
-            const currentView = document.getElementById('messages-container');
-            if (currentView) {
-                currentView.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full text-center text-on-surface-variant mt-20" id="initial-state">
-                        <div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center mb-4">
-                            <span class="material-symbols-outlined text-[28px]">smart_toy</span>
-                        </div>
-                        <h3 class="text-on-surface font-semibold mb-1">Delta Agent Ready</h3>
-                        <p class="font-code text-code-sm">Execute a command below to start the workflow.</p>
-                    </div>
-                `;
-            }
-            taskDisplay.innerText = 'Waiting for input...';
-            statusText.innerText = 'Idle';
-            statusText.className = 'font-code text-code-sm text-on-surface-variant uppercase tracking-wider';
-            statusDot.className = 'w-1.5 h-1.5 rounded-full bg-primary';
-            document.getElementById('changes-summary').innerText = 'No files modified yet.';
-            document.getElementById('changes-summary').classList.add('text-on-surface-variant');
-            document.getElementById('changes-summary').classList.remove('text-on-surface');
-            document.getElementById('diff-list').innerHTML = '';
-            isExecuting = false;
+            restoreExecutionCanvas();
+            container.innerHTML = `
+                <div class="flex flex-col gap-3 animate-fade-in justify-center h-full text-center text-zinc-500 dark:text-zinc-600">
+                    <div class="w-12 h-12 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-500 flex items-center justify-center mx-auto shadow-sm font-bold text-xl">D</div>
+                    <div class="text-sm font-medium text-zinc-800 dark:text-zinc-200">Delta Workspace Ready</div>
+                    <div class="text-xs font-mono">Session context reset. Awaiting commands.</div>
+                </div>
+            `;
+            document.getElementById('current-task-display').innerText = 'Idle - Waiting for input';
+            
+            // Reset analytics metrics
+            toolCount = 0;
+            fileCount = 0;
+            toolReadCount = 0;
+            toolExecCount = 0;
+            toolEditCount = 0;
+            
+            const totalToolsEl = document.getElementById('total-tools-label');
+            if (totalToolsEl) totalToolsEl.innerText = '0';
+            
+            const fileCountEl = document.getElementById('inspector-file-count');
+            if (fileCountEl) fileCountEl.innerText = '0';
+            
+            ['read', 'exec', 'edit'].forEach(cat => {
+                const valEl = document.getElementById(`bar-val-${cat}`);
+                const progressEl = document.getElementById(`bar-progress-${cat}`);
+                if (valEl) valEl.innerText = '0';
+                if (progressEl) progressEl.style.width = '5%';
+            });
         }
+
+        window.handleSubmit = handleSubmit;
+        window.handleStopExecution = handleStopExecution;
+        window.sendPrompt = sendPrompt;
+        window.selectModel = selectModel;
+        window.runPaletteCmd = runPaletteCmd;
+        window.filterCommandPalette = filterCommandPalette;
+        window.switchInspectorTab = switchInspectorTab;
+
+        // Initial load
+        clearChat();
     </script>
 </body>
 </html>

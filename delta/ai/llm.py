@@ -1347,7 +1347,7 @@ class LLMEngine:
 
             self.memory_manager.save_conversation(self.session_id, self.messages)
 
-    def chat(self, user_input: str, tools: Optional[List[Dict[str, Any]]] = None, is_continuation: bool = False) -> str:
+    def chat(self, user_input: str, tools: Optional[List[Dict[str, Any]]] = None, is_continuation: bool = False, execution_id: Optional[str] = None, stop_event: Optional[threading.Event] = None) -> str:
 
         if not self.is_configured:
 
@@ -1366,7 +1366,7 @@ class LLMEngine:
 
         try:
 
-            response = self._call_api(tools=tools)
+            response = self._call_api(tools=tools, execution_id=execution_id, stop_event=stop_event)
 
             msg = response["choices"][0]["message"]
 
@@ -1841,7 +1841,7 @@ class LLMEngine:
 
         self.messages = systems + conversation
 
-    def _call_api(self, tools: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    def _call_api(self, tools: Optional[List[Dict[str, Any]]] = None, execution_id: Optional[str] = None, stop_event: Optional[threading.Event] = None) -> Dict[str, Any]:
 
         url = f"{self.base_url.rstrip('/')}/chat/completions"
 
@@ -1926,7 +1926,22 @@ class LLMEngine:
             tool_calls_parts: Dict[int, Dict[str, Any]] = {}
             finish_reason = "stop"
             model_name = self.model
+            
+            # Retrieve global event bus and execution ID to emit message delta events
+            from delta.ai.events import event_bus, AgentEvent, EventType
+            exec_id = execution_id or f"exec-{int(time.time()*1000)}"
+
             for raw_line in resp:
+                if stop_event and stop_event.is_set():
+                    resp.close()
+                    event_bus.emit(AgentEvent(
+                        type=EventType.AGENT_COMPLETE,
+                        task_id=exec_id,
+                        execution_id=exec_id,
+                        status_text="Task cancelled"
+                    ))
+                    return {"choices": [{"message": {"content": "".join(content_parts)}, "finish_reason": "cancelled"}]}
+
                 line = raw_line.decode("utf-8").strip()
                 if not line:
                     continue
@@ -1945,6 +1960,14 @@ class LLMEngine:
                     piece = delta.get("content")
                     if piece:
                         content_parts.append(piece)
+                        # Emit to event bus for real-time frontend streaming
+                        event_bus.emit(AgentEvent(
+                            type=EventType.MESSAGE_DELTA,
+                            task_id=exec_id,
+                            execution_id=exec_id,
+                            content=piece,
+                            status_text="Streaming response..."
+                        ))
                     # Capture streamed tool_calls
                     delta_tcs = delta.get("tool_calls")
                     if delta_tcs:
@@ -1963,6 +1986,16 @@ class LLMEngine:
                     if fr:
                         finish_reason = fr
             resp.close()
+            
+            # Emit final message complete event
+            event_bus.emit(AgentEvent(
+                type=EventType.MESSAGE_COMPLETE,
+                task_id=exec_id,
+                execution_id=exec_id,
+                content="".join(content_parts),
+                status_text="Response completed"
+            ))
+
             msg_body: Dict[str, Any] = {"role": "assistant", "content": "".join(content_parts)}
             if tool_calls_parts:
                 msg_body["tool_calls"] = [tool_calls_parts[k] for k in sorted(tool_calls_parts)]

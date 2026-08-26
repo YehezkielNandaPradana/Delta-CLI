@@ -818,7 +818,22 @@ class DeltaEngine:
 
         if self.llm_engine and self.llm_engine.is_configured and self.config.llm_enabled:
 
-            return self._process_with_llm(user_input)
+            stop_event = getattr(self, "_stop_event", None)
+            res = self._process_with_llm(user_input, stop_event=stop_event)
+            
+            # Emit immediate message complete event if it was casual/non-task chat to finalize UI bubble
+            if isinstance(res, dict) and res.get("response"):
+                from delta.ai.events import event_bus, AgentEvent, EventType
+                fallback_id = f"exec-{int(time.time()*1000)}"
+                exec_id = res.get("task_id") or fallback_id
+                event_bus.emit(AgentEvent(
+                    type=EventType.MESSAGE_COMPLETE,
+                    task_id=exec_id,
+                    execution_id=exec_id,
+                    content=res.get("response"),
+                    status_text="Response completed"
+                ))
+            return res
 
         # Process through AI intent engine
 
@@ -1102,7 +1117,7 @@ class DeltaEngine:
             return "Running git command..."
         return "Thinking..."
 
-    def _process_with_llm(self, user_input: str) -> Optional[Dict[str, Any]]:
+    def _process_with_llm(self, user_input: str, stop_event: Optional[threading.Event] = None) -> Optional[Dict[str, Any]]:
 
         """
 
@@ -1153,6 +1168,16 @@ class DeltaEngine:
             execution_id=exec_id,
             status_text="Thinking..."
         ))
+        
+        # Emit initial message event to allow frontend to set up bubble immediately
+        event_bus.emit(AgentEvent(
+            type=EventType.MESSAGE_DELTA,
+            task_id=exec_id,
+            execution_id=exec_id,
+            content="",
+            status_text="Thinking..."
+        ))
+
         event_bus.emit(AgentEvent(
             type=EventType.AGENT_THINKING,
             task_id=exec_id,
@@ -1170,8 +1195,16 @@ class DeltaEngine:
         last_command = ""
         task_completed_emitted = False
 
+        # Build initial thinking status for streaming
+        status_info = "Analyzing user request..."
+        
+        # We also want to yield initial stream content if possible, but _process_with_llm is synchronous.
+        # SSE stream is populated by events emitted to event_bus.
+
         try:
             for iteration in range(max_iterations):
+                if stop_event and stop_event.is_set():
+                    break
                 if self.config.debug:
                     print(f"[Agent] iteration={iteration+1}")
                 validation_error = self.llm_engine._validate_settings()
@@ -1185,7 +1218,8 @@ class DeltaEngine:
                 tool_schemas = (self.tools.to_json_schemas() if hasattr(self, "tools") and self.tools else None) if is_task_request else None
 
                 # If this is iteration > 0, we are continuing the ReAct loop
-                response = self.llm_engine.chat(current_input, tools=tool_schemas, is_continuation=(iteration > 0))
+                response = self.llm_engine.chat(current_input, tools=tool_schemas, is_continuation=(iteration > 0), execution_id=exec_id, stop_event=stop_event)
+
 
                 if response.startswith("ERROR"):
                     if self._is_retryable_error(response):
@@ -1232,7 +1266,14 @@ class DeltaEngine:
                     if self.config.debug:
                         print(f"[Agent] final_response")
                     if is_task_request and not task_completed_emitted:
-                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=task_id, status_text="Task completed"))
+                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
+                        event_bus.emit(AgentEvent(
+                            type=EventType.MESSAGE_COMPLETE,
+                            task_id=task_id,
+                            execution_id=exec_id,
+                            content=final_clean_response,
+                            status_text="Response completed"
+                        ))
                         task_completed_emitted = True
                         if self.config.debug:
                             print(f"[Agent] completed")
@@ -1243,7 +1284,7 @@ class DeltaEngine:
                 event_bus.emit(AgentEvent(
                     type=EventType.AGENT_THINKING,
                     task_id=task_id,
-                    execution_id=task_id,
+                    execution_id=exec_id,
                     status_text=thinking_status
                 ))
 
@@ -1257,7 +1298,8 @@ class DeltaEngine:
                         event_bus.emit(AgentEvent(
                             type=EventType.TOOL_START,
                             task_id=task_id,
-                            execution_id=task_id,
+                            execution_id=exec_id,
+                            event_id=t_id,
                             tool=t_name,
                             input=t_args,
                             status_text=self._get_tool_status_text(t_name, t_args)
@@ -1271,7 +1313,8 @@ class DeltaEngine:
                         event_bus.emit(AgentEvent(
                             type=EventType.TOOL_RESULT,
                             task_id=task_id,
-                            execution_id=task_id,
+                            execution_id=exec_id,
+                            event_id=t_id,
                             tool=t_name,
                             output=out_str[:500],
                             success=res.get("success", True),
@@ -1289,13 +1332,15 @@ class DeltaEngine:
                         tool_executed = True
 
                 elif xml_tool_calls:
-                    for t_name, t_args in xml_tool_calls:
+                    for idx, (t_name, t_args) in enumerate(xml_tool_calls):
+                        t_id = f"xml_{idx}_{int(time.time()*1000)}"
                         if self.config.debug:
                             print(f"[LLM] tool_call={t_name}")
                         event_bus.emit(AgentEvent(
                             type=EventType.TOOL_START,
                             task_id=task_id,
-                            execution_id=task_id,
+                            execution_id=exec_id,
+                            event_id=t_id,
                             tool=t_name,
                             input=t_args,
                             status_text=self._get_tool_status_text(t_name, t_args)
@@ -1309,7 +1354,8 @@ class DeltaEngine:
                         event_bus.emit(AgentEvent(
                             type=EventType.TOOL_RESULT,
                             task_id=task_id,
-                            execution_id=task_id,
+                            execution_id=exec_id,
+                            event_id=t_id,
                             tool=t_name,
                             output=out_str[:500],
                             success=res.get("success", True),
@@ -1330,14 +1376,28 @@ class DeltaEngine:
                     self._dispatch_command(legacy_command)
                     final_clean_response = strip_command_tags(response)
                     if is_task_request and not task_completed_emitted:
-                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, status_text="Task completed"))
+                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
+                        event_bus.emit(AgentEvent(
+                            type=EventType.MESSAGE_COMPLETE,
+                            task_id=task_id,
+                            execution_id=exec_id,
+                            content=final_clean_response,
+                            status_text="Response completed"
+                        ))
                         task_completed_emitted = True
                     break
 
                 if not tool_executed:
                     final_clean_response = strip_command_tags(response)
                     if is_task_request and not task_completed_emitted:
-                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, status_text="Task completed"))
+                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
+                        event_bus.emit(AgentEvent(
+                            type=EventType.MESSAGE_COMPLETE,
+                            task_id=task_id,
+                            execution_id=exec_id,
+                            content=final_clean_response,
+                            status_text="Response completed"
+                        ))
                         task_completed_emitted = True
                     break
 
@@ -1347,11 +1407,18 @@ class DeltaEngine:
                 sys.stdout.flush()
             self._in_llm_processing = False
             if is_task_request and not task_completed_emitted:
-                event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, status_text="Task completed"))
+                event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
+                event_bus.emit(AgentEvent(
+                    type=EventType.MESSAGE_COMPLETE,
+                    task_id=task_id,
+                    execution_id=exec_id,
+                    content=final_clean_response,
+                    status_text="Response completed"
+                ))
 
         if response.startswith("ERROR"):
             if is_task_request:
-                event_bus.emit(AgentEvent(type=EventType.ERROR, task_id=task_id, execution_id=task_id, error={"message": response}, status_text="Something went wrong"))
+                event_bus.emit(AgentEvent(type=EventType.ERROR, task_id=task_id, execution_id=exec_id, error={"message": response}, status_text="Something went wrong"))
             if show_cli_ui:
                 self.display.error(response)
             return {"response": "", "command": "", "error": response, "is_task": is_task_request, "task_id": task_id}
