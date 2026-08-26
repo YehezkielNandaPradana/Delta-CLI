@@ -779,7 +779,7 @@ class DeltaEngine:
 
         return sorted(set(cmd for cmd in cmds if cmd))
 
-    def _process_input(self, user_input: str) -> None:
+    def _process_input(self, user_input: str) -> Any:
 
         """
 
@@ -797,9 +797,7 @@ class DeltaEngine:
 
         if user_input.startswith("/"):
 
-            self._handle_slash_command(user_input)
-
-            return
+            return self._handle_slash_command(user_input)
 
         # Check aliases
 
@@ -829,13 +827,13 @@ class DeltaEngine:
 
             # Handle with AI guidance
 
-            self._execute_with_ai(intent, user_input)
+            return self._execute_with_ai(intent, user_input)
 
         else:
 
             # Try direct command dispatch
 
-            self._dispatch_command(user_input)
+            return self._dispatch_command(user_input)
 
     def _handle_slash_command(self, raw: str) -> None:
 
