@@ -1,3 +1,4 @@
+# Refactor: server routes
 """Robust Threading HTTP Server with Per-Client SSE Streaming for Delta Web UI."""
 
 import json
