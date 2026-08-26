@@ -1,3 +1,4 @@
+# Refactor: tui formatting
 # delta/core/tui.py
 
 """
