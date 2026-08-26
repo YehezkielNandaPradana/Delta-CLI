@@ -1,3 +1,4 @@
+# Refactor: system prompt helper
 import json
 import os
 import re
