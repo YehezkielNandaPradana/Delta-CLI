@@ -25,11 +25,13 @@ import shutil
 
 import traceback
 
+import threading
+
 from datetime import datetime
 
 from functools import lru_cache
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Callable
 
 from dataclasses import dataclass
 
@@ -271,7 +273,7 @@ class DeltaEngine:
 
         # Command handlers registration
 
-        self._builtin_commands: Dict[str, callable] = {}
+        self._builtin_commands: Dict[str, Callable] = {}
 
         self._register_builtin_commands()
 
@@ -780,7 +782,7 @@ class DeltaEngine:
 
         return sorted(set(cmd for cmd in cmds if cmd))
 
-    def _process_input(self, user_input: str) -> Any:
+    def _process_input(self, user_input: str, execution_id: Optional[str] = None) -> Any:
 
         """
 
@@ -819,20 +821,7 @@ class DeltaEngine:
         if self.llm_engine and self.llm_engine.is_configured and self.config.llm_enabled:
 
             stop_event = getattr(self, "_stop_event", None)
-            res = self._process_with_llm(user_input, stop_event=stop_event)
-            
-            # Emit immediate message complete event if it was casual/non-task chat to finalize UI bubble
-            if isinstance(res, dict) and res.get("response"):
-                from delta.ai.events import event_bus, AgentEvent, EventType
-                fallback_id = f"exec-{int(time.time()*1000)}"
-                exec_id = res.get("task_id") or fallback_id
-                event_bus.emit(AgentEvent(
-                    type=EventType.MESSAGE_COMPLETE,
-                    task_id=exec_id,
-                    execution_id=exec_id,
-                    content=res.get("response"),
-                    status_text="Response completed"
-                ))
+            res = self._process_with_llm(user_input, stop_event=stop_event, execution_id=execution_id)
             return res
 
         # Process through AI intent engine
@@ -1117,7 +1106,7 @@ class DeltaEngine:
             return "Running git command..."
         return "Thinking..."
 
-    def _process_with_llm(self, user_input: str, stop_event: Optional[threading.Event] = None) -> Optional[Dict[str, Any]]:
+    def _process_with_llm(self, user_input: str, stop_event: Optional[threading.Event] = None, execution_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
 
         """
 
@@ -1161,7 +1150,7 @@ class DeltaEngine:
 
         from delta.ai.events import event_bus, AgentEvent, EventType
 
-        exec_id = task_id or f"exec-{int(time.time()*1000)}"
+        exec_id = execution_id or task_id or f"exec-{int(time.time()*1000)}"
         event_bus.emit(AgentEvent(
             type=EventType.AGENT_START,
             task_id=exec_id,

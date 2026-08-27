@@ -13,7 +13,7 @@
         theme: {
           extend: {
             "colors": {
-              "accent": "#6366F1", /* Indigo untuk aksen utama */
+              "accent": "#6366F1",
             },
             "fontFamily": {
               "code": ["JetBrains Mono", "monospace"],
@@ -52,7 +52,7 @@
         const isDark = document.documentElement.classList.contains('dark');
         iconEl.textContent = isDark ? 'dark_mode' : 'light_mode';
       }
-      
+
       document.addEventListener('DOMContentLoaded', updateThemeIcon);
       window.setTheme = setTheme;
       window.cycleTheme = cycleTheme;
@@ -60,7 +60,7 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -70,61 +70,177 @@
 
         /* Subtle transitions */
         .transition-base { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
-        
-        /* Minimal Animations */
+
+        /* Process & Response Animations */
+        @keyframes processEnter {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-process-enter {
+            animation: processEnter 320ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes responseEnter {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-response-enter {
+            animation: responseEnter 350ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(4px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+        .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+
+        @keyframes pulseSubtle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.96); }
+        }
+        .animate-pulse-subtle {
+            animation: pulseSubtle 1.8s ease-in-out infinite;
+        }
+
+        @keyframes spinSlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spinSlow 2s linear infinite;
+        }
+
+        @keyframes cyberOrbit {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-cyber-orbit {
+            animation: cyberOrbit 8s linear infinite;
+        }
+
+        @keyframes barBounce {
+            0%, 100% { height: 25%; }
+            50% { height: 95%; }
+        }
+        .animate-bar-bounce-1 { animation: barBounce 1.2s ease-in-out infinite; }
+        .animate-bar-bounce-2 { animation: barBounce 1.4s ease-in-out infinite 0.2s; }
+        .animate-bar-bounce-3 { animation: barBounce 1.1s ease-in-out infinite 0.4s; }
+        .animate-bar-bounce-4 { animation: barBounce 1.5s ease-in-out infinite 0.1s; }
+
+        @keyframes shimmerWave {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .animate-shimmer {
+            background: linear-gradient(90deg, rgba(99,102,241,0.1) 0%, rgba(99,102,241,0.4) 50%, rgba(99,102,241,0.1) 100%);
+            background-size: 200% 100%;
+            animation: shimmerWave 2.5s linear infinite;
+        }
+
+        @keyframes cyberAmbientPulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+        }
+        .animate-cyber-ambient {
+            animation: cyberAmbientPulse 4s ease-in-out infinite;
+        }
+
+        /* Floating Island HUD Styles */
+        .hud-island {
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+        }
+        .dark .hud-island {
+            box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4), 0 2px 8px -1px rgba(0, 0, 0, 0.2);
+        }
+        .hud-island:hover {
+            box-shadow: 0 8px 30px -4px rgba(99, 102, 241, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+        }
+        .dark .hud-island:hover {
+            box-shadow: 0 10px 32px -4px rgba(99, 102, 241, 0.25), 0 4px 14px -2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* SVG Chart Smooth Transition */
+        #tab-content-metrics svg path,
+        #tab-content-metrics svg circle {
+            transition: d 0.45s cubic-bezier(0.4, 0, 0.2, 1), cx 0.45s cubic-bezier(0.4, 0, 0.2, 1), cy 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .animate-process-enter, .animate-response-enter, .animate-fade-in {
+                animation: none !important;
+                transform: none !important;
+                opacity: 1 !important;
+            }
+            .animate-pulse-subtle, .animate-spin-slow, .animate-cyber-orbit, .animate-bar-bounce-1, .animate-bar-bounce-2, .animate-bar-bounce-3, .animate-bar-bounce-4, .animate-shimmer, .animate-cyber-ambient {
+                animation: none !important;
+            }
+        }
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden flex flex-col text-sm antialiased bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 selection:bg-indigo-500/20">
 
-    <!-- TopAppBar -->
-    <header class="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center h-12 px-4 w-full z-50 shrink-0 shadow-sm">
-        <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2.5 cursor-pointer group" onclick="switchNav('execution')">
-                <div class="w-7 h-7 rounded-lg bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center font-bold text-xs shadow-md transition-all duration-300 group-hover:scale-105 group-hover:rotate-3">D</div>
+    <!-- TopAppBar Floating Island HUD -->
+    <header class="w-full px-3.5 pt-2.5 pb-1 flex justify-between items-center z-50 shrink-0 select-none bg-transparent gap-2">
+        <!-- Island 1: Brand & Project Context (Left) -->
+        <div class="hud-island bg-white/80 dark:bg-zinc-900/85 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 hover:border-indigo-500/40 rounded-2xl px-3 py-1.5 flex items-center gap-2.5 transition-base">
+            <div class="flex items-center gap-2 cursor-pointer group" onclick="switchNav('execution')" title="Delta Core Home">
+                <div class="w-7 h-7 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-xs shadow-md transition-all duration-300 group-hover:scale-105 group-hover:rotate-3 group-hover:shadow-indigo-500/30">
+                    Δ
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-xs font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
+                        DELTA <span class="text-[9px] font-mono font-semibold px-1 py-0.2 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">HUD</span>
+                    </span>
+                </div>
             </div>
-            
-            <div class="h-5 w-px bg-zinc-200 dark:bg-zinc-800 mx-1"></div>
 
-            <button onclick="toggleModal('command-palette')" class="flex items-center bg-zinc-50 dark:bg-zinc-850 border border-zinc-200/80 dark:border-zinc-800 hover:border-indigo-500/40 dark:hover:border-indigo-500/40 hover:bg-white dark:hover:bg-zinc-800 rounded-lg px-2.5 py-1 text-zinc-400 dark:text-zinc-500 font-mono text-xs transition-base group w-60 shadow-inner">
-                <span class="material-symbols-outlined text-[15px] mr-1.5 text-zinc-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">search</span>
-                <span class="text-left flex-1 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">Search command...</span>
-                <kbd class="text-[8px] bg-zinc-200/60 dark:bg-zinc-700/60 px-1.2 py-0.2 rounded text-zinc-500 dark:text-zinc-400 font-mono font-bold shadow-sm">⌘K</kbd>
-            </button>
-        </div>
+            <div class="h-4 w-px bg-zinc-200 dark:bg-zinc-800 mx-0.5"></div>
 
-        <div class="flex items-center gap-2.5 text-zinc-500 dark:text-zinc-400">
-            <div class="hidden md:flex items-center gap-1.5 font-mono text-[10px]">
-                <span class="px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/40 text-zinc-500 dark:text-zinc-400 flex items-center gap-1 font-semibold">
-                    <span class="material-symbols-outlined text-[12px] text-zinc-400">dns</span>
-                    <span id="header-target-badge">localhost</span>
+            <div class="hidden sm:flex items-center gap-1.5 font-mono text-[10px]">
+                <span class="px-2 py-0.5 rounded-full border border-zinc-200/90 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-300 flex items-center gap-1 font-medium" title="Target Directory / Host">
+                    <span class="material-symbols-outlined text-[12px] text-indigo-500">folder_open</span>
+                    <span id="header-target-badge" class="truncate max-w-[120px] md:max-w-[180px]">localhost</span>
                 </span>
             </div>
-            
-            <div class="flex items-center gap-1 text-[10px] font-mono text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20 bg-emerald-500/5 font-semibold">
-                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span class="tracking-wider uppercase" id="status-indicator-text">Online</span>
-            </div>
+        </div>
 
-            <div class="h-5 w-px bg-zinc-200 dark:bg-zinc-800 mx-0.5"></div>
+        <!-- Island 2: Interactive Floating Omnibar (Center) -->
+        <button onclick="toggleModal('command-palette')" class="hud-island flex items-center bg-white/80 dark:bg-zinc-900/85 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 hover:border-indigo-500/50 hover:bg-white dark:hover:bg-zinc-850 rounded-2xl px-3.5 py-1.5 text-zinc-400 dark:text-zinc-500 font-mono text-xs transition-base group w-64 md:w-96">
+            <span class="material-symbols-outlined text-[16px] mr-2 text-zinc-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">search</span>
+            <span class="text-left flex-1 text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-200 transition-colors text-[11px]">Search actions, tools, files...</span>
+            <kbd class="text-[9px] bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/80 px-1.5 py-0.5 rounded-md text-zinc-500 dark:text-zinc-400 font-mono font-semibold shadow-2xs group-hover:border-indigo-500/30">⌘K</kbd>
+        </button>
 
+        <!-- Island 3: Telemetry & Controls Pod (Right) -->
+        <div class="hud-island bg-white/80 dark:bg-zinc-900/85 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 hover:border-indigo-500/40 rounded-2xl px-2.5 py-1.5 flex items-center gap-1.5 transition-base text-zinc-500 dark:text-zinc-400">
+            <!-- Action Buttons -->
             <div class="flex items-center gap-0.5">
-                <button title="Branch Info" onclick="toggleModal('branch-modal')" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-base p-1.5 rounded-lg">
-                    <span class="material-symbols-outlined text-[18px]">account_tree</span>
+                <button title="Branch Info" onclick="toggleModal('branch-modal')" class="text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-base p-1.5 rounded-xl">
+                    <span class="material-symbols-outlined text-[17px]">account_tree</span>
                 </button>
-                <button title="Notifications" onclick="toggleModal('notifications-modal')" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-base p-1.5 rounded-lg relative">
-                    <span class="material-symbols-outlined text-[18px]">notifications</span>
-                    <span class="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-500 border border-white dark:border-zinc-900"></span>
+                <button title="Notifications" onclick="toggleModal('notifications-modal')" class="text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-base p-1.5 rounded-xl relative">
+                    <span class="material-symbols-outlined text-[17px]">notifications</span>
+                    <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-500 border border-white dark:border-zinc-900"></span>
                 </button>
-                <button title="Settings (Ctrl+L)" onclick="toggleModal('settings-modal')" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-base p-1.5 rounded-lg">
-                    <span class="material-symbols-outlined text-[18px]">settings</span>
+                <button title="Settings (Ctrl+L)" onclick="toggleModal('settings-modal')" class="text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-base p-1.5 rounded-xl">
+                    <span class="material-symbols-outlined text-[17px]">settings</span>
                 </button>
-                <button id="theme-toggle-btn" title="Toggle Theme" onclick="cycleTheme()" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-base p-1.5 rounded-lg">
-                    <span class="material-symbols-outlined text-[18px]" id="theme-toggle-icon">desktop_windows</span>
+                <button id="theme-toggle-btn" title="Toggle Theme" onclick="cycleTheme()" class="text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-base p-1.5 rounded-xl">
+                    <span class="material-symbols-outlined text-[17px]" id="theme-toggle-icon">desktop_windows</span>
                 </button>
             </div>
         </div>
@@ -272,7 +388,7 @@
                         Execution Canvas
                     </h1>
                 </div>
-                <div class="font-mono text-xs text-zinc-500 dark:text-zinc-500 truncate" id="current-task-display" onclick="toggleModal('context-modal')">
+                <div class="font-mono text-xs text-zinc-500 dark:text-zinc-500 truncate cursor-pointer hover:text-indigo-500 transition-colors" id="current-task-display" onclick="toggleModal('context-modal')">
                     Idle - Waiting for input
                 </div>
             </div>
@@ -280,8 +396,8 @@
             <!-- Main Dynamic View Container -->
             <div id="main-view-container" class="flex-1 overflow-hidden flex flex-col">
                 <!-- Execution Canvas -->
-                <div id="messages-container" class="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-                    <!-- Messages will appear here -->
+                <div id="messages-container" class="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-5">
+                    <!-- Turns and processes will appear here -->
                 </div>
             </div>
 
@@ -290,7 +406,7 @@
                 <form id="chat-form" onsubmit="event.preventDefault(); handleSubmit(event)" class="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/20 transition-base overflow-hidden">
                     <textarea
                         id="user-input"
-                        class="w-full bg-transparent border-none text-zinc-900 dark:text-zinc-100 text-sm resize-none p-3 h-[60px] focus:outline-none focus:ring-0 placeholder-zinc-400 dark:placeholder-zinc-500"
+                        class="w-full bg-transparent border-none text-zinc-900 dark:text-zinc-100 text-sm resize-none p-3 h-[60px] focus:outline-none focus:ring-0 placeholder-zinc-400 dark:placeholder-zinc-500 font-sans"
                         placeholder="Ask Delta to execute commands, audit, or write code..."
                         onkeydown="handleKeyDown(event)"
                     ></textarea>
@@ -315,15 +431,22 @@
         </main>
 
         <!-- Right Inspector Panel -->
-        <aside class="bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 w-80 shrink-0 flex flex-col h-full z-40 hidden lg:flex">
-        <div class="h-11 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 bg-white dark:bg-zinc-900 shrink-0">
-            <h2 class="text-sm font-semibold text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
-                <span class="material-symbols-outlined text-[18px] text-indigo-500">analytics</span> Analytics & Metrics
-            </h2>
-            <button onclick="toggleModal('context-modal')" class="text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-base">
-                <span class="material-symbols-outlined text-[16px]">fullscreen</span>
-            </button>
-        </div>
+        <aside class="bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 w-80 shrink-0 flex flex-col h-full z-40 hidden lg:flex relative overflow-hidden">
+            <!-- Cyber Ambient Background Glow -->
+            <div class="absolute -top-20 -right-20 w-48 h-48 bg-indigo-500/10 dark:bg-indigo-500/15 rounded-full blur-2xl pointer-events-none animate-cyber-ambient"></div>
+
+            <div class="h-11 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 bg-white dark:bg-zinc-900 shrink-0 relative z-10">
+                <h2 class="text-sm font-semibold text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+                    <div class="relative flex items-center justify-center w-6 h-6">
+                        <div class="absolute inset-0 border border-indigo-500/40 rounded-full animate-cyber-orbit border-t-transparent"></div>
+                        <span class="material-symbols-outlined text-[18px] text-indigo-500">analytics</span>
+                    </div>
+                    Analytics & Metrics
+                </h2>
+                <button onclick="toggleModal('context-modal')" class="text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-base">
+                    <span class="material-symbols-outlined text-[16px]">fullscreen</span>
+                </button>
+            </div>
 
             <div class="flex border-b border-zinc-200 dark:border-zinc-800 text-xs font-medium">
                 <button onclick="switchInspectorTab('metrics')" id="tab-btn-metrics" class="flex-1 py-2.5 text-center text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 dark:border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/5">Metrics</button>
@@ -335,14 +458,20 @@
                 <!-- Metrics Tab (Default) -->
                 <div id="tab-content-metrics" class="space-y-4">
                     <!-- Line Chart Card: Latency & Stream Speed -->
-                    <div class="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 bg-zinc-50 dark:bg-zinc-800/30 shadow-sm space-y-2">
+                    <div class="border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 bg-zinc-50 dark:bg-zinc-800/30 shadow-sm space-y-2 relative overflow-hidden">
                         <div class="flex justify-between items-center">
                             <span class="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
                                 <span class="material-symbols-outlined text-[15px] text-indigo-500">show_chart</span> Token Latency (ms)
                             </span>
+                            <div class="flex items-end gap-0.5 h-3 px-1">
+                                <span class="w-0.5 bg-indigo-500 rounded-full animate-bar-bounce-1"></span>
+                                <span class="w-0.5 bg-indigo-500 rounded-full animate-bar-bounce-2"></span>
+                                <span class="w-0.5 bg-indigo-500 rounded-full animate-bar-bounce-3"></span>
+                                <span class="w-0.5 bg-indigo-500 rounded-full animate-bar-bounce-4"></span>
+                            </div>
                             <span class="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold" id="current-latency-display">~24ms</span>
                         </div>
-                        
+
                         <!-- SVG Line Chart -->
                         <div class="h-20 w-full relative pt-1">
                             <svg class="w-full h-full overflow-visible" viewBox="0 0 200 60" preserveAspectRatio="none">
@@ -413,29 +542,29 @@
                             <div class="relative w-16 h-16 shrink-0 flex items-center justify-center">
                                 <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                                     <path class="text-zinc-200 dark:text-zinc-700" stroke-width="3.8" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                    <path class="text-indigo-500" stroke-dasharray="65, 100" stroke-width="3.8" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                    <path class="text-emerald-500" stroke-dasharray="20, 100" stroke-dashoffset="-65" stroke-width="3.8" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path id="donut-llm-arc" class="text-indigo-500 transition-all duration-500" stroke-dasharray="20, 100" stroke-width="3.8" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path id="donut-tool-arc" class="text-emerald-500 transition-all duration-500" stroke-dasharray="10, 100" stroke-dashoffset="-20" stroke-width="3.8" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                                 </svg>
-                                <span class="absolute text-[10px] font-bold font-mono text-zinc-800 dark:text-zinc-100">85%</span>
+                                <span class="absolute text-[10px] font-bold font-mono text-zinc-800 dark:text-zinc-100" id="donut-total-percent">30%</span>
                             </div>
                             <div class="space-y-1.5 text-[11px] font-mono flex-1">
                                 <div class="flex items-center justify-between">
                                     <span class="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span> LLM Context
+                                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span> LLM Msg
                                     </span>
-                                    <span class="font-medium text-zinc-800 dark:text-zinc-200">65%</span>
+                                    <span class="font-medium text-zinc-800 dark:text-zinc-200" id="donut-llm-val">0</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Memory
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Tools
                                     </span>
-                                    <span class="font-medium text-zinc-800 dark:text-zinc-200">20%</span>
+                                    <span class="font-medium text-zinc-800 dark:text-zinc-200" id="donut-tool-val">0</span>
                                 </div>
                                 <div class="flex items-center justify-between">
                                     <span class="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                                        <span class="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600"></span> Buffer
+                                        <span class="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600"></span> Files
                                     </span>
-                                    <span class="font-medium text-zinc-800 dark:text-zinc-200">15%</span>
+                                    <span class="font-medium text-zinc-800 dark:text-zinc-200" id="donut-file-val">0</span>
                                 </div>
                             </div>
                         </div>
@@ -487,7 +616,7 @@
                     <span class="text-[10px] text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity">↵</span>
                 </button>
                 <button onclick="runPaletteCmd('audit example.com')" class="w-full text-left p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-between text-zinc-800 dark:text-zinc-100 group">
-                    <span class="flex items-center gap-2 text-xs font-mono"><span class="material-symbols-outlined text-[16px] text-indigo-500">security</span> audit example.com</span>
+                    <span class="flex items-center gap-2 text-xs font-mono"><span class="material-symbols-outlined text-[16px] text-emerald-500">security</span> audit example.com</span>
                     <span class="text-[10px] text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity">↵</span>
                 </button>
                 <button onclick="runPaletteCmd('explain SQL injection')" class="w-full text-left p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-between text-zinc-800 dark:text-zinc-100 group">
@@ -535,7 +664,28 @@
             return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
         }
 
-        function scrollToBottom() { container.scrollTop = container.scrollHeight; }
+        function isNearBottom(el, threshold = 90) {
+            if (!el) return true;
+            return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+        }
+
+        function smartScrollToBottom() {
+            if (!container) return;
+            if (isNearBottom(container, 120)) {
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        function scrollToBottom() {
+            if (!container) return;
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
 
         function handleKeyDown(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -547,7 +697,7 @@
             const modal = document.getElementById(id);
             if (!modal) return;
             modal.classList.toggle('hidden');
-            if (!modal.classList.contains('hidden') && id === 'universal-modal') {
+            if (!modal.classList.contains('hidden') && (id === 'command-palette' || id === 'universal-modal')) {
                 setTimeout(() => document.getElementById('palette-search-input')?.focus(), 50);
             }
         }
@@ -632,7 +782,7 @@
             if (id === 'settings-modal') return toggleSettingsModal();
             if (id === 'branch-modal') return toggleBranchModal();
             if (id === 'notifications-modal') return toggleNotificationsModal();
-            if (id === 'attach-modal') return; // Disabled for brevity
+            if (id === 'attach-modal') return;
             originalToggleModal(id);
         }
 
@@ -697,7 +847,7 @@
         window.switchNav = switchNav;
 
         function restoreExecutionCanvas() {
-            viewContainer.innerHTML = `<div id="messages-container" class="flex-1 overflow-y-auto p-6 flex flex-col gap-4"></div>`;
+            viewContainer.innerHTML = `<div id="messages-container" class="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-5"></div>`;
             container = document.getElementById('messages-container');
             if (!container.innerHTML.trim()) clearChat();
         }
@@ -705,7 +855,7 @@
         function renderStaticView(viewName) {
             let html = `<div class="p-6 flex-1 overflow-y-auto space-y-4 animate-fade-in text-sm">`;
             html += `<div class="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3"><h3 class="font-semibold text-zinc-800 dark:text-zinc-100 uppercase tracking-wider text-xs">${viewName}</h3><button onclick="switchNav('execution')" class="text-indigo-600 dark:text-indigo-400 text-xs hover:underline font-medium">Back to Canvas</button></div>`;
-            
+
             if (viewName === 'files') {
                 html += `<div class="space-y-2 font-mono text-xs">
                             <div onclick="sendPrompt('cat delta/ai/llm.py')" class="p-3 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-md border border-zinc-200 dark:border-zinc-800 cursor-pointer flex justify-between items-center transition-base">
@@ -763,105 +913,312 @@
         }
         initEventStream();
 
+        let latencyHistory = [0, 0, 0, 0, 0, 0]; // ms history for SVG graph
+        let chartPulseInterval = null;
+
+        function startSidebarChartPulse() {
+            if (chartPulseInterval) return;
+            chartPulseInterval = setInterval(() => {
+                const simulatedLatency = Math.floor(Math.random() * 45) + 20; // 20ms - 65ms
+                document.getElementById('current-latency-display').innerText = `${simulatedLatency}ms`;
+                latencyHistory.push(simulatedLatency);
+                if (latencyHistory.length > 6) latencyHistory.shift();
+                renderSidebarSvgChart();
+            }, 450);
+        }
+
+        function stopSidebarChartPulse() {
+            if (chartPulseInterval) {
+                clearInterval(chartPulseInterval);
+                chartPulseInterval = null;
+            }
+        }
+
+        function renderSidebarSvgChart() {
+            const coords = latencyHistory.map((val, idx) => {
+                const x = Math.round((idx / 5) * 200);
+                const norm = Math.min(Math.max(val, 10), 200);
+                const y = Math.round(55 - ((norm - 10) / 190) * 45);
+                return { x, y };
+            });
+
+            const strokePath = document.querySelector('#tab-content-metrics svg path[fill="none"]');
+            const fillPath = document.querySelector('#tab-content-metrics svg path[fill*="lineGrad"]');
+            const circles = document.querySelectorAll('#tab-content-metrics svg circle');
+
+            if (strokePath && fillPath && coords.length >= 6) {
+                const smoothCurve = getSmoothSvgPath(coords);
+                strokePath.setAttribute('d', smoothCurve);
+                fillPath.setAttribute('d', `${smoothCurve} L 200,60 L 0,60 Z`);
+
+                if (circles.length >= 3) {
+                    circles[0].setAttribute('cx', coords[2].x); circles[0].setAttribute('cy', coords[2].y);
+                    circles[1].setAttribute('cx', coords[4].x); circles[1].setAttribute('cy', coords[4].y);
+                    circles[2].setAttribute('cx', coords[5].x); circles[2].setAttribute('cy', coords[5].y);
+                }
+            }
+        }
+
+        function getSmoothSvgPath(points) {
+            if (!points || points.length === 0) return '';
+            if (points.length === 1) return `M ${points[0].x},${points[0].y}`;
+            let d = `M ${points[0].x},${points[0].y}`;
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = points[i === 0 ? i : i - 1];
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const p3 = points[i + 2] || p2;
+
+                const cp1x = p1.x + (p2.x - p0.x) / 4;
+                const cp1y = p1.y + (p2.y - p0.y) / 4;
+                const cp2x = p2.x - (p3.x - p1.x) / 4;
+                const cp2y = p2.y - (p3.y - p1.y) / 4;
+
+                d += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x},${p2.y}`;
+            }
+            return d;
+        }
+
+        function recordTokenChunkLatency(startTime) {
+            if (!startTime) return;
+            const lat = Math.round(performance.now() - startTime);
+            document.getElementById('current-latency-display').innerText = `${lat}ms`;
+
+            // Keep last 6 latency data points
+            latencyHistory.push(lat);
+            if (latencyHistory.length > 6) latencyHistory.shift();
+
+            renderSidebarSvgChart();
+        }
+
+        // ==========================================
+        // AGENT PROCESS TIMELINE & WORKFLOW ENGINE
+        // ==========================================
+
+        function getOrCreateTurnContainer(execId) {
+            const turnId = `turn-${execId}`;
+            let turnEl = document.getElementById(turnId);
+            if (!turnEl) {
+                const html = `
+                    <div id="${turnId}" class="flex flex-col gap-3 w-full animate-fade-in">
+                        <div id="timeline-box-${execId}" class="w-full bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-3.5 space-y-2.5 transition-base shadow-sm">
+                            <div class="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-800 pb-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse-subtle" id="timeline-dot-${execId}"></div>
+                                    <span class="text-xs font-semibold text-zinc-800 dark:text-zinc-200 tracking-wide flex items-center gap-1.5" id="timeline-header-${execId}">
+                                        <span>Agent Workflow</span>
+                                        <span class="text-[10px] font-mono text-zinc-400 font-normal">(${execId})</span>
+                                    </span>
+                                </div>
+                                <span class="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 flex items-center gap-1" id="timeline-badge-${execId}">
+                                    <span class="material-symbols-outlined text-[12px] animate-spin-slow">progress_activity</span> Working
+                                </span>
+                            </div>
+                            <div class="timeline-steps space-y-1.5 pt-0.5" id="timeline-steps-${execId}">
+                                <!-- Step items will enter here one by one with smooth fade + slide down -->
+                            </div>
+                        </div>
+                        <div id="assistant-bubble-${execId}" class="hidden w-full animate-response-enter">
+                            <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 border-l-4 border-indigo-500 rounded-xl p-4 shadow-sm w-full space-y-2">
+                                <div class="flex items-center justify-between text-[10px] font-mono border-b border-zinc-100 dark:border-zinc-800 pb-1.5 mb-2 gap-4">
+                                    <span class="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1.5">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> DELTA ASSISTANT
+                                    </span>
+                                    <span class="text-zinc-400" id="assistant-time-${execId}">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                                <div class="text-sm leading-relaxed font-mono whitespace-pre-wrap text-zinc-800 dark:text-zinc-200 msg-content" id="msg-content-${execId}"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+                turnEl = document.getElementById(turnId);
+                smartScrollToBottom();
+            }
+            return turnEl;
+        }
+
+        function formatHumanToolTitle(toolName, inputObj) {
+            const name = (toolName || '').toLowerCase();
+            const path = inputObj?.path || inputObj?.file || inputObj?.pattern || '';
+            const filename = path ? path.split(/[\/\\]/).pop() : '';
+
+            if (name.includes('read') || name.includes('cat')) {
+                return { title: filename ? `Reading ${filename}` : 'Reading file structure', icon: 'visibility', detail: path };
+            }
+            if (name.includes('write') || name.includes('create')) {
+                return { title: filename ? `Creating ${filename}` : 'Writing file content', icon: 'edit_document', detail: path };
+            }
+            if (name.includes('edit') || name.includes('patch')) {
+                return { title: filename ? `Updating ${filename}` : 'Modifying source code', icon: 'edit_note', detail: path };
+            }
+            if (name.includes('scan')) {
+                return { title: `Scanning target ${inputObj?.target || 'network/ports'}`, icon: 'radar', detail: inputObj?.target || '' };
+            }
+            if (name.includes('audit')) {
+                return { title: `Auditing security posture ${inputObj?.target || ''}`, icon: 'security', detail: inputObj?.target || '' };
+            }
+            if (name.includes('find') || name.includes('search') || name.includes('grep')) {
+                return { title: filename ? `Searching for "${filename}"` : 'Searching workspace files', icon: 'search', detail: path };
+            }
+            if (name.includes('exec') || name.includes('cmd') || name.includes('terminal') || name.includes('run')) {
+                const cmd = inputObj?.command || inputObj?.cmd || '';
+                return { title: cmd ? `Executing ${cmd.slice(0, 32)}${cmd.length > 32 ? '...' : ''}` : 'Running system command', icon: 'terminal', detail: cmd };
+            }
+            if (name.includes('explain')) {
+                return { title: 'Analyzing vulnerability knowledge base', icon: 'menu_book', detail: inputObj?.query || '' };
+            }
+            return { title: `Running ${toolName}`, icon: 'smart_toy', detail: path };
+        }
+
+        function addOrUpdateProcessStep(execId, stepKey, title, status = 'running', detail = '', durationMs = null) {
+            getOrCreateTurnContainer(execId);
+            const stepsContainer = document.getElementById(`timeline-steps-${execId}`);
+            if (!stepsContainer) return;
+
+            let stepEl = document.getElementById(`step-${execId}-${stepKey}`);
+
+            let statusIconHtml = '';
+            if (status === 'running') {
+                statusIconHtml = `<span class="material-symbols-outlined text-[14px] text-indigo-500 animate-spin-slow">progress_activity</span>`;
+            } else if (status === 'success') {
+                statusIconHtml = `<span class="material-symbols-outlined text-[14px] text-emerald-500 font-semibold">check_circle</span>`;
+            } else if (status === 'error') {
+                statusIconHtml = `<span class="material-symbols-outlined text-[14px] text-red-500 font-semibold">cancel</span>`;
+            } else {
+                statusIconHtml = `<span class="material-symbols-outlined text-[14px] text-zinc-400">radio_button_unchecked</span>`;
+            }
+
+            const durationBadge = durationMs !== null ? `<span class="text-[10px] font-mono text-zinc-400 font-normal ml-auto">${Math.round(durationMs)}ms</span>` : '';
+
+            if (!stepEl) {
+                const stepHtml = `
+                    <div id="step-${execId}-${stepKey}" class="flex items-center justify-between text-xs py-1 px-2.5 rounded-lg bg-white/70 dark:bg-zinc-800/40 border border-zinc-200/50 dark:border-zinc-700/50 animate-process-enter transition-base group">
+                        <div class="flex items-center gap-2 min-w-0 flex-1">
+                            <span class="step-status-icon flex items-center justify-center shrink-0">${statusIconHtml}</span>
+                            <span class="step-title font-medium text-zinc-700 dark:text-zinc-200 truncate text-[11.5px]">${escapeHtml(title)}</span>
+                            ${detail ? `<span class="step-detail text-[10px] font-mono text-zinc-400 dark:text-zinc-500 truncate max-w-[200px]">· ${escapeHtml(detail)}</span>` : ''}
+                        </div>
+                        <div class="step-duration flex items-center pl-2 shrink-0">${durationBadge}</div>
+                    </div>
+                `;
+                stepsContainer.insertAdjacentHTML('beforeend', stepHtml);
+            } else {
+                const iconContainer = stepEl.querySelector('.step-status-icon');
+                if (iconContainer) iconContainer.innerHTML = statusIconHtml;
+                const titleContainer = stepEl.querySelector('.step-title');
+                if (titleContainer && title) titleContainer.textContent = title;
+                const durationContainer = stepEl.querySelector('.step-duration');
+                if (durationContainer && durationBadge) durationContainer.innerHTML = durationBadge;
+            }
+
+            smartScrollToBottom();
+        }
+
+        function finalizeTimelineSuccess(execId) {
+            const badgeEl = document.getElementById(`timeline-badge-${execId}`);
+            if (badgeEl) {
+                badgeEl.className = "text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-medium px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1";
+                badgeEl.innerHTML = `<span class="material-symbols-outlined text-[12px]">check</span> Done`;
+            }
+            const dotEl = document.getElementById(`timeline-dot-${execId}`);
+            if (dotEl) {
+                dotEl.className = "w-2 h-2 rounded-full bg-emerald-500";
+            }
+            // Mark all unresolved running steps as completed
+            const runningIcons = document.querySelectorAll(`#timeline-steps-${execId} .animate-spin-slow`);
+            runningIcons.forEach(icon => {
+                icon.parentElement.innerHTML = `<span class="material-symbols-outlined text-[14px] text-emerald-500 font-semibold">check_circle</span>`;
+            });
+        }
+
+        let chunkStartTime = null;
+
         function handleAgentEvent(event) {
             const type = event.type;
             const execId = event.execution_id || 'current';
 
-            if (type === 'message_delta') {
-                const assistantMsgId = `assistant-msg-${execId}`;
-                let msgEl = document.getElementById(assistantMsgId);
-                if (!msgEl) {
-                    appendStreamingAiMessagePlaceholder(assistantMsgId);
-                    msgEl = document.getElementById(assistantMsgId);
-                }
-                const contentEl = msgEl.querySelector('.msg-content');
-                if (contentEl && event.content !== undefined) {
-                    if (contentEl.textContent === 'Thinking...') contentEl.textContent = '';
-                    contentEl.textContent += event.content;
-                    scrollToBottom();
-                }
-            } else if (type === 'message_complete') {
-                const assistantMsgId = `assistant-msg-${execId}`;
-                let msgEl = document.getElementById(assistantMsgId);
-                if (msgEl) {
-                    const contentEl = msgEl.querySelector('.msg-content');
-                    if (contentEl && event.content !== undefined) {
-                        contentEl.textContent = event.content;
-                        scrollToBottom();
-                    }
-                }
-                document.getElementById('stop-btn').classList.add('hidden');
-                document.getElementById('run-btn').classList.remove('hidden');
+            if (type === 'agent_start') {
+                getOrCreateTurnContainer(execId);
+                addOrUpdateProcessStep(execId, 'step-init', 'Understanding request', 'running');
+                updateHeaderStatus('Thinking');
             } else if (type === 'agent_thinking') {
-                const statusEl = document.getElementById(`status-${execId}`);
-                if (statusEl) {
-                    statusEl.textContent = `⠋ ${event.status_text || 'Thinking...'}`;
-                }
-            } else if (type === 'agent_complete') {
-                const statusEl = document.getElementById(`status-${execId}`);
-                if (statusEl) {
-                    statusEl.remove();
-                }
-                document.getElementById('stop-btn').classList.add('hidden');
-                document.getElementById('run-btn').classList.remove('hidden');
-                updateHeaderStatus('Online');
+                const label = event.status_text || 'Planning execution steps';
+                addOrUpdateProcessStep(execId, 'step-init', 'Understanding request', 'success');
+                addOrUpdateProcessStep(execId, 'step-thinking', label, 'running');
+                updateHeaderStatus('Thinking');
             } else if (type === 'tool_start') {
-                updateHeaderStatus('Executing');
-                const nodesContainer = getOrCreateExecutionTimeline(execId);
+                addOrUpdateProcessStep(execId, 'step-thinking', 'Planning execution steps', 'success');
+                const toolInfo = formatHumanToolTitle(event.tool, event.input);
                 const toolKey = event.event_id || `${event.tool}_${Date.now()}`;
-                const targetText = event.input?.path || event.input?.pattern || event.input?.query || '';
-                const nodeHtml = `
-                    <div id="node-${toolKey}" class="bg-zinc-50 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-700 rounded-md p-2.5 text-xs space-y-1 animate-fade-in font-mono">
-                        <div class="flex items-center justify-between text-zinc-800 dark:text-zinc-200">
-                            <span class="flex items-center gap-2 font-medium">
-                                <span class="material-symbols-outlined text-[14px] text-indigo-500">terminal</span>
-                                ${escapeHtml(event.tool || 'Tool')}
-                            </span>
-                            <span class="text-[10px] text-indigo-500 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Running</span>
-                        </div>
-                        ${targetText ? `<div class="text-[11px] text-zinc-500 dark:text-zinc-400 truncate pl-6">${escapeHtml(strVal(targetText))}</div>` : ''}
-                    </div>`;
-                nodesContainer.insertAdjacentHTML('beforeend', nodeHtml);
-                scrollToBottom();
-                
-                // Update bar charts dynamically based on tool
-                updateToolBarCharts(event.tool);
+                addOrUpdateProcessStep(execId, `tool-${toolKey}`, toolInfo.title, 'running', toolInfo.detail);
+                updateToolBarCharts(event.tool || '');
+                updateHeaderStatus('Executing');
             } else if (type === 'tool_result') {
                 toolCount++;
                 document.getElementById('total-tools-label').innerText = toolCount;
                 const toolKey = event.event_id;
-                const existingNode = toolKey ? document.getElementById(`node-${toolKey}`) : null;
-                const statusSymbol = event.success ? '<span class="material-symbols-outlined text-[14px] text-emerald-500">check</span>' : '<span class="material-symbols-outlined text-[14px] text-red-500">close</span>';
-                const outStr = event.output ? escapeHtml(strVal(event.output)) : (event.error ? escapeHtml(strVal(event.error)) : '');
-
-                if (existingNode) {
-                    existingNode.className = `bg-zinc-50 dark:bg-zinc-800/30 border ${event.success ? 'border-zinc-200 dark:border-zinc-700' : 'border-red-300 dark:border-red-800/50'} rounded-md p-2.5 text-xs space-y-1 animate-fade-in font-mono`;
-                    existingNode.innerHTML = `
-                        <div class="flex items-center justify-between ${event.success ? 'text-zinc-800 dark:text-zinc-200' : 'text-red-600 dark:text-red-400'} font-medium">
-                            <span class="flex items-center gap-2">${statusSymbol} ${escapeHtml(event.tool || 'Tool')}</span>
-                            <span class="text-[10px] text-zinc-400 font-normal">${(event.duration_ms || 0).toFixed(0)}ms</span>
-                        </div>
-                        ${outStr ? `<div class="pl-6 pt-1"><div class="text-[11px] text-zinc-500 dark:text-zinc-400 max-h-24 overflow-y-auto whitespace-pre-wrap bg-white dark:bg-zinc-900 p-2 rounded border border-zinc-200 dark:border-zinc-800 mt-1">${outStr}</div></div>` : ''}
-                    `;
-                    
-                    // Trigger fake latency graph variation on tool completion
-                    simulateLatencySpike();
+                const toolInfo = formatHumanToolTitle(event.tool, event.input);
+                const status = event.success ? 'success' : 'error';
+                addOrUpdateProcessStep(execId, `tool-${toolKey}`, toolInfo.title, status, toolInfo.detail, event.duration_ms);
+                if (event.duration_ms) {
+                    recordTokenChunkLatency(performance.now() - event.duration_ms);
                 }
                 updateHeaderStatus('Online');
-                scrollToBottom();
             } else if (type === 'file_update') {
                 fileCount++;
                 document.getElementById('inspector-file-count').innerText = fileCount;
+                updateDonutChart();
+                const filename = (event.path || 'file').split(/[\/\\]/).pop();
+                const diffSummary = `+${event.added_lines || 0} -${event.removed_lines || 0}`;
+                addOrUpdateProcessStep(execId, `file-${event.path || Date.now()}`, `Updated ${filename}`, 'success', diffSummary);
                 renderFileUpdateCard(event);
+            } else if (type === 'message_delta') {
+                if (chunkStartTime) {
+                    recordTokenChunkLatency(chunkStartTime);
+                }
+                chunkStartTime = performance.now();
+
+                getOrCreateTurnContainer(execId);
+                const bubbleEl = document.getElementById(`assistant-bubble-${execId}`);
+                if (bubbleEl && bubbleEl.classList.contains('hidden')) {
+                    bubbleEl.classList.remove('hidden');
+                }
+                const contentEl = document.getElementById(`msg-content-${execId}`);
+                if (contentEl && event.content !== undefined) {
+                    contentEl.textContent += event.content;
+                    smartScrollToBottom();
+                }
+            } else if (type === 'message_complete') {
+                getOrCreateTurnContainer(execId);
+                const bubbleEl = document.getElementById(`assistant-bubble-${execId}`);
+                if (bubbleEl && bubbleEl.classList.contains('hidden')) {
+                    bubbleEl.classList.remove('hidden');
+                }
+                const contentEl = document.getElementById(`msg-content-${execId}`);
+                if (contentEl && event.content !== undefined && !contentEl.textContent.trim()) {
+                    contentEl.textContent = event.content;
+                }
+                finalizeTimelineSuccess(execId);
+                document.getElementById('stop-btn').classList.add('hidden');
+                document.getElementById('run-btn').classList.remove('hidden');
+                updateHeaderStatus('Online');
+                smartScrollToBottom();
+            } else if (type === 'agent_complete') {
+                finalizeTimelineSuccess(execId);
+                document.getElementById('stop-btn').classList.add('hidden');
+                document.getElementById('run-btn').classList.remove('hidden');
+                updateHeaderStatus('Online');
+                smartScrollToBottom();
             }
         }
-        
+
         let toolReadCount = 0;
         let toolExecCount = 0;
         let toolEditCount = 0;
-        
+
         function updateToolBarCharts(toolName) {
-            const name = toolName.toLowerCase();
+            const name = (toolName || '').toLowerCase();
             let cat = '';
             if (name.includes('read') || name.includes('cat') || name.includes('search') || name.includes('find')) {
                 toolReadCount++; cat = 'read';
@@ -870,67 +1227,85 @@
             } else {
                 toolExecCount++; cat = 'exec';
             }
-            
+
             const total = toolReadCount + toolExecCount + toolEditCount;
             if (total === 0) return;
-            
+
             if (cat === 'read') {
                 document.getElementById('bar-val-read').innerText = toolReadCount;
-                document.getElementById('bar-progress-read').style.width = \`\${Math.max(5, (toolReadCount/total)*100)}%\`;
+                document.getElementById('bar-progress-read').style.width = `${Math.max(5, (toolReadCount/total)*100)}%`;
             } else if (cat === 'exec') {
                 document.getElementById('bar-val-exec').innerText = toolExecCount;
-                document.getElementById('bar-progress-exec').style.width = \`\${Math.max(5, (toolExecCount/total)*100)}%\`;
+                document.getElementById('bar-progress-exec').style.width = `${Math.max(5, (toolExecCount/total)*100)}%`;
             } else if (cat === 'edit') {
                 document.getElementById('bar-val-edit').innerText = toolEditCount;
-                document.getElementById('bar-progress-edit').style.width = \`\${Math.max(5, (toolEditCount/total)*100)}%\`;
+                document.getElementById('bar-progress-edit').style.width = `${Math.max(5, (toolEditCount/total)*100)}%`;
             }
+
+            updateDonutChart();
         }
-        
-        function simulateLatencySpike() {
-            const val = Math.floor(Math.random() * 40) + 15;
-            document.getElementById('current-latency-display').innerText = \`~\${val}ms\`;
-            const path = document.querySelector('#tab-content-metrics svg path[fill="none"]');
-            if(path) {
-                // Randomize curve slightly
-                const q1 = 20 + Math.random() * 15;
-                const q2 = 15 + Math.random() * 20;
-                path.setAttribute('d', \`M 0,50 Q 30,\${q1} 60,35 T 120,20 T 170,\${q2} T 200,15\`);
+
+        let userMsgCount = 0;
+
+        function updateDonutChart() {
+            const llmCount = userMsgCount;
+            const tools = toolCount;
+            const files = fileCount;
+            const sum = llmCount + tools + files || 1;
+
+            const llmPercent = Math.round((llmCount / sum) * 100);
+            const toolPercent = Math.round((tools / sum) * 100);
+
+            document.getElementById('donut-llm-val').innerText = llmCount;
+            document.getElementById('donut-tool-val').innerText = tools;
+            document.getElementById('donut-file-val').innerText = files;
+            document.getElementById('donut-total-percent').innerText = `${llmCount + tools + files}`;
+
+            const llmArc = document.getElementById('donut-llm-arc');
+            const toolArc = document.getElementById('donut-tool-arc');
+
+            if (llmArc && toolArc) {
+                llmArc.setAttribute('stroke-dasharray', `${llmPercent}, 100`);
+                toolArc.setAttribute('stroke-dasharray', `${toolPercent}, 100`);
+                toolArc.setAttribute('stroke-dashoffset', `-${llmPercent}`);
             }
         }
 
         function updateHeaderStatus(text) {
-            document.getElementById('status-indicator-text').innerText = text;
-        }
-
-        function getOrCreateExecutionTimeline(execId) {
-            const timelineId = `timeline-${execId}`;
-            let timelineEl = document.getElementById(timelineId);
-            if (!timelineEl) {
-                const html = `
-                    <div id="${timelineId}" class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 mb-3 animate-fade-in space-y-3 font-mono text-xs">
-                        <div class="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2 text-zinc-800 dark:text-zinc-200 font-semibold text-[11px] uppercase tracking-wider">
-                            <span class="flex items-center gap-1.5">
-                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Agent Execution
-                            </span>
-                        </div>
-                        <div class="timeline-nodes space-y-2"></div>
-                    </div>`;
-                container.insertAdjacentHTML('beforeend', html);
-                timelineEl = document.getElementById(timelineId);
+            const el = document.getElementById('status-indicator-text');
+            const iconEl = document.getElementById('status-indicator-icon');
+            if (el) el.innerText = text;
+            const lower = (text || '').toLowerCase();
+            if (lower.includes('think') || lower.includes('exec') || lower.includes('work')) {
+                if (iconEl) {
+                    iconEl.textContent = 'progress_activity';
+                    iconEl.classList.add('animate-spin-slow');
+                }
+                startSidebarChartPulse();
+            } else {
+                if (iconEl) {
+                    if (lower.includes('off')) {
+                        iconEl.textContent = 'sensors_off';
+                    } else {
+                        iconEl.textContent = 'sensors';
+                    }
+                    iconEl.classList.remove('animate-spin-slow');
+                }
+                stopSidebarChartPulse();
             }
-            return timelineEl.querySelector('.timeline-nodes');
         }
 
         function renderFileUpdateCard(event) {
+            const filename = (event.path || 'file').split(/[\/\\]/).pop();
             const html = `
-                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 mb-3 animate-fade-in text-xs space-y-2 font-mono">
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2.5 animate-fade-in text-xs space-y-1 font-mono">
                     <div class="flex justify-between items-center text-zinc-800 dark:text-zinc-200 font-semibold">
-                        <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px] text-indigo-500">edit_note</span> ${escapeHtml(event.path || 'file')}</span>
-                        <span class="text-[11px] font-normal text-emerald-500">+${event.added_lines || 0} -${event.removed_lines || 0}</span>
+                        <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px] text-indigo-500">edit_note</span> ${escapeHtml(filename)}</span>
+                        <span class="text-[10px] font-normal text-emerald-500">+${event.added_lines || 0} -${event.removed_lines || 0}</span>
                     </div>
                 </div>`;
             container.insertAdjacentHTML('beforeend', html);
-            scrollToBottom();
+            smartScrollToBottom();
         }
 
         function strVal(val) { return typeof val === 'string' ? val : JSON.stringify(val, null, 2); }
@@ -942,10 +1317,12 @@
         });
 
         function appendUserMessage(text) {
+            userMsgCount++;
+            updateDonutChart();
             const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             container.insertAdjacentHTML('beforeend', `
-                <div class="flex justify-end animate-fade-in">
-                    <div class="bg-indigo-600 text-white rounded-lg px-4 py-2 max-w-xl shadow-sm">
+                <div class="flex justify-end animate-fade-in w-full">
+                    <div class="bg-indigo-600 text-white rounded-xl px-4 py-2.5 max-w-xl shadow-sm">
                         <div class="flex items-center justify-between text-[10px] font-mono opacity-80 border-b border-white/20 pb-1 mb-1 gap-4">
                             <span>USER</span><span>${timeStr}</span>
                         </div>
@@ -960,9 +1337,9 @@
             const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const colorClass = isError ? 'border-red-500' : 'border-indigo-500';
             container.insertAdjacentHTML('beforeend', `
-                <div class="flex justify-start animate-fade-in">
-                    <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 border-l-4 ${colorClass} rounded-lg px-4 py-2 max-w-xl shadow-sm w-full">
-                        <div class="flex items-center justify-between text-[10px] font-mono border-b border-zinc-100 dark:border-zinc-800 pb-1 mb-1 gap-4">
+                <div class="flex justify-start animate-response-enter w-full">
+                    <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 border-l-4 ${colorClass} rounded-xl p-4 max-w-xl shadow-sm w-full">
+                        <div class="flex items-center justify-between text-[10px] font-mono border-b border-zinc-100 dark:border-zinc-800 pb-1 mb-2 gap-4">
                             <span class="text-indigo-600 dark:text-indigo-400 font-semibold">DELTA AGENT</span>
                             <span class="text-zinc-400">${timeStr}</span>
                         </div>
@@ -995,66 +1372,47 @@
 
             input.value = '';
             appendUserMessage(text);
-            
+
             document.getElementById('run-btn').classList.add('hidden');
             document.getElementById('stop-btn').classList.remove('hidden');
 
             const execId = `exec-${Date.now()}`;
-            const nodesContainer = getOrCreateExecutionTimeline(execId);
-            nodesContainer.insertAdjacentHTML('beforeend', `<div class="text-indigo-500 italic animate-fade-in" id="status-${execId}">⠋ Initializing agent...</div>`);
+            getOrCreateTurnContainer(execId);
+            addOrUpdateProcessStep(execId, 'step-init', 'Understanding request', 'running');
             updateHeaderStatus('Thinking');
             scrollToBottom();
 
-            // Set up placeholder for assistant streaming response
-            const assistantMsgId = `assistant-msg-${execId}`;
-            appendStreamingAiMessagePlaceholder(assistantMsgId);
-
             try {
-                const response = await fetch('/api/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: text }) });
+                const response = await fetch('/api/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: text, execution_id: execId })
+                });
                 if (!response.ok) throw new Error('HTTP Error');
                 const data = await response.json();
-                
+
                 const finalReply = data.output || data.response || data.error || '';
-                const msgEl = document.getElementById(assistantMsgId);
-                if (msgEl) {
-                    const contentEl = msgEl.querySelector('.msg-content');
-                    if (contentEl && (contentEl.textContent === 'Thinking...' || !contentEl.textContent)) {
-                        contentEl.textContent = finalReply;
-                    }
-                } else if (finalReply) {
+                const contentEl = document.getElementById(`msg-content-${execId}`);
+                const bubbleEl = document.getElementById(`assistant-bubble-${execId}`);
+
+                if (contentEl && !contentEl.textContent.trim()) {
+                    contentEl.textContent = finalReply;
+                    if (bubbleEl) bubbleEl.classList.remove('hidden');
+                } else if (!document.getElementById(`turn-${execId}`) && finalReply) {
                     appendAiMessage(finalReply);
                 }
+
+                finalizeTimelineSuccess(execId);
                 updateHeaderStatus('Online');
                 document.getElementById('stop-btn').classList.add('hidden');
                 document.getElementById('run-btn').classList.remove('hidden');
+                smartScrollToBottom();
             } catch (err) {
-                const msgEl = document.getElementById(assistantMsgId);
-                if (msgEl) {
-                    const contentEl = msgEl.querySelector('.msg-content');
-                    if (contentEl) contentEl.textContent = `Error: ${err.message}`;
-                } else {
-                    appendAiMessage(`Failed to connect to Delta Engine: ${err.message}`, true);
-                }
+                addOrUpdateProcessStep(execId, 'step-fail', `Failed to execute: ${err.message}`, 'error');
                 updateHeaderStatus('Offline');
                 document.getElementById('stop-btn').classList.add('hidden');
                 document.getElementById('run-btn').classList.remove('hidden');
             }
-        }
-
-        function appendStreamingAiMessagePlaceholder(msgId) {
-            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            container.insertAdjacentHTML('beforeend', `
-                <div class="flex justify-start animate-fade-in" id="${msgId}">
-                    <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 border-l-4 border-indigo-500 rounded-lg px-4 py-2 max-w-xl shadow-sm w-full">
-                        <div class="flex items-center justify-between text-[10px] font-mono border-b border-zinc-100 dark:border-zinc-800 pb-1 mb-1 gap-4">
-                            <span class="text-indigo-600 dark:text-indigo-400 font-semibold">DELTA AGENT</span>
-                            <span class="text-zinc-400">${timeStr}</span>
-                        </div>
-                        <div class="text-sm leading-relaxed font-mono whitespace-pre-wrap text-zinc-800 dark:text-zinc-200 msg-content">Thinking...</div>
-                    </div>
-                </div>
-            `);
-            scrollToBottom();
         }
 
         function sendPrompt(text) { input.value = text; handleSubmit(); }
@@ -1069,20 +1427,22 @@
                 </div>
             `;
             document.getElementById('current-task-display').innerText = 'Idle - Waiting for input';
-            
+
             // Reset analytics metrics
             toolCount = 0;
             fileCount = 0;
             toolReadCount = 0;
             toolExecCount = 0;
             toolEditCount = 0;
-            
+            latencyHistory = [0, 0, 0, 0, 0, 0];
+            document.getElementById('current-latency-display').innerText = '0ms';
+
             const totalToolsEl = document.getElementById('total-tools-label');
             if (totalToolsEl) totalToolsEl.innerText = '0';
-            
+
             const fileCountEl = document.getElementById('inspector-file-count');
             if (fileCountEl) fileCountEl.innerText = '0';
-            
+
             ['read', 'exec', 'edit'].forEach(cat => {
                 const valEl = document.getElementById(`bar-val-${cat}`);
                 const progressEl = document.getElementById(`bar-progress-${cat}`);

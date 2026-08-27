@@ -169,8 +169,9 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 body = body_bytes.decode("utf-8") if body_bytes else "{}"
                 data = json.loads(body) if body else {}
                 cmd = data.get("command", "")
+                execution_id = data.get("execution_id")
 
-                res = self.bridge.execute_command(cmd) if self.bridge else {"output": f"Engine offline: {cmd}", "is_task": False, "task_id": None}
+                res = self.bridge.execute_command(cmd, execution_id=execution_id) if self.bridge else {"output": f"Engine offline: {cmd}", "is_task": False, "task_id": None}
                 resp_bytes = json.dumps(res).encode("utf-8")
 
                 self.send_response(200)

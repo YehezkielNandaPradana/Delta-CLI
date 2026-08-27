@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sys
+import threading
 from typing import Any, Dict, Optional
 
 ANSI_STRIP = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*\x07")
@@ -49,7 +50,7 @@ class EngineBridge:
             "llm_enabled": getattr(self.engine.config, "llm_enabled", False) if self.engine and hasattr(self.engine, "config") else False,
         }
 
-    def execute_command(self, cmd: str) -> Dict[str, Any]:
+    def execute_command(self, cmd: str, execution_id: Optional[str] = None) -> Dict[str, Any]:
         if not self.engine:
             return {"output": f"Executed command (mock): {cmd}", "is_task": False, "task_id": None}
 
@@ -61,9 +62,8 @@ class EngineBridge:
         old_stdout = sys.stdout
         try:
             sys.stdout = output_capture
-            import threading
             self.engine._stop_event = threading.Event()
-            res = self.engine._process_input(cmd)
+            res = self.engine._process_input(cmd, execution_id=execution_id)
             
             # Extract structured response from _process_input dictionary
             if isinstance(res, dict):

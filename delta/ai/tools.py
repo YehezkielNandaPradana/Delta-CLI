@@ -113,16 +113,8 @@ class Tool:
 
     def execute(self, **kwargs) -> Dict[str, Any]:
 
-        """Execute the tool function safely, emitting AgentEvents to the EventBus."""
-        import time
-        from delta.ai.events import event_bus, AgentEvent, EventType, generate_real_diff
-
-        start_t = time.time()
-        event_bus.emit(AgentEvent(
-            type=EventType.TOOL_START,
-            tool=self.name,
-            input=kwargs
-        ))
+        """Execute the tool function safely."""
+        from delta.ai.events import event_bus, generate_real_diff
 
         path = kwargs.get("path") or kwargs.get("file_path")
         old_content = None
@@ -137,29 +129,9 @@ class Tool:
 
         try:
             result = self.func(**kwargs)
-            duration_ms = (time.time() - start_t) * 1000.0
-
-            if isinstance(result, dict) and "success" in result:
-                success = result["success"]
-                output = result.get("output") or result.get("message")
-                err_msg = result.get("error")
-            else:
-                success = True
-                output = str(result)
-                err_msg = None
-
-            event_bus.emit(AgentEvent(
-                type=EventType.TOOL_RESULT,
-                tool=self.name,
-                input=kwargs,
-                output=output,
-                success=success,
-                duration_ms=duration_ms,
-                error={"message": err_msg} if err_msg else None
-            ))
 
             # Emit file_update diff if file was modified
-            if success and path and old_content is not None and os.path.isfile(path):
+            if path and old_content is not None and os.path.isfile(path):
                 try:
                     with open(path, "r", encoding="utf-8", errors="replace") as f:
                         new_content = f.read()
@@ -174,15 +146,6 @@ class Tool:
             return {"success": True, "output": str(result), "error": None}
 
         except Exception as e:
-            duration_ms = (time.time() - start_t) * 1000.0
-            event_bus.emit(AgentEvent(
-                type=EventType.TOOL_RESULT,
-                tool=self.name,
-                input=kwargs,
-                success=False,
-                duration_ms=duration_ms,
-                error={"message": str(e)}
-            ))
             return {"success": False, "output": None, "error": str(e)}
 
 class ToolRegistry:
