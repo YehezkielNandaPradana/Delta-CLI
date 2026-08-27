@@ -43,7 +43,7 @@ class MockLLMEngine:
     def _configure_llm_retry(self):
         pass
 
-    def chat(self, prompt, tools=None, is_continuation=False):
+    def chat(self, prompt, tools=None, is_continuation=False, **kwargs):
         if self.call_count < len(self.responses):
             res = self.responses[self.call_count]
             self.call_count += 1
