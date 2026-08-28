@@ -14,7 +14,7 @@ from typing import Any, Optional
 from delta.web.bridge import EngineBridge
 from delta.ai.events import event_bus, AgentEvent
 
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 def _is_disconnect_error(exc: BaseException) -> bool:
     """Check if exception is caused by client disconnect (Windows & Unix)."""
@@ -127,8 +127,88 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 self._safe_write(body)
                 return
 
+            if clean_path == "/api/targets":
+                res = self.bridge.get_targets() if self.bridge else {"status": "error", "message": "Bridge offline", "targets": []}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/history":
+                query = parse_qs(parsed_url.query)
+                limit = int(query.get("limit", [50])[0])
+                res = self.bridge.get_history(limit=limit) if self.bridge else {"status": "error", "message": "Bridge offline", "history": []}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/models":
+                res = self.bridge.get_models() if self.bridge else {"status": "error", "message": "Bridge offline", "models": []}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/router":
+                res = self.bridge.get_router_status() if self.bridge else {"status": "error", "message": "Bridge offline"}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/evidence":
+                res = self.bridge.get_evidence() if self.bridge else {"status": "error", "message": "Bridge offline", "evidence": []}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/reports":
+                query = parse_qs(parsed_url.query)
+                limit = int(query.get("limit", [20])[0])
+                res = self.bridge.get_reports(limit=limit) if self.bridge else {"status": "error", "message": "Bridge offline", "reports": []}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/reports/view":
+                query = parse_qs(parsed_url.query)
+                report_id_str = query.get("id", [""])[0]
+                if not report_id_str.isdigit():
+                    res = {"status": "error", "message": "Invalid report id parameter"}
+                    status_code = 400
+                else:
+                    res = self.bridge.get_report_content(int(report_id_str)) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                    status_code = 200 if res.get("status") == "ok" else 404
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(status_code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
             if clean_path == "/api/fs/tree":
-                from urllib.parse import parse_qs
                 query = parse_qs(parsed_url.query)
                 sub_path = query.get("path", [""])[0]
                 res = self.bridge.get_directory_tree(sub_path) if self.bridge else {"status": "error", "message": "Bridge offline"}
@@ -141,13 +221,35 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 return
 
             if clean_path == "/api/fs/read":
-                from urllib.parse import parse_qs
                 query = parse_qs(parsed_url.query)
                 file_path = query.get("path", [""])[0]
                 res = self.bridge.read_file_content(file_path) if self.bridge else {"status": "error", "message": "Bridge offline"}
                 status_code = 200 if res.get("status") == "ok" else (403 if "Access denied" in res.get("message", "") else 404)
                 body = json.dumps(res).encode("utf-8")
                 self.send_response(status_code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/exploit/modules":
+                query = parse_qs(parsed_url.query)
+                category = query.get("category", [""])[0]
+                search = query.get("search", [""])[0]
+                res = self.bridge.get_exploit_modules(category=category, search=search) if self.bridge else {"status": "error", "message": "Bridge offline", "modules": []}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/exploit/sessions":
+                res = self.bridge.get_exploit_sessions() if self.bridge else {"status": "error", "message": "Bridge offline", "sessions": []}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
@@ -163,6 +265,20 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                         content = f.read()
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(content)))
+                    self.end_headers()
+                    self._safe_write(content)
+                    return
+
+            if clean_path in ("/LogoDelta.png", "/static/LogoDelta.png"):
+                logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "LogoDelta.png")
+                if not os.path.exists(logo_path):
+                    logo_path = os.path.join(self.static_dir, "LogoDelta.png")
+                if os.path.exists(logo_path):
+                    with open(logo_path, "rb") as f:
+                        content = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/png")
                     self.send_header("Content-Length", str(len(content)))
                     self.end_headers()
                     self._safe_write(content)
@@ -189,17 +305,166 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 self._safe_write(resp_bytes)
                 return
 
-            if clean_path == "/api/execute":
+            if clean_path in ("/api/execute", "/api/chat"):
                 content_length = int(self.headers.get("Content-Length", 0))
                 body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
                 body = body_bytes.decode("utf-8") if body_bytes else "{}"
                 data = json.loads(body) if body else {}
-                cmd = data.get("command", "")
+                cmd = data.get("command", "") or data.get("prompt", "")
                 execution_id = data.get("execution_id")
 
                 res = self.bridge.execute_command(cmd, execution_id=execution_id) if self.bridge else {"output": f"Engine offline: {cmd}", "is_task": False, "task_id": None}
                 resp_bytes = json.dumps(res).encode("utf-8")
 
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/targets/add":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                host = data.get("host", "")
+                ip = data.get("ip", "")
+                notes = data.get("notes", "")
+                risk = data.get("risk_level", "unknown")
+                res = self.bridge.add_target(host, ip=ip, notes=notes, risk_level=risk) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/targets/delete":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                host = data.get("host", "")
+                res = self.bridge.delete_target(host) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/targets/active":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                host = data.get("host", "")
+                res = self.bridge.set_active_target(host) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/history/clear":
+                res = self.bridge.clear_history() if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/models/select":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                model_name = data.get("model", "")
+                res = self.bridge.select_model(model_name) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/reports/generate":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                target = data.get("target", "")
+                res = self.bridge.generate_report(target=target) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/exploit/execute":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                target_host = data.get("target_host", "")
+                target_port = int(data.get("target_port", 0))
+                module_name = data.get("module_name", "")
+                options = data.get("options")
+                payload = data.get("payload")
+                payload_options = data.get("payload_options")
+                check_only = bool(data.get("check_only", True))
+                roe_confirmed = bool(data.get("roe_confirmed", False))
+                res = self.bridge.execute_exploit(
+                    target_host=target_host,
+                    target_port=target_port,
+                    module_name=module_name,
+                    options=options,
+                    payload=payload,
+                    payload_options=payload_options,
+                    check_only=check_only,
+                    roe_confirmed=roe_confirmed
+                ) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/exploit/sessions/kill":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                session_id = data.get("session_id", "")
+                res = self.bridge.kill_exploit_session(session_id) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/exploit/generate-poc":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                target_host = data.get("target_host", "")
+                target_port = int(data.get("target_port", 0))
+                module_name = data.get("module_name", "")
+                options = data.get("options")
+                res = self.bridge.generate_exploit_poc(
+                    target_host=target_host,
+                    target_port=target_port,
+                    module_name=module_name,
+                    options=options
+                ) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(resp_bytes)))

@@ -107,4 +107,71 @@ def test_fs_read_security_traversal_prevention():
     finally:
         server.shutdown()
 
+def test_exploit_endpoints():
+    server = DeltaWebServer(engine=None, host="127.0.0.1", port=8991)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.5)
+
+    try:
+        # GET /api/exploit/modules
+        req = urllib.request.Request("http://127.0.0.1:8991/api/exploit/modules?category=exploit&search=tomcat")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["status"] == "ok"
+            assert "modules" in data
+            assert isinstance(data["modules"], list)
+
+        # GET /api/exploit/sessions
+        req = urllib.request.Request("http://127.0.0.1:8991/api/exploit/sessions")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["status"] == "ok"
+            assert "sessions" in data
+            assert isinstance(data["sessions"], list)
+
+        # POST /api/exploit/execute
+        payload = json.dumps({
+            "target_host": "127.0.0.1",
+            "target_port": 8080,
+            "module_name": "exploit/multi/http/tomcat_mgr_upload",
+            "options": {},
+            "payload": "generic/shell_reverse_tcp",
+            "payload_options": {},
+            "check_only": True,
+            "roe_confirmed": True
+        }).encode("utf-8")
+        req = urllib.request.Request("http://127.0.0.1:8991/api/exploit/execute", data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert "status" in data
+
+        # POST /api/exploit/sessions/kill
+        payload = json.dumps({"session_id": "sess_1"}).encode("utf-8")
+        req = urllib.request.Request("http://127.0.0.1:8991/api/exploit/sessions/kill", data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert "status" in data
+
+        # POST /api/exploit/generate-poc
+        payload = json.dumps({
+            "target_host": "127.0.0.1",
+            "target_port": 8080,
+            "module_name": "exploit/multi/http/tomcat_mgr_upload",
+            "options": {}
+        }).encode("utf-8")
+        req = urllib.request.Request("http://127.0.0.1:8991/api/exploit/generate-poc", data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["status"] == "ok"
+            assert "poc" in data
+    finally:
+        server.shutdown()
+
+
 
