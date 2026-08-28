@@ -444,6 +444,71 @@ class DeltaEngine:
             parameters=[ToolParameter("message", "string", "Commit message")]
         ))
 
+        # Autonomous Penetration Testing & Burp Suite Engine Tools
+        from delta.pentest.orchestrator import PentestOrchestrator
+        self.pentest = PentestOrchestrator(burp_mode="mock")
+
+        self.tools.register(Tool(
+            name="pentest_set_scope",
+            description="Configure authorized penetration testing scope, allowed ports, and request budget",
+            func=lambda targets, ports=None, max_budget=100: f"Scope configured: targets={targets}, ports={ports or [80, 443, 8080, 8443]}, max_budget={max_budget}",
+            parameters=[
+                ToolParameter("targets", "array", "List of authorized domains or IP CIDRs", items={"type": "string"}),
+                ToolParameter("ports", "array", "List of authorized port numbers", required=False, items={"type": "integer"}),
+                ToolParameter("max_budget", "integer", "Maximum request budget before safety stop", required=False)
+            ],
+            category="pentest"
+        ))
+
+        self.tools.register(Tool(
+            name="pentest_send_request",
+            description="Send a controlled HTTP request to target through ScopeGuard and Burp Suite",
+            func=lambda url, method="GET", body="", auth_context="anonymous", reason="": (
+                lambda tx: f"[{tx.id}] {tx.request.method} {tx.request.url} -> Status {tx.response.status_code} ({len(tx.response.body)} bytes, {tx.response.response_time_ms:.1f}ms). Body: {tx.response.body[:250]}"
+            )(self.pentest.send_request(url=url, method=method, body=body, auth_context=auth_context, reason=reason)),
+            parameters=[
+                ToolParameter("url", "string", "Full target URL"),
+                ToolParameter("method", "string", "HTTP Method (GET, POST, PUT, DELETE, etc.)", required=False),
+                ToolParameter("body", "string", "Request body data", required=False),
+                ToolParameter("auth_context", "string", "Testing account or role context (anonymous, user_a, admin)", required=False),
+                ToolParameter("reason", "string", "Technical testing justification for sending this request", required=False)
+            ],
+            category="pentest"
+        ))
+
+        self.tools.register(Tool(
+            name="pentest_inspect_traffic",
+            description="Inspect Burp proxy HTTP history and sitemap for discovered endpoints",
+            func=lambda filter_path="": (
+                "\n".join([f"- [{tx.id}] {tx.request.method} {tx.request.url} -> {tx.response.status_code} (Reason: {tx.reason})" for tx in self.pentest.burp.get_history(filter_path=filter_path)[-15:]])
+                if self.pentest.burp.get_history(filter_path=filter_path) else "No traffic recorded."
+            ),
+            parameters=[ToolParameter("filter_path", "string", "Optional path filter substring", required=False)],
+            category="pentest"
+        ))
+
+        self.tools.register(Tool(
+            name="pentest_differential_test",
+            description="Perform differential response comparison between baseline and mutated test requests",
+            func=lambda base_tx_id, test_tx_id: (
+                lambda diff: f"Differential Result: StatusChanged={diff.status_code_changed} (Base:{diff.base_status}, Test:{diff.test_status}), Similarity={diff.similarity_ratio:.2f}, SizeDrift={diff.body_size_drift}b, TimingDrift={diff.timing_drift_ms:+.1f}ms. Anomaly={diff.is_significant_anomaly}. Details: {', '.join(diff.details)}"
+            )(self.pentest.differential_test(base_tx_id, test_tx_id)),
+            parameters=[
+                ToolParameter("base_tx_id", "string", "Transaction ID of clean baseline request"),
+                ToolParameter("test_tx_id", "string", "Transaction ID of mutated test request")
+            ],
+            category="pentest"
+        ))
+
+        self.tools.register(Tool(
+            name="pentest_generate_report",
+            description="Compile validated findings and evidence chains into a professional penetration testing report",
+            func=lambda format="markdown": self.pentest.generate_report(format_type=format),
+            parameters=[ToolParameter("format", "string", "Report format: 'markdown' or 'json'", required=False)],
+            category="pentest"
+        ))
+
+
     def _register_builtin_commands(self) -> None:
 
         """Register all built-in commands."""

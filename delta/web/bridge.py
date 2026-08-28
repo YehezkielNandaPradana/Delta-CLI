@@ -89,3 +89,99 @@ class EngineBridge:
             "task_id": task_id
         }
 
+    def get_directory_tree(self, sub_path: str = "") -> Dict[str, Any]:
+        root_dir = os.path.abspath(getattr(self.engine, "cwd", None) or os.getcwd())
+        target_dir = os.path.abspath(os.path.join(root_dir, sub_path))
+
+        # Security: Prevent directory traversal outside root
+        if not target_dir.startswith(root_dir):
+            return {"status": "error", "message": "Access denied: Path outside workspace"}
+
+        ignored_names = {".git", "__pycache__", ".pytest_cache", ".venv", "node_modules", ".idea", ".vscode"}
+
+        def build_tree(current_path: str, max_depth: int = 4, depth: int = 0):
+            if depth > max_depth:
+                return []
+            items = []
+            try:
+                entries = sorted(os.scandir(current_path), key=lambda e: (not e.is_dir(), e.name.lower()))
+                for entry in entries:
+                    if entry.name in ignored_names:
+                        continue
+                    rel_path = os.path.relpath(entry.path, root_dir).replace("\\", "/")
+                    is_directory = entry.is_dir(follow_symlinks=False)
+                    size = entry.stat(follow_symlinks=False).st_size if not is_directory else 0
+                    ext = os.path.splitext(entry.name)[1].lower() if not is_directory else ""
+
+                    item = {
+                        "name": entry.name,
+                        "path": rel_path,
+                        "is_dir": is_directory,
+                        "size": size,
+                        "extension": ext
+                    }
+
+                    if is_directory:
+                        item["children"] = build_tree(entry.path, max_depth=max_depth, depth=depth + 1)
+                        item["size"] = sum(c.get("size", 0) for c in item["children"])
+                    items.append(item)
+            except (PermissionError, FileNotFoundError):
+                pass
+            return items
+
+        tree = build_tree(target_dir)
+        total_files = 0
+        total_folders = 0
+
+        def count_nodes(nodes):
+            nonlocal total_files, total_folders
+            for n in nodes:
+                if n["is_dir"]:
+                    total_folders += 1
+                    count_nodes(n.get("children", []))
+                else:
+                    total_files += 1
+
+        count_nodes(tree)
+
+        return {
+            "status": "ok",
+            "root_path": root_dir,
+            "total_files": total_files,
+            "total_folders": total_folders,
+            "tree": tree
+        }
+
+    def read_file_content(self, file_path: str) -> Dict[str, Any]:
+        root_dir = os.path.abspath(getattr(self.engine, "cwd", None) or os.getcwd())
+        abs_path = os.path.abspath(os.path.join(root_dir, file_path))
+
+        # Security check
+        if not abs_path.startswith(root_dir):
+            return {"status": "error", "message": "Access denied: Path outside workspace"}
+
+        if not os.path.isfile(abs_path):
+            return {"status": "error", "message": "File not found"}
+
+        try:
+            stat = os.stat(abs_path)
+            if stat.st_size > 2 * 1024 * 1024:  # 2MB size limit
+                return {"status": "error", "message": "File too large to view directly (>2MB)"}
+
+            with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+
+            lines = content.splitlines()
+            return {
+                "status": "ok",
+                "path": file_path.replace("\\", "/"),
+                "filename": os.path.basename(abs_path),
+                "size": stat.st_size,
+                "content": content,
+                "line_count": len(lines),
+                "extension": os.path.splitext(abs_path)[1].lower()
+            }
+        except Exception as exc:
+            return {"status": "error", "message": str(exc)}
+
+

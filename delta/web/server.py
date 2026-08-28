@@ -45,7 +45,6 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
         _, exc_val, _ = sys.exc_info()
         if exc_val and _is_disconnect_error(exc_val):
             return
-        super().handle_error(request, client_address)
 
     def _safe_write(self, data: bytes) -> bool:
         """Safely write bytes to wfile and flush, returning False on client disconnect."""
@@ -122,6 +121,33 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 status_data = self.bridge.get_status() if self.bridge else {"status": "online", "version": "1.0.0"}
                 body = json.dumps(status_data).encode("utf-8")
                 self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/fs/tree":
+                from urllib.parse import parse_qs
+                query = parse_qs(parsed_url.query)
+                sub_path = query.get("path", [""])[0]
+                res = self.bridge.get_directory_tree(sub_path) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/fs/read":
+                from urllib.parse import parse_qs
+                query = parse_qs(parsed_url.query)
+                file_path = query.get("path", [""])[0]
+                res = self.bridge.read_file_content(file_path) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                status_code = 200 if res.get("status") == "ok" else (403 if "Access denied" in res.get("message", "") else 404)
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(status_code)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()

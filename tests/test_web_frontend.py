@@ -71,5 +71,48 @@ def test_web_static_html_has_dark_mode_classes():
     finally:
         server.shutdown()
 
+def test_workflow_cyber_glass_css_classes():
+    from pathlib import Path
+    static_html = Path("delta/web/static/index.html").read_text(encoding="utf-8")
+    assert "animate-radar-pulse" in static_html
+    assert "connector-line" in static_html
+    assert "cyber-glass" in static_html
+
+def test_workflow_turn_container_structure():
+    from pathlib import Path
+    static_html = Path("delta/web/static/index.html").read_text(encoding="utf-8")
+    assert "DELTA AGENT PIPELINE" in static_html
+    assert "timeline-progress-" in static_html
+    assert "timeline-steps-" in static_html
+
+def test_workflow_step_drawer_functions():
+    from pathlib import Path
+    static_html = Path("delta/web/static/index.html").read_text(encoding="utf-8")
+    assert "toggleStepDrawer" in static_html
+    assert "drawer-" in static_html
+
+def test_workflow_finalize_success_logic():
+    from pathlib import Path
+    static_html = Path("delta/web/static/index.html").read_text(encoding="utf-8")
+    assert "finalizeTimelineSuccess" in static_html
+    assert "COMPLETED" in static_html
+    assert "bg-emerald-500" in static_html
+
+def test_files_explorer_frontend_script():
+    from pathlib import Path
+    static_html = Path("delta/web/static/index.html").read_text(encoding="utf-8")
+    assert "renderFilesExplorer" in static_html
+    assert "toggleFolderNode" in static_html
+    assert "filterFileTree" in static_html
+
+def test_file_code_viewer_modal_functions():
+    from pathlib import Path
+    static_html = Path("delta/web/static/index.html").read_text(encoding="utf-8")
+    assert "openFileCodeViewer" in static_html
+    assert "code-viewer-modal" in static_html
+    assert "askAiAboutFile" in static_html
+
+
+
 
 

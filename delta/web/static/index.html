@@ -173,6 +173,40 @@
             box-shadow: 0 10px 32px -4px rgba(99, 102, 241, 0.25), 0 4px 14px -2px rgba(0, 0, 0, 0.3);
         }
 
+        @keyframes radarPulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(99, 102, 241, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+        .animate-radar-pulse {
+            animation: radarPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .cyber-glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .dark .cyber-glass {
+            background: rgba(9, 9, 11, 0.80);
+        }
+
+        .connector-line {
+            position: relative;
+        }
+        .connector-line::before {
+            content: '';
+            position: absolute;
+            left: 17px;
+            top: 24px;
+            bottom: 0;
+            width: 2px;
+            background: rgba(99, 102, 241, 0.2);
+        }
+        .dark .connector-line::before {
+            background: rgba(99, 102, 241, 0.25);
+        }
+
         /* SVG Chart Smooth Transition */
         #tab-content-metrics svg path,
         #tab-content-metrics svg circle {
@@ -703,6 +737,13 @@
         }
         window.toggleModal = toggleModal;
 
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.add('hidden');
+        }
+        window.closeModal = closeModal;
+
         function showInfoModal(title, icon, contentHtml) {
             document.getElementById('info-modal-title').innerHTML = `<span class="material-symbols-outlined text-[20px] text-indigo-600">${icon}</span> ${title}`;
             document.getElementById('info-modal-content').innerHTML = contentHtml;
@@ -852,18 +893,254 @@
             if (!container.innerHTML.trim()) clearChat();
         }
 
+        let currentFsTreeData = null;
+        const collapsedFolders = new Set();
+
+        function getFileIcon(ext) {
+            switch ((ext || '').toLowerCase()) {
+                case '.py': return { icon: 'code', color: 'text-yellow-500' };
+                case '.js': case '.ts': case '.jsx': case '.tsx': return { icon: 'javascript', color: 'text-amber-400' };
+                case '.json': return { icon: 'data_object', color: 'text-indigo-400' };
+                case '.html': case '.htm': return { icon: 'html', color: 'text-orange-500' };
+                case '.css': case '.scss': return { icon: 'css', color: 'text-sky-400' };
+                case '.md': case '.txt': return { icon: 'description', color: 'text-zinc-400' };
+                case '.png': case '.jpg': case '.svg': case '.gif': return { icon: 'image', color: 'text-emerald-400' };
+                default: return { icon: 'draft', color: 'text-zinc-500' };
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        async function renderFilesExplorer() {
+            viewContainer.innerHTML = `
+                <div class="p-4 md:p-6 flex-1 overflow-y-auto space-y-4 animate-fade-in text-sm flex flex-col h-full">
+                    <!-- Header Bar -->
+                    <div class="cyber-glass border border-zinc-200/80 dark:border-zinc-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[20px] text-indigo-500">folder_open</span>
+                                <h3 class="font-bold text-zinc-900 dark:text-zinc-100 text-sm tracking-wide">WORKSPACE FILES EXPLORER</h3>
+                            </div>
+                            <div class="text-[11px] font-mono text-zinc-400 dark:text-zinc-500 flex items-center gap-2" id="fs-stats-bar">
+                                <span class="animate-pulse">Loading directory structure...</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="relative w-full md:w-64">
+                                <span class="material-symbols-outlined absolute left-2.5 top-2 text-[16px] text-zinc-400">search</span>
+                                <input type="text" id="fs-search-input" oninput="filterFileTree(this.value)" placeholder="Search files..." class="w-full bg-zinc-100/70 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/60 rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-indigo-500">
+                            </div>
+                            <button onclick="renderFilesExplorer()" title="Refresh" class="p-1.5 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 rounded-xl transition-base text-zinc-400 hover:text-zinc-200">
+                                <span class="material-symbols-outlined text-[18px]">sync</span>
+                            </button>
+                            <button onclick="switchNav('execution')" class="text-xs px-3 py-1.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-medium hover:bg-indigo-500/20 border border-indigo-500/20 transition-base">
+                                Back to Canvas
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tree Container -->
+                    <div id="fs-tree-container" class="flex-1 overflow-y-auto cyber-glass border border-zinc-200/80 dark:border-zinc-800 rounded-2xl p-4 font-mono text-xs space-y-1">
+                        <div class="flex items-center justify-center p-8 text-zinc-400 gap-2">
+                            <span class="material-symbols-outlined animate-spin-slow">progress_activity</span>
+                            <span>Scanning workspace files...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            try {
+                const res = await fetch('/api/fs/tree');
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    currentFsTreeData = data;
+                    const statsBar = document.getElementById('fs-stats-bar');
+                    if (statsBar) {
+                        statsBar.innerHTML = `
+                            <span class="truncate max-w-[280px]">${escapeHtml(data.root_path)}</span>
+                            <span>•</span>
+                            <span class="text-indigo-500 dark:text-indigo-400 font-semibold">${data.total_folders} folders</span>
+                            <span>•</span>
+                            <span class="text-emerald-500 font-semibold">${data.total_files} files</span>
+                        `;
+                    }
+                    renderTreeDOM(data.tree);
+                } else {
+                    document.getElementById('fs-tree-container').innerHTML = `<div class="p-4 text-red-500">Error: ${escapeHtml(data.message)}</div>`;
+                }
+            } catch (err) {
+                document.getElementById('fs-tree-container').innerHTML = `<div class="p-4 text-red-500">Failed to connect to backend filesystem API</div>`;
+            }
+        }
+
+        function renderTreeDOM(nodes, filterQuery = '', parentEl = null) {
+            const containerEl = parentEl || document.getElementById('fs-tree-container');
+            if (!containerEl) return;
+            if (!parentEl) containerEl.innerHTML = '';
+
+            if (!nodes || nodes.length === 0) {
+                if (!parentEl) containerEl.innerHTML = `<div class="p-4 text-zinc-400">No files found.</div>`;
+                return;
+            }
+
+            nodes.forEach(item => {
+                const isDir = item.is_dir;
+                const pathId = item.path.replace(/[^a-zA-Z0-9_-]/g, '_');
+                const isCollapsed = collapsedFolders.has(item.path);
+
+                if (filterQuery && !item.name.toLowerCase().includes(filterQuery.toLowerCase()) && !isDir) {
+                    return;
+                }
+
+                if (isDir) {
+                    const dirEl = document.createElement('div');
+                    dirEl.className = "flex flex-col space-y-0.5";
+                    dirEl.innerHTML = `
+                        <div onclick="toggleFolderNode('${escapeHtml(item.path)}')" class="flex items-center justify-between py-1 px-2.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer text-zinc-800 dark:text-zinc-200 transition-base select-none group">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="material-symbols-outlined text-[16px] text-zinc-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}">chevron_right</span>
+                                <span class="material-symbols-outlined text-[17px] text-indigo-500 group-hover:scale-105 transition-transform">${isCollapsed ? 'folder' : 'folder_open'}</span>
+                                <span class="font-semibold text-[12px] truncate">${escapeHtml(item.name)}</span>
+                            </div>
+                            <span class="text-[10px] text-zinc-400 font-normal shrink-0">${item.children ? item.children.length + ' items' : ''}</span>
+                        </div>
+                        <div id="dir-children-${pathId}" class="pl-5 border-l border-zinc-200/60 dark:border-zinc-800 space-y-0.5 ml-2.5 ${isCollapsed ? 'hidden' : ''}"></div>
+                    `;
+                    containerEl.appendChild(dirEl);
+                    const childrenContainer = dirEl.querySelector(`#dir-children-${pathId}`);
+                    if (item.children && item.children.length > 0) {
+                        renderTreeDOM(item.children, filterQuery, childrenContainer);
+                    }
+                } else {
+                    const iconInfo = getFileIcon(item.extension);
+                    const fileEl = document.createElement('div');
+                    fileEl.className = "flex items-center justify-between py-1 px-2.5 rounded-lg hover:bg-white dark:hover:bg-zinc-800 cursor-pointer border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700/60 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 transition-base select-none group";
+                    fileEl.onclick = () => openFileCodeViewer(item.path);
+                    fileEl.innerHTML = `
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="material-symbols-outlined text-[16px] ${iconInfo.color} group-hover:scale-110 transition-transform">${iconInfo.icon}</span>
+                            <span class="text-[12px] truncate">${escapeHtml(item.name)}</span>
+                        </div>
+                        <span class="text-[10px] text-zinc-400 font-mono shrink-0">${formatBytes(item.size)}</span>
+                    `;
+                    containerEl.appendChild(fileEl);
+                }
+            });
+        }
+
+        window.toggleFolderNode = function(folderPath) {
+            if (collapsedFolders.has(folderPath)) {
+                collapsedFolders.delete(folderPath);
+            } else {
+                collapsedFolders.add(folderPath);
+            }
+            if (currentFsTreeData) {
+                renderTreeDOM(currentFsTreeData.tree, document.getElementById('fs-search-input')?.value || '');
+            }
+        };
+
+        window.filterFileTree = function(query) {
+            if (currentFsTreeData) {
+                renderTreeDOM(currentFsTreeData.tree, query);
+            }
+        };
+
+        window.openFileCodeViewer = async function(filePath) {
+            let modal = document.getElementById('code-viewer-modal');
+            if (!modal) {
+                const modalHtml = `
+                    <div id="code-viewer-modal" onclick="if(event.target === this) closeModal('code-viewer-modal')" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 hidden animate-fade-in">
+                        <div class="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-process-enter" onclick="event.stopPropagation()">
+                            <!-- Modal Header -->
+                            <div class="px-5 py-3.5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <span class="material-symbols-outlined text-[20px] text-indigo-500" id="viewer-file-icon">description</span>
+                                    <div>
+                                        <div class="font-bold text-zinc-900 dark:text-zinc-100 text-xs flex items-center gap-2">
+                                            <span id="viewer-file-name">filename.py</span>
+                                            <span class="text-[10px] font-mono font-normal text-zinc-400" id="viewer-file-meta">0 lines • 0 KB</span>
+                                        </div>
+                                        <div class="text-[10px] font-mono text-zinc-400 truncate max-w-md" id="viewer-file-path">path/to/file</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="askAiAboutFile()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs flex items-center gap-1.5 shadow-sm transition-base">
+                                        <span class="material-symbols-outlined text-[14px]">smart_toy</span>
+                                        <span>Ask AI</span>
+                                    </button>
+                                    <button onclick="copyViewerContent()" id="viewer-copy-btn" class="p-1.5 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 rounded-xl transition-base text-zinc-400 hover:text-zinc-200" title="Copy code">
+                                        <span class="material-symbols-outlined text-[18px]">content_copy</span>
+                                    </button>
+                                    <button onclick="closeModal('code-viewer-modal')" class="p-1.5 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 rounded-xl transition-base text-zinc-400 hover:text-zinc-200 cursor-pointer" title="Close">
+                                        <span class="material-symbols-outlined text-[18px]">close</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Code Content Box -->
+                            <div class="flex-1 overflow-auto p-4 bg-zinc-950 text-zinc-200 font-mono text-xs relative select-text" id="viewer-code-box">
+                                <pre id="viewer-code-content" class="whitespace-pre overflow-x-auto leading-relaxed"></pre>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                modal = document.getElementById('code-viewer-modal');
+            }
+
+            modal.classList.remove('hidden');
+            document.getElementById('viewer-file-name').innerText = filePath.split(/[\/\\]/).pop();
+            document.getElementById('viewer-file-path').innerText = filePath;
+            document.getElementById('viewer-code-content').innerText = "Loading file content...";
+
+            try {
+                const res = await fetch(`/api/fs/read?path=${encodeURIComponent(filePath)}`);
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    document.getElementById('viewer-file-meta').innerText = `${data.line_count} lines • ${formatBytes(data.size)}`;
+                    document.getElementById('viewer-code-content').innerText = data.content;
+                } else {
+                    document.getElementById('viewer-code-content').innerText = `Error: ${data.message}`;
+                }
+            } catch (err) {
+                document.getElementById('viewer-code-content').innerText = `Failed to load file: ${err.message}`;
+            }
+        };
+
+        window.copyViewerContent = function() {
+            const content = document.getElementById('viewer-code-content')?.innerText || '';
+            navigator.clipboard.writeText(content);
+            const copyBtn = document.getElementById('viewer-copy-btn');
+            if (copyBtn) {
+                copyBtn.innerHTML = `<span class="material-symbols-outlined text-[18px] text-emerald-500">check</span>`;
+                setTimeout(() => {
+                    copyBtn.innerHTML = `<span class="material-symbols-outlined text-[18px]">content_copy</span>`;
+                }, 1500);
+            }
+        };
+
+        window.askAiAboutFile = function() {
+            const path = document.getElementById('viewer-file-path')?.innerText || '';
+            closeModal('code-viewer-modal');
+            switchNav('execution');
+            sendPrompt(`Analyze file ${path}`);
+        };
+
         function renderStaticView(viewName) {
+            if (viewName === 'files') {
+                renderFilesExplorer();
+                return;
+            }
+
             let html = `<div class="p-6 flex-1 overflow-y-auto space-y-4 animate-fade-in text-sm">`;
             html += `<div class="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3"><h3 class="font-semibold text-zinc-800 dark:text-zinc-100 uppercase tracking-wider text-xs">${viewName}</h3><button onclick="switchNav('execution')" class="text-indigo-600 dark:text-indigo-400 text-xs hover:underline font-medium">Back to Canvas</button></div>`;
 
-            if (viewName === 'files') {
-                html += `<div class="space-y-2 font-mono text-xs">
-                            <div onclick="sendPrompt('cat delta/ai/llm.py')" class="p-3 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-md border border-zinc-200 dark:border-zinc-800 cursor-pointer flex justify-between items-center transition-base">
-                                <span class="flex items-center gap-2 text-zinc-800 dark:text-zinc-200"><span class="material-symbols-outlined text-[16px] text-indigo-500">description</span> delta/ai/llm.py</span>
-                                <span class="text-[10px] text-zinc-400">View</span>
-                            </div>
-                         </div>`;
-            } else if (viewName === 'tools') {
+            if (viewName === 'tools') {
                 html += `<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                             <button onclick="sendPrompt('scan localhost'); switchNav('execution');" class="p-4 bg-white dark:bg-zinc-900 hover:border-indigo-500 rounded-md border border-zinc-200 dark:border-zinc-800 text-left transition-base">
                                 <div class="font-semibold text-indigo-600 dark:text-indigo-400 text-sm">scan</div>
@@ -1001,23 +1278,45 @@
             if (!turnEl) {
                 const html = `
                     <div id="${turnId}" class="flex flex-col gap-3 w-full animate-fade-in">
-                        <div id="timeline-box-${execId}" class="w-full bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-3.5 space-y-2.5 transition-base shadow-sm">
-                            <div class="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-800 pb-2">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse-subtle" id="timeline-dot-${execId}"></div>
-                                    <span class="text-xs font-semibold text-zinc-800 dark:text-zinc-200 tracking-wide flex items-center gap-1.5" id="timeline-header-${execId}">
-                                        <span>Agent Workflow</span>
-                                        <span class="text-[10px] font-mono text-zinc-400 font-normal">(${execId})</span>
+                        <div id="timeline-box-${execId}" class="w-full cyber-glass border border-indigo-500/25 dark:border-indigo-500/20 rounded-2xl p-4 space-y-3 transition-base shadow-lg shadow-indigo-500/5 hover:border-indigo-500/40 relative overflow-hidden">
+                            <!-- Top subtle ambient gradient line -->
+                            <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500/40 via-sky-500/30 to-transparent"></div>
+
+                            <!-- Header Bar -->
+                            <div class="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-800/80 pb-2.5">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-radar-pulse" id="timeline-dot-${execId}"></div>
+                                    <span class="text-xs font-bold text-zinc-900 dark:text-zinc-100 tracking-wider flex items-center gap-2" id="timeline-header-${execId}">
+                                        <span>DELTA AGENT PIPELINE</span>
+                                        <span class="text-[10px] font-mono text-zinc-400 font-normal px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/70 border border-zinc-200/60 dark:border-zinc-700/60">${execId}</span>
                                     </span>
                                 </div>
-                                <span class="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-medium px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 flex items-center gap-1" id="timeline-badge-${execId}">
-                                    <span class="material-symbols-outlined text-[12px] animate-spin-slow">progress_activity</span> Working
-                                </span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-semibold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 flex items-center gap-1.5 shadow-sm" id="timeline-badge-${execId}">
+                                        <span class="material-symbols-outlined text-[13px] animate-spin-slow">progress_activity</span> RUNNING
+                                    </span>
+                                </div>
                             </div>
-                            <div class="timeline-steps space-y-1.5 pt-0.5" id="timeline-steps-${execId}">
-                                <!-- Step items will enter here one by one with smooth fade + slide down -->
+
+                            <!-- Telemetry Progress Strip -->
+                            <div class="w-full space-y-1.5">
+                                <div class="w-full h-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-full overflow-hidden">
+                                    <div id="timeline-progress-${execId}" class="h-full bg-gradient-to-r from-indigo-500 to-sky-500 animate-shimmer w-full transition-all duration-300"></div>
+                                </div>
+                                <div class="flex items-center justify-between text-[10px] font-mono text-zinc-400 dark:text-zinc-500 px-0.5" id="timeline-stats-${execId}">
+                                    <span id="stat-time-${execId}" class="flex items-center gap-1">⏱️ <span class="text-zinc-600 dark:text-zinc-300 font-medium">0.0s</span></span>
+                                    <span id="stat-steps-${execId}" class="flex items-center gap-1">⚡ <span class="text-zinc-600 dark:text-zinc-300 font-medium">1 step</span></span>
+                                    <span id="stat-tokens-${execId}" class="flex items-center gap-1">🧠 <span class="text-zinc-600 dark:text-zinc-300 font-medium">0 tok</span></span>
+                                </div>
+                            </div>
+
+                            <!-- Step Tree connector container -->
+                            <div class="timeline-steps connector-line space-y-2 pt-1" id="timeline-steps-${execId}">
+                                <!-- Step items will enter here -->
                             </div>
                         </div>
+
+                        <!-- Assistant Response Bubble -->
                         <div id="assistant-bubble-${execId}" class="hidden w-full animate-response-enter">
                             <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 border-l-4 border-indigo-500 rounded-xl p-4 shadow-sm w-full space-y-2">
                                 <div class="flex items-center justify-between text-[10px] font-mono border-b border-zinc-100 dark:border-zinc-800 pb-1.5 mb-2 gap-4">
@@ -1071,35 +1370,63 @@
             return { title: `Running ${toolName}`, icon: 'smart_toy', detail: path };
         }
 
-        function addOrUpdateProcessStep(execId, stepKey, title, status = 'running', detail = '', durationMs = null) {
+        window.toggleStepDrawer = function(drawerId) {
+            const drawer = document.getElementById(drawerId);
+            const icon = document.getElementById(`icon-${drawerId}`);
+            if (drawer) {
+                drawer.classList.toggle('hidden');
+                if (icon) {
+                    icon.classList.toggle('rotate-180');
+                }
+            }
+        };
+
+        function addOrUpdateProcessStep(execId, stepKey, title, status = 'running', detail = '', durationMs = null, outputData = null) {
             getOrCreateTurnContainer(execId);
             const stepsContainer = document.getElementById(`timeline-steps-${execId}`);
             if (!stepsContainer) return;
 
             let stepEl = document.getElementById(`step-${execId}-${stepKey}`);
+            const drawerId = `drawer-${execId}-${stepKey}`;
 
             let statusIconHtml = '';
             if (status === 'running') {
-                statusIconHtml = `<span class="material-symbols-outlined text-[14px] text-indigo-500 animate-spin-slow">progress_activity</span>`;
+                statusIconHtml = `<span class="material-symbols-outlined text-[15px] text-indigo-500 animate-spin-slow">progress_activity</span>`;
             } else if (status === 'success') {
-                statusIconHtml = `<span class="material-symbols-outlined text-[14px] text-emerald-500 font-semibold">check_circle</span>`;
+                statusIconHtml = `<span class="material-symbols-outlined text-[15px] text-emerald-500 font-semibold">check_circle</span>`;
             } else if (status === 'error') {
-                statusIconHtml = `<span class="material-symbols-outlined text-[14px] text-red-500 font-semibold">cancel</span>`;
+                statusIconHtml = `<span class="material-symbols-outlined text-[15px] text-red-500 font-semibold">cancel</span>`;
             } else {
-                statusIconHtml = `<span class="material-symbols-outlined text-[14px] text-zinc-400">radio_button_unchecked</span>`;
+                statusIconHtml = `<span class="material-symbols-outlined text-[15px] text-zinc-400">radio_button_unchecked</span>`;
             }
 
             const durationBadge = durationMs !== null ? `<span class="text-[10px] font-mono text-zinc-400 font-normal ml-auto">${Math.round(durationMs)}ms</span>` : '';
+            const hasOutput = outputData && String(outputData).trim().length > 0;
+            const expandBtnHtml = hasOutput ? `
+                <button onclick="toggleStepDrawer('${drawerId}')" class="p-1 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50 rounded transition-transform text-zinc-400 hover:text-zinc-200">
+                    <span id="icon-${drawerId}" class="material-symbols-outlined text-[14px] transition-transform duration-200">expand_more</span>
+                </button>
+            ` : '';
 
             if (!stepEl) {
                 const stepHtml = `
-                    <div id="step-${execId}-${stepKey}" class="flex items-center justify-between text-xs py-1 px-2.5 rounded-lg bg-white/70 dark:bg-zinc-800/40 border border-zinc-200/50 dark:border-zinc-700/50 animate-process-enter transition-base group">
-                        <div class="flex items-center gap-2 min-w-0 flex-1">
-                            <span class="step-status-icon flex items-center justify-center shrink-0">${statusIconHtml}</span>
-                            <span class="step-title font-medium text-zinc-700 dark:text-zinc-200 truncate text-[11.5px]">${escapeHtml(title)}</span>
-                            ${detail ? `<span class="step-detail text-[10px] font-mono text-zinc-400 dark:text-zinc-500 truncate max-w-[200px]">· ${escapeHtml(detail)}</span>` : ''}
+                    <div id="step-${execId}-${stepKey}" class="flex flex-col gap-1 text-xs animate-process-enter transition-base group">
+                        <div class="flex items-center justify-between py-1.5 px-3 rounded-xl bg-zinc-100/70 dark:bg-zinc-900/60 border border-zinc-200/60 dark:border-zinc-800/80 hover:border-indigo-500/30 transition-base">
+                            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                                <span class="step-status-icon flex items-center justify-center shrink-0">${statusIconHtml}</span>
+                                <span class="step-title font-medium text-zinc-800 dark:text-zinc-200 truncate text-[12px]">${escapeHtml(title)}</span>
+                                ${detail ? `<span class="step-detail text-[10px] font-mono text-indigo-500 dark:text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded truncate max-w-[220px]">${escapeHtml(detail)}</span>` : ''}
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <div class="step-duration flex items-center">${durationBadge}</div>
+                                ${expandBtnHtml}
+                            </div>
                         </div>
-                        <div class="step-duration flex items-center pl-2 shrink-0">${durationBadge}</div>
+                        ${hasOutput ? `
+                            <div id="${drawerId}" class="hidden ml-7 mr-1 p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] font-mono text-zinc-300 overflow-x-auto whitespace-pre-wrap max-h-48 scrollbar-thin">
+                                ${escapeHtml(String(outputData))}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
                 stepsContainer.insertAdjacentHTML('beforeend', stepHtml);
@@ -1112,23 +1439,34 @@
                 if (durationContainer && durationBadge) durationContainer.innerHTML = durationBadge;
             }
 
+            // Update step count in telemetry strip
+            const stepsCount = stepsContainer.children.length;
+            const statSteps = document.getElementById(`stat-steps-${execId}`);
+            if (statSteps) {
+                statSteps.innerHTML = `⚡ <span class="text-zinc-600 dark:text-zinc-300 font-medium">${stepsCount} step${stepsCount > 1 ? 's' : ''}</span>`;
+            }
+
             smartScrollToBottom();
         }
 
         function finalizeTimelineSuccess(execId) {
             const badgeEl = document.getElementById(`timeline-badge-${execId}`);
             if (badgeEl) {
-                badgeEl.className = "text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-medium px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1";
-                badgeEl.innerHTML = `<span class="material-symbols-outlined text-[12px]">check</span> Done`;
+                badgeEl.className = "text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 flex items-center gap-1.5 shadow-sm";
+                badgeEl.innerHTML = `<span class="material-symbols-outlined text-[13px] font-bold">check</span> COMPLETED`;
             }
             const dotEl = document.getElementById(`timeline-dot-${execId}`);
             if (dotEl) {
-                dotEl.className = "w-2 h-2 rounded-full bg-emerald-500";
+                dotEl.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+            }
+            const progressEl = document.getElementById(`timeline-progress-${execId}`);
+            if (progressEl) {
+                progressEl.className = "h-full bg-emerald-500 w-full transition-all duration-500";
             }
             // Mark all unresolved running steps as completed
             const runningIcons = document.querySelectorAll(`#timeline-steps-${execId} .animate-spin-slow`);
             runningIcons.forEach(icon => {
-                icon.parentElement.innerHTML = `<span class="material-symbols-outlined text-[14px] text-emerald-500 font-semibold">check_circle</span>`;
+                icon.parentElement.innerHTML = `<span class="material-symbols-outlined text-[15px] text-emerald-500 font-semibold">check_circle</span>`;
             });
         }
 
@@ -1160,7 +1498,8 @@
                 const toolKey = event.event_id;
                 const toolInfo = formatHumanToolTitle(event.tool, event.input);
                 const status = event.success ? 'success' : 'error';
-                addOrUpdateProcessStep(execId, `tool-${toolKey}`, toolInfo.title, status, toolInfo.detail, event.duration_ms);
+                const outputPayload = event.output || event.error?.message || '';
+                addOrUpdateProcessStep(execId, `tool-${toolKey}`, toolInfo.title, status, toolInfo.detail, event.duration_ms, outputPayload);
                 if (event.duration_ms) {
                     recordTokenChunkLatency(performance.now() - event.duration_ms);
                 }
