@@ -19,6 +19,14 @@ class EventType(str, Enum):
     AGENT_STATUS = "agent_status"
     AGENT_COMPLETE = "agent_complete"
 
+    # Step Lifecycle
+    AGENT_STEP_CREATED = "agent_step_created"
+    AGENT_STEP_STARTED = "agent_step_started"
+    AGENT_STEP_PROGRESS = "agent_step_progress"
+    AGENT_STEP_COMPLETED = "agent_step_completed"
+    AGENT_STEP_FAILED = "agent_step_failed"
+    AGENT_STEP_CANCELLED = "agent_step_cancelled"
+
     # Task Lifecycle
     TASK_CREATED = "task_created"
     TASK_STARTED = "task_started"
@@ -50,6 +58,90 @@ class EventType(str, Enum):
     ERROR = "error"
     MESSAGE_DELTA = "message_delta"
     MESSAGE_COMPLETE = "message_complete"
+
+class StepKind(str, Enum):
+    ROOT = "root"
+    UNDERSTAND = "understand"
+    CONTEXT = "context"
+    SEARCH = "search"
+    READ = "read"
+    ANALYZE = "analyze"
+    PLAN = "plan"
+    TOOL = "tool"
+    COMMAND = "command"
+    EDIT = "edit"
+    CREATE = "create"
+    DELETE = "delete"
+    TEST = "test"
+    VERIFY = "verify"
+    RESULT = "result"
+
+class StepStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+@dataclass
+class AgentStep:
+    id: str
+    task_id: str
+    execution_id: str
+    parent_id: Optional[str]
+    kind: StepKind
+    label: str
+    status: StepStatus
+    created_at: float
+    started_at: Optional[float] = None
+    completed_at: Optional[float] = None
+    duration_ms: Optional[float] = None
+    tool_name: Optional[str] = None
+    file_path: Optional[str] = None
+    command: Optional[str] = None
+    diff_stats: Optional[Dict[str, int]] = None
+    error: Optional[str] = None
+    output_preview: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def validate(self, existing_steps: Optional[Dict[str, "AgentStep"]] = None) -> None:
+        """Validate step properties, ROOT constraints, and circular parent chain dependencies."""
+        if self.parent_id and self.parent_id == self.id:
+            raise ValueError(f"Self-parent circular dependency detected: step {self.id} cannot be its own parent")
+        if self.parent_id and existing_steps:
+            visited = {self.id}
+            curr_parent_id: Optional[str] = self.parent_id
+            while curr_parent_id:
+                if curr_parent_id in visited:
+                    raise ValueError(f"Circular parent chain detected involving step {curr_parent_id}")
+                visited.add(curr_parent_id)
+                parent_step = existing_steps.get(curr_parent_id)
+                curr_parent_id = parent_step.parent_id if parent_step else None
+        if self.kind == StepKind.ROOT or self.kind == "root":
+            if self.parent_id is not None:
+                raise ValueError(f"Root step {self.id} must have parent_id=None")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "task_id": self.task_id,
+            "execution_id": self.execution_id,
+            "parent_id": self.parent_id,
+            "kind": self.kind.value if isinstance(self.kind, Enum) else self.kind,
+            "label": self.label,
+            "status": self.status.value if isinstance(self.status, Enum) else self.status,
+            "created_at": self.created_at,
+            "started_at": self.started_at,
+            "completed_at": self.completed_at,
+            "duration_ms": self.duration_ms,
+            "tool_name": self.tool_name,
+            "file_path": self.file_path,
+            "command": self.command,
+            "diff_stats": self.diff_stats,
+            "error": self.error,
+            "output_preview": self.output_preview,
+            "metadata": self.metadata,
+        }
 
 class TaskStatus(str, Enum):
     PENDING = "pending"
@@ -84,6 +176,9 @@ class AgentEvent:
     type: Union[EventType, str]
     timestamp: float = field(default_factory=time.time)
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    sequence: int = 0
+    step_id: Optional[str] = None
+    payload: Dict[str, Any] = field(default_factory=dict)
 
     # Metadata & Payload fields
     agent_id: Optional[str] = None
@@ -191,6 +286,8 @@ class EventBus:
 
     def __init__(self):
         self._subscribers: List[Callable[[AgentEvent], None]] = []
+        self._sequences: Dict[str, int] = {}
+        self._global_seq: int = 0
 
     def subscribe(self, callback: Callable[[AgentEvent], None]) -> Callable[[], None]:
         self._subscribers.append(callback)
@@ -200,6 +297,10 @@ class EventBus:
         return unsubscribe
 
     def emit(self, event: AgentEvent) -> None:
+        exec_id = event.execution_id or "default"
+        self._sequences[exec_id] = self._sequences.get(exec_id, 0) + 1
+        if not event.sequence:
+            event.sequence = self._sequences[exec_id]
         for subscriber in list(self._subscribers):
             try:
                 subscriber(event)
