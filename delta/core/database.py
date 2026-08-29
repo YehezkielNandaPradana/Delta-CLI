@@ -144,7 +144,7 @@ class Database:
 
         os.makedirs(os.path.dirname(self.db_path) if os.path.dirname(self.db_path) else ".", exist_ok=True)
 
-        self.connection = sqlite3.connect(self.db_path)
+        self.connection = sqlite3.connect(self.db_path, check_same_thread=False)
 
         self.connection.row_factory = sqlite3.Row
 
