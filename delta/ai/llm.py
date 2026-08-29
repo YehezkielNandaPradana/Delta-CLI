@@ -1987,15 +1987,6 @@ class LLMEngine:
                     if fr:
                         finish_reason = fr
             resp.close()
-            
-            # Emit final message complete event
-            event_bus.emit(AgentEvent(
-                type=EventType.MESSAGE_COMPLETE,
-                task_id=exec_id,
-                execution_id=exec_id,
-                content="".join(content_parts),
-                status_text="Response completed"
-            ))
 
             msg_body: Dict[str, Any] = {"role": "assistant", "content": "".join(content_parts)}
             if tool_calls_parts:
