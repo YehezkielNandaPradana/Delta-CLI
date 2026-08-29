@@ -114,7 +114,14 @@ class Tool:
     def execute(self, **kwargs) -> Dict[str, Any]:
 
         """Execute the tool function safely."""
-        from delta.ai.events import event_bus, generate_real_diff
+        from delta.ai.events import event_bus, generate_real_diff, AgentEvent, EventType
+
+        event_bus.emit(AgentEvent(
+            type=EventType.TOOL_START,
+            tool=self.name,
+            input=kwargs,
+            status_text=f"Executing {self.name}"
+        ))
 
         path = kwargs.get("path") or kwargs.get("file_path")
         old_content = None
@@ -142,11 +149,30 @@ class Tool:
                     pass
 
             if isinstance(result, dict) and "success" in result:
-                return result
-            return {"success": True, "output": str(result), "error": None}
+                res_dict = result
+            else:
+                res_dict = {"success": True, "output": str(result), "error": None}
+
+            event_bus.emit(AgentEvent(
+                type=EventType.TOOL_RESULT,
+                tool=self.name,
+                output=str(res_dict.get("output"))[:500] if res_dict.get("output") else "",
+                success=res_dict.get("success", True),
+                status_text=f"Completed {self.name}"
+            ))
+            return res_dict
 
         except Exception as e:
-            return {"success": False, "output": None, "error": str(e)}
+            res_dict = {"success": False, "output": None, "error": str(e)}
+            event_bus.emit(AgentEvent(
+                type=EventType.TOOL_RESULT,
+                tool=self.name,
+                output="",
+                success=False,
+                error={"message": str(e)},
+                status_text=f"Failed {self.name}"
+            ))
+            return res_dict
 
 class ToolRegistry:
 
