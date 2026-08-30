@@ -2346,6 +2346,21 @@ def test_visual_source_schemas_and_mock():
     asyncio.run(_test())
 
 
+def test_vts_visual_status_and_stream_endpoints():
+    from delta.web.bridge import EngineBridge
+    from delta.vtuber.avatar.vts_visual.manager import VTSVisualManager
+    from delta.vtuber.avatar.vts_visual.sources import MockVisualSource
+
+    bridge = EngineBridge(None)
+    bridge.vts_visual_mgr = VTSVisualManager(source=MockVisualSource())
+
+    res = bridge.get_vts_visual_status()
+    assert res["status"] == "ok"
+    assert "visual" in res
+    assert res["visual"]["source"] == "mock_visual_source"
+    assert "authenticationToken" not in str(res)
+
+
 
 def test_text_input_auto_response():
     from delta.vtuber.response import ResponseProcessor

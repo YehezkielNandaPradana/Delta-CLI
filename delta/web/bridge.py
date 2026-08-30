@@ -5,7 +5,7 @@ import re
 import sys
 import threading
 from datetime import datetime
-from typing import Any, Dict, Optional, Set, List
+from typing import Any, Dict, Optional, Set, List, Tuple
 from pydantic import BaseModel
 from delta.core.events import AsyncEventBus
 
@@ -547,6 +547,63 @@ class EngineBridge:
         except Exception as exc:
             return {"status": "error", "message": str(exc), "sessions": []}
 
+    def geotrace_analyze(self, target: str, operator: str = "delta-analyst", purpose: str = "OSINT Investigation", consent_mode: bool = False) -> Dict[str, Any]:
+        """Run GeoTrace OSINT analysis via Engine."""
+        from delta.modules.geotrace import GeoTraceEngine, SafetyGateException
+        engine = getattr(self.engine, "geotrace", None) or GeoTraceEngine()
+        try:
+            res = engine.investigate(
+                target=target,
+                operator=operator,
+                purpose=purpose,
+                consent_mode=consent_mode
+            )
+            return {"status": "ok", "report": engine.reporter.to_json(res)}
+        except SafetyGateException as sge:
+            return {"status": "rejected", "message": str(sge)}
+        except Exception as exc:
+            return {"status": "error", "message": str(exc)}
+
+    def geotrace_get_audit(self, limit: int = 50) -> Dict[str, Any]:
+        """Fetch recent immutable audit logs from GeoTrace."""
+        import sqlite3
+        from delta.modules.geotrace import GeoTraceEngine
+        engine = getattr(self.engine, "geotrace", None) or GeoTraceEngine()
+        try:
+            with sqlite3.connect(engine.audit_mgr.db_path) as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT query_id, operator, target, timestamp, purpose, consent_mode, status, reason, record_hash FROM geotrace_audit_log ORDER BY id DESC LIMIT ?",
+                    (limit,)
+                )
+                rows = cur.fetchall()
+                logs = []
+                for r in rows:
+                    logs.append({
+                        "query_id": r[0],
+                        "operator": r[1],
+                        "target": r[2],
+                        "timestamp": r[3],
+                        "purpose": r[4],
+                        "consent_mode": bool(r[5]),
+                        "status": r[6],
+                        "reason": r[7] or "",
+                        "record_hash": r[8]
+                    })
+                return {"status": "ok", "logs": logs}
+        except Exception as exc:
+            return {"status": "error", "message": str(exc), "logs": []}
+
+    def geotrace_verify_audit(self) -> Dict[str, Any]:
+        """Verify cryptographic hash chain integrity of GeoTrace audit DB."""
+        from delta.modules.geotrace import GeoTraceEngine
+        engine = getattr(self.engine, "geotrace", None) or GeoTraceEngine()
+        try:
+            valid, issues = engine.audit_mgr.verify_log_integrity()
+            return {"status": "ok", "valid": valid, "issues": issues}
+        except Exception as exc:
+            return {"status": "error", "message": str(exc), "valid": False, "issues": [str(exc)]}
+
     def kill_exploit_session(self, session_id: str) -> Dict[str, Any]:
         """Terminate and clean up an active exploit session."""
         if not self.engine or not hasattr(self.engine, "pentest") or not self.engine.pentest or not hasattr(self.engine.pentest, "metasploit"):
@@ -579,4 +636,729 @@ class EngineBridge:
             return {"status": "ok", "poc": poc_dict}
         except Exception as exc:
             return {"status": "error", "message": str(exc)}
+
+    def inspect_web_target(self, target: str, port: int = 80, fast_mode: bool = False) -> Dict[str, Any]:
+        """Run comprehensive web security inspection & audit."""
+        from delta.modules.web import WebModule
+        import urllib.parse
+        import time
+
+        clean_target = target.strip()
+        if clean_target.startswith("http://") or clean_target.startswith("https://"):
+            parsed = urllib.parse.urlparse(clean_target)
+            host = parsed.netloc.split(":")[0]
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        else:
+            host = clean_target.split("/")[0].split(":")[0]
+
+        mod = WebModule()
+        start_t = time.time()
+        # If specific port provided and non-standard, analyze that url first
+        if port not in (80, 443):
+            res = mod._analyze_url(f"http://{host}:{port}")
+            if not res.status_code:
+                res = mod._analyze_url(f"https://{host}:{port}")
+        else:
+            res = mod.analyze(host, port)
+        duration_ms = round((time.time() - start_t) * 1000, 1)
+
+        # Calculate security score & grade
+        total_sec_headers = len(res.security_headers)
+        passed_sec_headers = sum(1 for v in res.security_headers.values() if v)
+        sec_ratio = passed_sec_headers / max(total_sec_headers, 1)
+
+        if sec_ratio >= 0.85:
+            grade = "A+"
+            grade_color = "emerald"
+        elif sec_ratio >= 0.7:
+            grade = "A"
+            grade_color = "emerald"
+        elif sec_ratio >= 0.5:
+            grade = "B"
+            grade_color = "indigo"
+        elif sec_ratio >= 0.3:
+            grade = "C"
+            grade_color = "amber"
+        elif sec_ratio >= 0.15:
+            grade = "D"
+            grade_color = "orange"
+        else:
+            grade = "F"
+            grade_color = "rose"
+
+        # Additional checks
+        cookies = mod.check_cookies(host) if not fast_mode else []
+        robots = mod.check_robots_txt(host) if not fast_mode else {"exists": False, "disallowed": [], "sitemaps": []}
+        methods = mod.check_http_methods(host) if not fast_mode else []
+        sensitive_files = mod.check_common_files(host) if not fast_mode else []
+
+        return {
+            "status": "ok",
+            "host": host,
+            "port": port,
+            "url": res.url,
+            "status_code": res.status_code,
+            "title": res.title or mod.extract_title(host),
+            "server": res.server,
+            "latency_ms": duration_ms,
+            "security_grade": grade,
+            "security_grade_color": grade_color,
+            "security_headers": res.security_headers,
+            "passed_headers_count": passed_sec_headers,
+            "total_headers_count": total_sec_headers,
+            "technologies": res.technologies,
+            "cookies": cookies,
+            "robots_txt": robots,
+            "http_methods": methods,
+            "sensitive_files": sensitive_files,
+            "raw_headers": res.headers
+        }
+
+    def search_web_intelligence(self, query: str, search_type: str = "search") -> Dict[str, Any]:
+        """Search OSINT web intelligence or CVE via DuckDuckGo."""
+        from delta.modules.websearch import WebSearchModule
+        searcher = WebSearchModule()
+        q = query.strip()
+
+        try:
+            if search_type == "cve":
+                res = searcher.search_cve(q)
+                items = [{"title": res.title, "url": res.url, "snippet": res.snippet, "source": "cve"}] if res else []
+            elif search_type == "exploit":
+                results = searcher.search_exploit(q)
+                items = [{"title": r.title, "url": r.url, "snippet": r.snippet, "source": "exploit"} for r in results]
+            elif search_type == "news":
+                results = searcher.search_security_news(q)
+                items = [{"title": r.title, "url": r.url, "snippet": r.snippet, "source": "news"} for r in results]
+            else:
+                results = searcher.search_duckduckgo(q, max_results=12)
+                items = [{"title": r.title, "url": r.url, "snippet": r.snippet, "source": "web"} for r in results]
+
+            return {"status": "ok", "query": q, "search_type": search_type, "results": items, "count": len(items)}
+        except Exception as exc:
+            return {"status": "error", "message": str(exc), "results": [], "count": 0}
+
+    def fetch_web_page_content(self, url: str) -> Dict[str, Any]:
+        """Fetch web page content, headers, and metadata."""
+        from delta.modules.websearch import WebSearchModule
+        searcher = WebSearchModule()
+        info = searcher.fetch_page(url.strip())
+        if info.error:
+            return {"status": "error", "message": info.error, "url": url}
+        return {
+            "status": "ok",
+            "url": info.url,
+            "title": info.title,
+            "status_code": info.status_code,
+            "content_type": info.content_type,
+            "headers": info.headers,
+            "content": info.content,
+            "content_length": len(info.content)
+        }
+
+    def run_network_ping(self, host: str, count: int = 4, timeout: float = 2.0) -> Dict[str, Any]:
+        """Run ICMP ping latency check."""
+        from delta.modules.network import NetworkModule
+        net = NetworkModule()
+        res = net.ping(host.strip(), count=count, timeout=timeout)
+        return {
+            "status": "ok",
+            "host": res.host,
+            "ip": res.ip,
+            "alive": res.alive,
+            "rtt_ms": res.rtt_ms,
+            "error": res.error
+        }
+
+    def run_network_dns(self, domain: str) -> Dict[str, Any]:
+        """Run comprehensive DNS record queries & reverse lookups."""
+        from delta.modules.dns import DNSModule
+        dns_mod = DNSModule()
+        clean_d = domain.strip().replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
+        res = dns_mod.get_all_dns(clean_d)
+        
+        # Try getting TXT records if available via socket/platform
+        txt_records = []
+        try:
+            import subprocess
+            import platform
+            cmd = ["nslookup", "-type=TXT", clean_d] if platform.system().lower() == "windows" else ["dig", "+short", "TXT", clean_d]
+            p = subprocess.run(cmd, capture_output=True, text=True, timeout=4)
+            if p.returncode == 0:
+                for line in p.stdout.split("\n"):
+                    line = line.strip()
+                    if line and ("v=spf" in line.lower() or "dmarc" in line.lower() or "google-site" in line.lower() or "domainkey" in line.lower() or '"' in line):
+                        clean_txt = line.replace('"', '').strip()
+                        if clean_txt:
+                            txt_records.append(clean_txt)
+        except Exception:
+            pass
+
+        return {
+            "status": "ok",
+            "domain": res.domain,
+            "ip": res.ip,
+            "a_records": res.a_records or ([res.ip] if res.ip else []),
+            "aaaa_records": res.aaaa_records,
+            "mx_records": res.mx_records,
+            "ns_records": res.ns_records,
+            "cname_records": res.cname_records,
+            "txt_records": txt_records,
+            "reverse_dns": res.reverse_dns
+        }
+
+    def run_network_traceroute(self, host: str, max_hops: int = 15) -> Dict[str, Any]:
+        """Run traceroute path analysis."""
+        from delta.modules.network import NetworkModule
+        import platform
+        import subprocess
+        import re
+
+        clean_h = host.strip().replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
+        hops_list = []
+
+        # Use system tracert / traceroute for fast reliable hops
+        try:
+            is_win = platform.system().lower() == "windows"
+            cmd = ["tracert", "-d", "-h", str(max_hops), "-w", "1000", clean_h] if is_win else ["traceroute", "-n", "-m", str(max_hops), "-w", "1", clean_h]
+            p = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+            
+            for line in p.stdout.split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                # Match hop line format
+                match = re.search(r"^\s*(\d+)\s+.*?(\d+\.\d+\.\d+\.\d+)", line)
+                if match:
+                    hop_num = int(match.group(1))
+                    ip = match.group(2)
+                    
+                    # Extract rtt
+                    rtt = 0.0
+                    rtt_matches = re.findall(r"(\d+(?:\.\d+)?)\s*ms", line)
+                    if rtt_matches:
+                        rtt = float(rtt_matches[0])
+                    
+                    hops_list.append({
+                        "hop": hop_num,
+                        "ip": ip,
+                        "hostname": "",
+                        "rtt_ms": rtt,
+                        "reached": True
+                    })
+        except Exception:
+            pass
+
+        # Fallback to internal module if system traceroute returned empty
+        if not hops_list:
+            net = NetworkModule()
+            raw_hops = net.traceroute(clean_h, max_hops=max_hops, timeout=1.5)
+            hops_list = [{
+                "hop": h.hop,
+                "ip": h.ip,
+                "hostname": h.hostname,
+                "rtt_ms": round(h.rtt_ms, 1),
+                "reached": h.reached
+            } for h in raw_hops if h.ip]
+
+        return {
+            "status": "ok",
+            "target": clean_h,
+            "total_hops": len(hops_list),
+            "hops": hops_list
+        }
+
+    def run_network_geoip(self, host: str) -> Dict[str, Any]:
+        """Lookup GeoIP & ASN information."""
+        from delta.modules.geoip import GeoIPModule
+        import socket
+
+        clean_h = host.strip().replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
+        try:
+            ip = socket.gethostbyname(clean_h)
+        except Exception:
+            ip = clean_h
+
+        mod = GeoIPModule()
+        res = mod.lookup(ip)
+        return {
+            "status": "ok" if res.success else "error",
+            "host": clean_h,
+            "ip": res.ip,
+            "country": res.country,
+            "country_code": res.country_code,
+            "region": res.region,
+            "city": res.city,
+            "zip_code": res.zip_code,
+            "lat": res.lat,
+            "lon": res.lon,
+            "timezone": res.timezone,
+            "isp": res.isp,
+            "org": res.org,
+            "as_number": res.as_number,
+            "error": res.error
+        }
+
+    def run_network_ssl(self, host: str, port: int = 443) -> Dict[str, Any]:
+        """Lookup SSL/TLS certificate details."""
+        from delta.modules.ssl import SSLModule
+        clean_h = host.strip().replace("http://", "").replace("https://", "").split("/")[0].split(":")[0]
+        mod = SSLModule()
+        res = mod.check(clean_h, port=port)
+        return {
+            "status": "ok",
+            "host": res.host,
+            "port": res.port,
+            "valid": res.valid,
+            "expired": res.expired,
+            "days_remaining": res.days_remaining,
+            "self_signed": res.self_signed,
+            "protocol": res.protocol,
+            "algorithm": res.algorithm,
+            "serial_number": res.serial_number,
+            "not_before": res.not_before,
+            "not_after": res.not_after,
+            "subject": res.subject,
+            "issuer": res.issuer,
+            "errors": res.errors
+        }
+
+    def run_network_sweep(self, network: str) -> Dict[str, Any]:
+        """Sweep subnet to discover alive hosts."""
+        from delta.modules.network import NetworkModule
+        net = NetworkModule()
+        results = net.ping_sweep(network.strip(), timeout=1.0)
+        items = [{
+            "host": r.host,
+            "ip": r.ip,
+            "alive": r.alive,
+            "rtt_ms": r.rtt_ms
+        } for r in results if r.alive]
+        return {
+            "status": "ok",
+            "network": network,
+            "count": len(items),
+            "hosts": items
+        }
+
+    def process_voice_transcript(self, text: str) -> Dict[str, Any]:
+        """Process transcribed voice input through the VTuber STT manager and Delta conversational loop."""
+        from delta.vtuber.voice.stt.manager import stt_manager
+        if not text or not text.strip():
+            return {"status": "error", "message": "Empty voice transcript"}
+
+        try:
+            if stt_manager.speech_manager and stt_manager.speech_manager.is_speaking:
+                import asyncio
+                try:
+                    asyncio.create_task(stt_manager.speech_manager.stop())
+                except Exception:
+                    pass
+
+            exec_res = self.execute_command(text.strip())
+            return {"status": "ok", "transcript": text.strip(), "result": exec_res}
+        except Exception as exc:
+            return {"status": "error", "message": str(exc)}
+
+    def get_vtuber_personality_data(self) -> Dict[str, Any]:
+        """Fetch current PersonaProfile, MoodState, and stored Long-Term Memories."""
+        from delta.vtuber.personality import personality_manager
+        from delta.vtuber.memory import memory_manager
+        memories = memory_manager.store.retrieve(limit=25)
+        return {
+            "status": "ok",
+            "persona": personality_manager.profile.model_dump(),
+            "mood": personality_manager.mood.model_dump(),
+            "memories": [m.model_dump() for m in memories],
+            "short_term_count": len(memory_manager.short_term.messages),
+        }
+
+    def clear_vtuber_memories(self) -> Dict[str, Any]:
+        """Clear all stored long-term memories."""
+        from delta.vtuber.memory import memory_manager
+        memory_manager.store.clear_all()
+        memory_manager.short_term.clear()
+        return {"status": "ok", "message": "All VTuber memories cleared successfully"}
+
+    def get_vtuber_runtime_data(self) -> Dict[str, Any]:
+        """Fetch unified PersonalVTuberRuntime metrics & status."""
+        from delta.vtuber.runtime import personal_vtuber_runtime
+        return {"status": "ok", "runtime": personal_vtuber_runtime.get_runtime_status()}
+
+    def _get_active_vts_client(self):
+        """Helper to retrieve active VTSClient instance from runtime or instantiate configured one."""
+        from delta.vtuber.runtime import personal_vtuber_runtime
+        from delta.vtuber.avatar.vts_renderer import VTSRenderer
+        from delta.vtuber.avatar.vts.client import VTSClient
+
+        avatar_ctrl = personal_vtuber_runtime.avatar
+        if avatar_ctrl and hasattr(avatar_ctrl, "renderer") and isinstance(avatar_ctrl.renderer, VTSRenderer):
+            return avatar_ctrl.renderer.client
+
+        # If not active renderer, check engine or attach dynamically
+        host = getattr(self.engine.config, "vts_host", "127.0.0.1") if self.engine and hasattr(self.engine, "config") else "127.0.0.1"
+        port = getattr(self.engine.config, "vts_port", 8001) if self.engine and hasattr(self.engine, "config") else 8001
+        auth_token = getattr(self.engine.config, "vts_auth_token", "") if self.engine and hasattr(self.engine, "config") else ""
+        
+        # Cache client on bridge for testing if renderer is not VTSRenderer
+        if not hasattr(self, "_cached_vts_client") or self._cached_vts_client is None:
+            self._cached_vts_client = VTSClient(
+                host=host,
+                port=port,
+                auth_token=auth_token or None,
+                enabled=True,
+            )
+        return self._cached_vts_client
+
+    def get_vts_status(self) -> Dict[str, Any]:
+        """Fetch VTube Studio integration status and state machine details."""
+        client = self._get_active_vts_client()
+        return {"status": "ok", "vts": client.get_status_summary()}
+
+    def get_vts_visual_status(self) -> Dict[str, Any]:
+        """Fetch VTube Studio visual capture status without leaking tokens."""
+        from delta.vtuber.avatar.vts_visual.manager import vts_visual_manager
+        mgr = getattr(self, "vts_visual_mgr", None) or vts_visual_manager
+        status_obj = mgr.get_status()
+        return {"status": "ok", "visual": status_obj.model_dump()}
+
+    async def vts_test_parameter(self, parameter: str, value: float) -> Dict[str, Any]:
+        """Inject a single whitelisted parameter into VTube Studio."""
+        from delta.vtuber.avatar.vts.protocol import VTS_ALLOWED_PARAMETERS
+        if parameter not in VTS_ALLOWED_PARAMETERS:
+            return {
+                "status": "error",
+                "message": f"Parameter '{parameter}' is not whitelisted. Allowed: {sorted(list(VTS_ALLOWED_PARAMETERS))}",
+            }
+
+        client = self._get_active_vts_client()
+        if not client.is_connected or not client.is_authenticated:
+            # Try connecting if not connected
+            client.enabled = True
+            ok = await client.connect()
+            if not ok:
+                return {
+                    "status": "error",
+                    "message": f"VTube Studio not connected or unauthenticated ({client.state.value})",
+                    "vts": client.get_status_summary(),
+                }
+
+        sent = await client.inject_raw_parameters([{"parameter": parameter, "value": float(value)}])
+        if sent:
+            return {
+                "status": "ok",
+                "message": f"Injected {parameter} = {value}",
+                "parameter": parameter,
+                "value": value,
+                "vts": client.get_status_summary(),
+            }
+        else:
+            return {
+                "status": "error",
+                "message": "Failed to inject parameter into VTube Studio",
+                "vts": client.get_status_summary(),
+            }
+
+    async def vts_test_expression(self, expression_name: str, intensity: float = 0.8) -> Dict[str, Any]:
+        """Test an expression on VTS using Live2DExpressionMapper."""
+        from delta.vtuber.emotion.schemas import VTuberExpression
+        from delta.vtuber.avatar.live2d_mapper import Live2DExpressionMapper
+        from delta.vtuber.avatar.vts.protocol import VTS_ALLOWED_PARAMETERS
+
+        expr_clean = expression_name.lower().strip()
+        try:
+            matched_expr = VTuberExpression(expr_clean)
+        except ValueError:
+            valid_exprs = [e.value for e in VTuberExpression]
+            return {
+                "status": "error",
+                "message": f"Expression '{expression_name}' unavailable. Valid expressions: {valid_exprs}",
+            }
+
+        client = self._get_active_vts_client()
+        if not client.is_connected or not client.is_authenticated:
+            client.enabled = True
+            ok = await client.connect()
+            if not ok:
+                return {
+                    "status": "error",
+                    "message": f"VTube Studio not connected or unauthenticated ({client.state.value})",
+                    "vts": client.get_status_summary(),
+                }
+
+        params_dict = Live2DExpressionMapper.get_expression_parameters(matched_expr, intensity=intensity)
+        # Filter parameters to only whitelisted ones
+        param_list = [
+            {"parameter": k, "value": v}
+            for k, v in params_dict.items()
+            if k in VTS_ALLOWED_PARAMETERS
+        ]
+
+        sent = await client.inject_raw_parameters(param_list, request_id="DeltaExpressionTest")
+        if sent:
+            return {
+                "status": "ok",
+                "message": f"Expression '{matched_expr.value}' applied",
+                "expression": matched_expr.value,
+                "parameters_applied": params_dict,
+                "vts": client.get_status_summary(),
+            }
+        else:
+            return {
+                "status": "error",
+                "message": f"Failed to inject expression '{matched_expr.value}'",
+                "vts": client.get_status_summary(),
+            }
+
+    async def vts_test_lipsync(self) -> Dict[str, Any]:
+        """Run predefined amplitude curve lip-sync test (no random / sin-based fake values)."""
+        import asyncio
+
+        client = self._get_active_vts_client()
+        if not client.is_connected or not client.is_authenticated:
+            client.enabled = True
+            ok = await client.connect()
+            if not ok:
+                return {"status": "error", "message": f"VTS not connected ({client.state.value})", "steps": []}
+
+        # Predefined amplitude curve (phoneme-like envelope)
+        curve = [0.0, 0.3, 0.7, 1.0, 0.6, 0.2, 0.8, 0.4, 0.9, 0.0]
+        steps = []
+        for i, amp in enumerate(curve):
+            ok = await client.inject_raw_parameters(
+                [{"parameter": "ParamMouthOpenY", "value": float(amp)}],
+                request_id="DeltaLipSyncTest",
+            )
+            steps.append({"step": i + 1, "amplitude": amp, "status": "PASS" if ok else "FAIL"})
+            await asyncio.sleep(0.12)
+
+        passed = all(s["status"] == "PASS" for s in steps)
+        return {"status": "ok" if passed else "partial_fail", "passed": passed, "steps": steps, "vts": client.get_status_summary()}
+
+    async def vts_test_physics(self) -> Dict[str, Any]:
+        """Run head sweep to exercise hair/body physics springs in VTS."""
+        import asyncio
+
+        client = self._get_active_vts_client()
+        if not client.is_connected or not client.is_authenticated:
+            client.enabled = True
+            ok = await client.connect()
+            if not ok:
+                return {"status": "error", "message": f"VTS not connected ({client.state.value})", "steps": []}
+
+        # Head sweep: left -> right -> center (drives hair spring inertia in VTS)
+        sweep = [-20.0, -14.0, -6.0, 0.0, 6.0, 14.0, 20.0, 14.0, 6.0, 0.0, -6.0, -14.0, -20.0, 0.0]
+        steps = []
+        for i, angle in enumerate(sweep):
+            payload = [
+                {"parameter": "ParamAngleX", "value": float(angle)},
+                {"parameter": "ParamAngleZ", "value": round(angle * 0.3, 2)},
+            ]
+            ok = await client.inject_raw_parameters(payload, request_id="DeltaPhysicsTest")
+            steps.append({"step": i + 1, "ParamAngleX": angle, "status": "PASS" if ok else "FAIL"})
+            await asyncio.sleep(0.1)
+
+        passed = all(s["status"] == "PASS" for s in steps)
+        return {"status": "ok" if passed else "partial_fail", "passed": passed, "steps": steps, "vts": client.get_status_summary()}
+
+    async def vts_reset_parameters(self) -> Dict[str, Any]:
+        """Reset test parameters back to neutral default rest posture."""
+        client = self._get_active_vts_client()
+        if not client.is_connected or not client.is_authenticated:
+            client.enabled = True
+            ok = await client.connect()
+            if not ok:
+                return {
+                    "status": "error",
+                    "message": f"VTube Studio not connected ({client.state.value})",
+                    "vts": client.get_status_summary(),
+                }
+
+        reset_payload = [
+            {"parameter": "ParamAngleX", "value": 0.0},
+            {"parameter": "ParamAngleY", "value": 0.0},
+            {"parameter": "ParamAngleZ", "value": 0.0},
+            {"parameter": "ParamBodyAngleX", "value": 0.0},
+            {"parameter": "ParamBodyAngleY", "value": 0.0},
+            {"parameter": "ParamBodyAngleZ", "value": 0.0},
+            {"parameter": "ParamMouthOpenY", "value": 0.0},
+            {"parameter": "ParamMouthForm", "value": 0.0},
+            {"parameter": "ParamEyeLOpen", "value": 1.0},
+            {"parameter": "ParamEyeROpen", "value": 1.0},
+            {"parameter": "ParamEyeBallX", "value": 0.0},
+            {"parameter": "ParamEyeBallY", "value": 0.0},
+            {"parameter": "ParamBreath", "value": 0.5},
+        ]
+
+        sent = await client.inject_raw_parameters(reset_payload, request_id="DeltaResetInject")
+        if sent:
+            return {
+                "status": "ok",
+                "message": "VTube Studio parameters reset to neutral",
+                "vts": client.get_status_summary(),
+            }
+        return {
+            "status": "error",
+            "message": "Failed to reset parameters",
+            "vts": client.get_status_summary(),
+        }
+
+    async def vts_run_auto_test(self) -> Dict[str, Any]:
+        """Run sequential 10-step VTS automated test suite."""
+        import asyncio
+        client = self._get_active_vts_client()
+        if not client.is_connected or not client.is_authenticated:
+            client.enabled = True
+            ok = await client.connect()
+            if not ok:
+                return {
+                    "status": "error",
+                    "message": f"Cannot run auto test: VTube Studio not connected ({client.state.value})",
+                    "steps": [],
+                }
+
+        steps_results = []
+
+        # 1. getCurrentModel
+        try:
+            m_data = await client.fetch_current_model()
+            has_model = m_data.get("modelLoaded", False)
+            steps_results.append({
+                "step": 1,
+                "name": "getCurrentModel",
+                "status": "PASS",
+                "details": f"Model: {m_data.get('modelName', 'None')}" if has_model else "No model loaded",
+            })
+        except Exception as exc:
+            steps_results.append({"step": 1, "name": "getCurrentModel", "status": "FAIL", "error": str(exc)})
+
+        # Helper step runner
+        async def _exec_param_step(step_no: int, name: str, param: str, val: float):
+            try:
+                ok = await client.inject_raw_parameters([{"parameter": param, "value": val}])
+                steps_results.append({
+                    "step": step_no,
+                    "name": name,
+                    "status": "PASS" if ok else "FAIL",
+                    "details": f"{param} = {val}",
+                })
+            except Exception as e:
+                steps_results.append({"step": step_no, "name": name, "status": "FAIL", "error": str(e)})
+            await asyncio.sleep(0.15)
+
+        # 2. ParamAngleX +20
+        await _exec_param_step(2, "ParamAngleX +20", "ParamAngleX", 20.0)
+        # 3. ParamAngleX -20
+        await _exec_param_step(3, "ParamAngleX -20", "ParamAngleX", -20.0)
+        # 4. ParamAngleY +15
+        await _exec_param_step(4, "ParamAngleY +15", "ParamAngleY", 15.0)
+        # 5. ParamAngleY -15
+        await _exec_param_step(5, "ParamAngleY -15", "ParamAngleY", -15.0)
+        # 6. ParamMouthOpenY 1
+        await _exec_param_step(6, "ParamMouthOpenY 1", "ParamMouthOpenY", 1.0)
+        # 7. ParamMouthOpenY 0
+        await _exec_param_step(7, "ParamMouthOpenY 0", "ParamMouthOpenY", 0.0)
+
+        # 8. expression smile
+        try:
+            res_smile = await self.vts_test_expression("smile")
+            steps_results.append({
+                "step": 8,
+                "name": "expression smile",
+                "status": "PASS" if res_smile.get("status") == "ok" else "FAIL",
+                "details": res_smile.get("message", ""),
+            })
+        except Exception as e:
+            steps_results.append({"step": 8, "name": "expression smile", "status": "FAIL", "error": str(e)})
+        await asyncio.sleep(0.15)
+
+        # 9. expression neutral
+        try:
+            res_neutral = await self.vts_test_expression("neutral")
+            steps_results.append({
+                "step": 9,
+                "name": "expression neutral",
+                "status": "PASS" if res_neutral.get("status") == "ok" else "FAIL",
+                "details": res_neutral.get("message", ""),
+            })
+        except Exception as e:
+            steps_results.append({"step": 9, "name": "expression neutral", "status": "FAIL", "error": str(e)})
+        await asyncio.sleep(0.15)
+
+        # 10. reset
+        try:
+            res_reset = await self.vts_reset_parameters()
+            steps_results.append({
+                "step": 10,
+                "name": "reset",
+                "status": "PASS" if res_reset.get("status") == "ok" else "FAIL",
+                "details": res_reset.get("message", ""),
+            })
+        except Exception as e:
+            steps_results.append({"step": 10, "name": "reset", "status": "FAIL", "error": str(e)})
+
+        all_pass = all(s.get("status") == "PASS" for s in steps_results)
+        return {
+            "status": "ok" if all_pass else "partial_fail",
+            "passed": all_pass,
+            "total_steps": len(steps_results),
+            "passed_steps": sum(1 for s in steps_results if s.get("status") == "PASS"),
+            "steps": steps_results,
+            "vts": client.get_status_summary(),
+        }
+
+    def update_vtuber_settings(self, settings: Dict[str, Any]) -> Dict[str, Any]:
+        """Update VTuber settings across configuration & personality manager."""
+        if not settings:
+            return {"status": "error", "message": "No settings provided"}
+
+        from delta.vtuber.personality import personality_manager
+        if "name" in settings:
+            personality_manager.profile.name = str(settings["name"])
+        if "formality" in settings:
+            personality_manager.profile.formality = float(settings["formality"])
+        if "humor" in settings:
+            personality_manager.profile.humor = float(settings["humor"])
+        if "enthusiasm" in settings:
+            personality_manager.profile.enthusiasm = float(settings["enthusiasm"])
+        if "technicality" in settings:
+            personality_manager.profile.technicality = float(settings["technicality"])
+
+        if self.engine and hasattr(self.engine, "config") and self.engine.config:
+            if "avatar_renderer" in settings:
+                self.engine.config.avatar_renderer = str(settings["avatar_renderer"])
+            if "tts_voice" in settings:
+                self.engine.config.tts_voice = str(settings["tts_voice"])
+            if "tts_speed" in settings:
+                self.engine.config.tts_speed = float(settings["tts_speed"])
+            if "stt_language" in settings:
+                self.engine.config.stt_language = str(settings["stt_language"])
+            if "vad_threshold" in settings:
+                self.engine.config.vad_threshold = float(settings["vad_threshold"])
+
+        return {"status": "ok", "message": "VTuber settings updated successfully"}
+
+    async def get_desktop_context(self) -> Dict[str, Any]:
+        """Fetch on-demand snapshot of desktop context and active window metadata."""
+        from delta.vtuber.desktop import desktop_manager
+        ctx = await desktop_manager.capture_context(current_cwd=getattr(self.engine, "cwd", None))
+        return {"status": "ok", "context": ctx.model_dump()}
+
+    async def capture_screen(self) -> Dict[str, Any]:
+        """Capture on-demand ephemeral screenshot."""
+        from delta.vtuber.desktop import desktop_manager
+        shot = await desktop_manager.capture_ephemeral_screenshot()
+        if not shot:
+            return {"status": "error", "message": "Screenshot capture unavailable or permission disabled"}
+        return {"status": "ok", "screenshot": shot.model_dump()}
+
+    async def read_clipboard(self) -> Dict[str, Any]:
+        """Read sanitized clipboard content."""
+        from delta.vtuber.desktop import desktop_manager
+        clip = await desktop_manager.read_sanitized_clipboard()
+        if not clip:
+            return {"status": "error", "message": "Clipboard read unavailable or permission disabled"}
+        return {"status": "ok", "clipboard": clip.model_dump()}
+
+
 

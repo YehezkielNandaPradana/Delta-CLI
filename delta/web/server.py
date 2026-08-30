@@ -117,6 +117,47 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                     unsubscribe()
                 return
 
+            if clean_path == "/api/vtuber/audio":
+                # Realtime Audio stream endpoint for browser audio client
+                from delta.vtuber.voice.browser_player import browser_audio_player
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Connection", "keep-alive")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("X-Accel-Buffering", "no")
+                self.end_headers()
+
+                audio_queue: queue.Queue = queue.Queue(maxsize=150)
+                browser_audio_player.register_client(audio_queue)
+
+                # Send initial audio config frame
+                init_frame = {
+                    "type": "audio_config",
+                    "format": "mp3",
+                    "sample_rate": 24000,
+                    "channels": 1,
+                    "timestamp": time.time(),
+                }
+                if not self._safe_write(f"data: {json.dumps(init_frame)}\r\n\r\n".encode("utf-8")):
+                    browser_audio_player.unregister_client(audio_queue)
+                    return
+
+                try:
+                    while True:
+                        try:
+                            msg = audio_queue.get(timeout=1.0)
+                            payload = f"data: {json.dumps(msg)}\r\n\r\n".encode("utf-8")
+                            if not self._safe_write(payload):
+                                break
+                        except Empty:
+                            ping_bytes = f": ping {int(time.time())}\r\n\r\n".encode("utf-8")
+                            if not self._safe_write(ping_bytes):
+                                break
+                finally:
+                    browser_audio_player.unregister_client(audio_queue)
+                return
+
             if clean_path in ("/api/status", "/api/health"):
                 status_data = self.bridge.get_status() if self.bridge else {"status": "online", "version": "1.0.0"}
                 body = json.dumps(status_data).encode("utf-8")
@@ -256,6 +297,142 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 self._safe_write(body)
                 return
 
+            if clean_path == "/api/web/inspect":
+                query = parse_qs(parsed_url.query)
+                target = query.get("target", [""])[0]
+                port = int(query.get("port", [80])[0]) if query.get("port", [""])[0].isdigit() else 80
+                fast_mode = query.get("fast", ["0"])[0] in ("1", "true")
+                res = self.bridge.inspect_web_target(target, port=port, fast_mode=fast_mode) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/web/search":
+                query = parse_qs(parsed_url.query)
+                q = query.get("q", [""])[0]
+                search_type = query.get("type", ["search"])[0]
+                res = self.bridge.search_web_intelligence(q, search_type=search_type) if self.bridge else {"status": "error", "message": "Bridge offline", "results": []}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/web/fetch":
+                query = parse_qs(parsed_url.query)
+                url_param = query.get("url", [""])[0]
+                res = self.bridge.fetch_web_page_content(url_param) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/network/ping":
+                query = parse_qs(parsed_url.query)
+                host = query.get("host", [""])[0]
+                count = int(query.get("count", [4])[0]) if query.get("count", [""])[0].isdigit() else 4
+                res = self.bridge.run_network_ping(host, count=count) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/network/dns":
+                query = parse_qs(parsed_url.query)
+                domain = query.get("domain", [""])[0]
+                res = self.bridge.run_network_dns(domain) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/network/traceroute":
+                query = parse_qs(parsed_url.query)
+                host = query.get("host", [""])[0]
+                max_hops = int(query.get("max_hops", [15])[0]) if query.get("max_hops", [""])[0].isdigit() else 15
+                res = self.bridge.run_network_traceroute(host, max_hops=max_hops) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/network/geoip":
+                query = parse_qs(parsed_url.query)
+                host = query.get("host", [""])[0]
+                res = self.bridge.run_network_geoip(host) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/network/ssl":
+                query = parse_qs(parsed_url.query)
+                host = query.get("host", [""])[0]
+                port = int(query.get("port", [443])[0]) if query.get("port", [""])[0].isdigit() else 443
+                res = self.bridge.run_network_ssl(host, port=port) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/network/sweep":
+                query = parse_qs(parsed_url.query)
+                network = query.get("network", [""])[0]
+                res = self.bridge.run_network_sweep(network) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/geotrace/audit":
+                query = parse_qs(parsed_url.query)
+                limit = int(query.get("limit", [50])[0]) if query.get("limit", [""])[0].isdigit() else 50
+                res = self.bridge.geotrace_get_audit(limit=limit) if self.bridge else {"status": "error", "message": "Bridge offline", "logs": []}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/geotrace/verify-audit":
+                res = self.bridge.geotrace_verify_audit() if self.bridge else {"status": "error", "message": "Bridge offline", "valid": False}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
             if clean_path in ("/", "/index.html"):
                 index_path = os.path.join(self.static_dir, "index.html")
                 if not os.path.exists(index_path):
@@ -316,6 +493,192 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 res = self.bridge.execute_command(cmd, execution_id=execution_id) if self.bridge else {"output": f"Engine offline: {cmd}", "is_task": False, "task_id": None}
                 resp_bytes = json.dumps(res).encode("utf-8")
 
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/voice/process":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                text = data.get("text", "")
+                res = self.bridge.process_voice_transcript(text) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/vtuber/personality":
+                res = self.bridge.get_vtuber_personality_data() if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/vtuber/personality/clear-memory":
+                res = self.bridge.clear_vtuber_memories() if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/vtuber/runtime":
+                res = self.bridge.get_vtuber_runtime_data() if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path in ("/api/vtuber/vts/status", "/api/vts/status"):
+                res = self.bridge.get_vts_status() if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path in ("/api/vtuber/vts/visual/status", "/api/vts/visual/status"):
+                res = self.bridge.get_vts_visual_status() if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path in ("/api/vtuber/vts/test-parameter", "/api/vts/test-parameter"):
+                import asyncio
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                param = str(data.get("parameter", ""))
+                val = float(data.get("value", 0.0))
+                res = asyncio.run(self.bridge.vts_test_parameter(param, val)) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path in ("/api/vtuber/vts/test-expression", "/api/vts/test-expression"):
+                import asyncio
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                expr = str(data.get("expression", ""))
+                intensity = float(data.get("intensity", 0.8))
+                res = asyncio.run(self.bridge.vts_test_expression(expr, intensity=intensity)) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path in ("/api/vtuber/vts/reset", "/api/vts/reset"):
+                import asyncio
+                res = asyncio.run(self.bridge.vts_reset_parameters()) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path in ("/api/vtuber/vts/test-lipsync", "/api/vts/test-lipsync"):
+                import asyncio
+                res = asyncio.run(self.bridge.vts_test_lipsync()) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path in ("/api/vtuber/vts/test-physics", "/api/vts/test-physics"):
+                import asyncio
+                res = asyncio.run(self.bridge.vts_test_physics()) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path in ("/api/vtuber/vts/auto-test", "/api/vts/auto-test"):
+                import asyncio
+                res = asyncio.run(self.bridge.vts_run_auto_test()) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/vtuber/settings":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                res = self.bridge.update_vtuber_settings(data) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/desktop/context":
+                import asyncio
+                res = asyncio.run(self.bridge.get_desktop_context()) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/desktop/screenshot":
+                import asyncio
+                res = asyncio.run(self.bridge.capture_screen()) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/desktop/clipboard":
+                import asyncio
+                res = asyncio.run(self.bridge.read_clipboard()) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(resp_bytes)))
@@ -464,6 +827,84 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                     module_name=module_name,
                     options=options
                 ) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/geotrace/analyze":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                target = data.get("target", "")
+                operator = data.get("operator", "delta-analyst")
+                purpose = data.get("purpose", "OSINT Geolocation Investigation")
+                consent_mode = bool(data.get("consent_mode", False))
+
+                res = self.bridge.geotrace_analyze(
+                    target=target,
+                    operator=operator,
+                    purpose=purpose,
+                    consent_mode=consent_mode
+                ) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/web/raw-request":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                url = data.get("url", "")
+                method = data.get("method", "GET").upper()
+                custom_headers = data.get("headers", {})
+                req_body = data.get("body", "")
+
+                try:
+                    import urllib.request
+                    import urllib.error
+                    import time
+                    req = urllib.request.Request(url, method=method)
+                    req.add_header("User-Agent", "Delta-Security-Scanner/1.0")
+                    for k, v in custom_headers.items():
+                        req.add_header(k, v)
+                    
+                    data_bytes = req_body.encode("utf-8") if req_body and method in ("POST", "PUT", "PATCH") else None
+                    
+                    start_t = time.time()
+                    try:
+                        with urllib.request.urlopen(req, data=data_bytes, timeout=12) as resp:
+                            duration = round((time.time() - start_t) * 1000, 1)
+                            resp_content = resp.read().decode("utf-8", errors="replace")
+                            res = {
+                                "status": "ok",
+                                "status_code": resp.status,
+                                "duration_ms": duration,
+                                "headers": dict(resp.headers),
+                                "body": resp_content[:15000],
+                                "content_length": len(resp_content)
+                            }
+                    except urllib.error.HTTPError as e:
+                        duration = round((time.time() - start_t) * 1000, 1)
+                        resp_content = e.read().decode("utf-8", errors="replace")
+                        res = {
+                            "status": "ok",
+                            "status_code": e.code,
+                            "duration_ms": duration,
+                            "headers": dict(e.headers),
+                            "body": resp_content[:15000],
+                            "content_length": len(resp_content)
+                        }
+                except Exception as exc:
+                    res = {"status": "error", "message": str(exc)}
+
                 resp_bytes = json.dumps(res).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
