@@ -2385,6 +2385,117 @@ def test_visual_source_fallback_logic():
     assert status_fallback.active_path == "tertiary_browser_live2d"
 
 
+def test_visual_source_lifecycle():
+    from delta.vtuber.avatar.vts_visual.sources import MockVisualSource
+    from delta.vtuber.avatar.vts_visual.schemas import VisualSourceState
+
+    async def _test():
+        source = MockVisualSource()
+        assert source.get_status().state == VisualSourceState.DISCONNECTED
+
+        await source.initialize()
+        await source.start()
+        assert source.get_status().state == VisualSourceState.STREAMING
+
+        await source.stop()
+        assert source.get_status().state == VisualSourceState.DISCONNECTED
+
+    asyncio.run(_test())
+
+
+def test_vts_visual_source_status():
+    from delta.vtuber.avatar.vts_visual.manager import VTSVisualManager
+    from delta.vtuber.avatar.vts_visual.sources import MockVisualSource
+
+    mgr = VTSVisualManager(source=MockVisualSource())
+    status = mgr.get_status()
+
+    assert status.source == "mock_visual_source"
+    assert status.transparent is True
+    assert "authenticationToken" not in str(status.model_dump())
+
+
+def test_visual_source_disconnect():
+    from delta.vtuber.avatar.vts_visual.sources import MockVisualSource
+    from delta.vtuber.avatar.vts_visual.schemas import VisualSourceState
+
+    async def _test():
+        source = MockVisualSource()
+        await source.start()
+        await source.stop()
+        assert source.get_status().connected is False
+        assert source.get_status().state == VisualSourceState.DISCONNECTED
+
+    asyncio.run(_test())
+
+
+def test_visual_source_reconnect():
+    from delta.vtuber.avatar.vts_visual.sources import MockVisualSource
+    from delta.vtuber.avatar.vts_visual.schemas import VisualSourceState
+
+    async def _test():
+        source = MockVisualSource()
+        await source.start()
+        await source.stop()
+        await source.start()
+        assert source.get_status().connected is True
+        assert source.get_status().state == VisualSourceState.STREAMING
+
+    asyncio.run(_test())
+
+
+def test_visual_source_fallback():
+    from delta.vtuber.avatar.vts_visual.schemas import VisualSourceStatus, VisualSourceType, VisualSourceState
+
+    status = VisualSourceStatus(
+        connected=False,
+        source=VisualSourceType.BROWSER_LIVE2D,
+        state=VisualSourceState.FALLBACK,
+        active_path="tertiary_browser_live2d",
+    )
+    assert status.connected is False
+    assert status.active_path == "tertiary_browser_live2d"
+
+
+def test_visual_viewer_state():
+    from delta.vtuber.avatar.vts_visual.schemas import VisualSourceStatus, VisualSourceType
+
+    status = VisualSourceStatus(
+        connected=True,
+        source=VisualSourceType.VIRTUAL_CAM,
+        active_path="primary_browser_cam",
+    )
+    assert status.active_path == "primary_browser_cam"
+
+
+def test_transparent_mode():
+    from delta.vtuber.avatar.vts_visual.schemas import VisualSourceStatus
+
+    status = VisualSourceStatus(transparent=True)
+    assert status.transparent is True
+
+
+def test_aspect_ratio():
+    from delta.vtuber.avatar.vts_visual.schemas import VisualSourceStatus
+
+    status = VisualSourceStatus(width=1920, height=1080)
+    ratio = status.width / status.height
+    assert round(ratio, 2) == 1.78
+
+
+def test_cleanup():
+    from delta.vtuber.avatar.vts_visual.sources import MockVisualSource
+    from delta.vtuber.avatar.vts_visual.schemas import VisualSourceState
+
+    async def _test():
+        source = MockVisualSource()
+        await source.start()
+        await source.stop()
+        assert source.get_status().state == VisualSourceState.DISCONNECTED
+
+    asyncio.run(_test())
+
+
 
 def test_text_input_auto_response():
     from delta.vtuber.response import ResponseProcessor
