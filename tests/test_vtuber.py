@@ -2361,6 +2361,30 @@ def test_vts_visual_status_and_stream_endpoints():
     assert "authenticationToken" not in str(res)
 
 
+def test_visual_source_fallback_logic():
+    from delta.vtuber.avatar.vts_visual.schemas import VisualSourceStatus, VisualSourceType, VisualSourceState
+
+    # Primary active status
+    status_primary = VisualSourceStatus(
+        connected=True,
+        source=VisualSourceType.VIRTUAL_CAM,
+        state=VisualSourceState.STREAMING,
+        active_path="primary_browser_cam",
+    )
+    assert status_primary.connected is True
+    assert status_primary.active_path == "primary_browser_cam"
+
+    # Fallback status
+    status_fallback = VisualSourceStatus(
+        connected=False,
+        source=VisualSourceType.BROWSER_LIVE2D,
+        state=VisualSourceState.FALLBACK,
+        active_path="tertiary_browser_live2d",
+    )
+    assert status_fallback.connected is False
+    assert status_fallback.active_path == "tertiary_browser_live2d"
+
+
 
 def test_text_input_auto_response():
     from delta.vtuber.response import ResponseProcessor
