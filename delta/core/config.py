@@ -122,6 +122,56 @@ class DeltaConfig:
 
     report_author: str = "Delta Analyst"
 
+    # VTuber Voice / TTS settings
+
+    tts_enabled: bool = False
+
+    tts_provider: str = "mock"
+
+    tts_voice: str = "default"
+
+    tts_speed: float = 1.0
+
+    tts_profile: str = "female"
+
+    tts_language: str = "id-ID"
+
+    tts_volume: float = 1.0
+
+    tts_piper_models_dir: str = "~/.delta/voice/models"
+
+    # VTuber Avatar & VTS settings
+
+    avatar_renderer: str = "browser_live2d"
+
+    vts_enabled: bool = False
+
+    vts_host: str = "127.0.0.1"
+
+    vts_port: int = 8001
+
+    vts_auth_token: str = ""
+
+    # VTuber Personal Companion & Desktop settings
+
+    companion_mode: bool = True
+
+    companion_greeting_enabled: bool = True
+
+    companion_greeting_style: str = "friendly"
+
+    desktop_mode_enabled: bool = False
+
+    desktop_start_minimized: bool = False
+
+    desktop_always_on_top: bool = False
+
+    memory_auto_store: bool = False
+
+    memory_store_conversations: bool = False
+
+    memory_retention_days: int = 30
+
     # Internal state (not from config file)
 
     _loaded: bool = False
