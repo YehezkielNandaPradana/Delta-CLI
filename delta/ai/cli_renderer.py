@@ -52,17 +52,16 @@ class CLIRenderer:
         elif event_type == EventType.TOOL_START.value:
             tool = event.tool or "tool"
             inp = event.input or {}
-            target = inp.get("path") or inp.get("command") or inp.get("pattern") or ""
-            target_str = f" \033[34m{target}\033[0m" if target else ""
+            target = inp.get("command") or inp.get("path") or inp.get("pattern") or ""
+            target_str = f" \033[1;33m$ {target}\033[0m" if target else ""
             status_text = event.status_text or f"Executing {tool}"
             frame = SPINNER_FRAMES[self._spinner_idx % len(SPINNER_FRAMES)]
             self._spinner_idx += 1
 
             self._clear_status_line()
-            line = f"  \033[36m{frame}\033[0m {status_text}{target_str}"
+            line = f"  \033[36m{frame}\033[0m \033[1;34m[{tool}]\033[0m {status_text}{target_str}\n"
             sys.stdout.write(line)
             sys.stdout.flush()
-            self._last_line_len = len(status_text) + len(target) + 10
 
         elif event_type == EventType.TOOL_RESULT.value:
             self._clear_status_line()

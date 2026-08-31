@@ -21,7 +21,7 @@ class ReActAgentEngine:
         self.tools = tool_registry
         self.bus = bus or event_bus
         self.task_manager = AgentTaskManager(self.bus)
-        self.max_steps = 15
+        self.max_steps = 25
 
     def run(self, user_request: str) -> str:
         self.bus.emit(AgentEvent(type=EventType.AGENT_START, status_text="Analyzing user request..."))

@@ -1435,7 +1435,7 @@ class DeltaEngine:
 
         from delta.ai.tools import parse_xml_tool_calls, parse_json_tool_calls
 
-        max_iterations = 10
+        max_iterations = 25
         current_input = user_input
         final_clean_response = ""
         last_command = ""

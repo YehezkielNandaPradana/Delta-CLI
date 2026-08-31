@@ -35,7 +35,7 @@ def test_engine_bridge_web_mode():
         def __init__(self):
             self.web_mode = False
             self.tui_mode = False
-        def _process_input(self, cmd):
+        def _process_input(self, cmd, execution_id=None):
             if self.web_mode:
                 return {"response": f"Clean response: {cmd}", "command": "", "error": "", "is_task": False, "task_id": None}
             return "CLI response"

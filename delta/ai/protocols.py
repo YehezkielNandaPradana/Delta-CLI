@@ -421,9 +421,7 @@ You have two modes of operation:
 
 {DELTA_CAPABILITIES}
 
-## How to execute commands
-
-When the user asks you to perform a task that matches Delta's capabilities, output the command inside XML tags:
+To execute a command, wrap it in `<command>` tags:
 
 <command>scan localhost</command>
 

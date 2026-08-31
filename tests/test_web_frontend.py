@@ -58,6 +58,36 @@ def test_exploit_studio_ui_elements_in_static_html():
     assert 'id="exploit-sessions-container"' in static_html
     assert 'id="exploit-poc-container"' in static_html
 
+def test_web_static_html_served_theme():
+    server = DeltaWebServer(engine=None, host="127.0.0.1", port=8996)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.5)
+
+    try:
+        req = urllib.request.Request("http://127.0.0.1:8996/")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            assert resp.status == 200
+            html = resp.read().decode("utf-8")
+            assert "dark" in html
+    finally:
+        server.shutdown()
+
+def test_web_static_html_has_dark_mode_classes():
+    server = DeltaWebServer(engine=None, host="127.0.0.1", port=8995)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.5)
+
+    try:
+        req = urllib.request.Request("http://127.0.0.1:8995/")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            assert resp.status == 200
+            html = resp.read().decode("utf-8")
+            assert "dark" in html or "darkMode" in html
+    finally:
+        server.shutdown()
+
 def test_exploit_studio_ui_elements_in_root_html():
     root_html = Path("delta/web/index.html").read_text(encoding="utf-8")
     
