@@ -66,11 +66,11 @@ class DeltaConfig:
 
     llm_api_key: str = ""
 
-    llm_api_base_url: str = "http://localhost:11434/v1"
+    llm_api_base_url: str = "http://localhost:20128/v1"
 
-    llm_model: str = "gemma4:12b"
+    llm_model: str = "OpenRouterCombo"
 
-    llm_provider: str = "local"  # local ollama is default
+    llm_provider: str = "9router"
 
     llm_enabled: bool = True
 
@@ -124,21 +124,37 @@ class DeltaConfig:
 
     # VTuber Voice / TTS settings
 
-    tts_enabled: bool = False
+    tts_enabled: bool = True
 
-    tts_provider: str = "mock"
+    tts_provider: str = "auto"
 
     tts_voice: str = "default"
 
     tts_speed: float = 1.0
 
-    tts_profile: str = "female"
+    tts_profile: str = "female_id_natural"
+
+    tts_style: str = "feminine_casual"
 
     tts_language: str = "id-ID"
 
+    tts_speed: float = 0.95
+
     tts_volume: float = 1.0
 
+    tts_pitch: float = 0.0
+
+    tts_pause_scale: float = 1.05
+
     tts_piper_models_dir: str = "~/.delta/voice/models"
+
+    tts_voxcpm_model: str = "openbmb/VoxCPM1.5"
+
+    tts_voxcpm_lora: str = "aisyahsyihab/voxcpm-lora-indonesian-female-v2"
+
+    tts_voxcpm_cfg: float = 2.5
+
+    tts_voxcpm_timesteps: int = 10
 
     # VTuber Avatar & VTS settings
 
@@ -316,9 +332,9 @@ class DeltaConfig:
 
         self.llm_enabled = True
 
-        if not self.llm_model or self.llm_model not in [k for k in MODEL_PRESETS if "/" in k] + ["KiloCombo", "AntigravityCombo", "DeepseekCombo"]:
+        if not self.llm_model or self.llm_model not in [k for k in MODEL_PRESETS if "/" in k] + ["KiloCombo", "AntigravityCombo", "DeepseekCombo", "OpenRouterCombo"]:
 
-            self.llm_model = "AntigravityCombo"
+            self.llm_model = "OpenRouterCombo"
 
         self._loaded = True
 

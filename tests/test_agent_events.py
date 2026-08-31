@@ -125,5 +125,106 @@ class TestAgentEventSystem(unittest.TestCase):
         finally:
             renderer.close()
 
+    def test_agent_step_self_parent_rejection(self):
+        from delta.ai.events import AgentStep, StepKind, StepStatus
+        step = AgentStep(
+            id="step_A", task_id="t1", execution_id="ex1", parent_id="step_A",
+            kind=StepKind.READ, label="Reading file", status=StepStatus.RUNNING, created_at=100.0
+        )
+        with self.assertRaises(ValueError) as ctx:
+            step.validate()
+        self.assertIn("cannot be its own parent", str(ctx.exception))
+
+    def test_agent_step_circular_parent_chain_rejection(self):
+        from delta.ai.events import AgentStep, StepKind, StepStatus
+        step_a = AgentStep(id="A", task_id="t1", execution_id="ex1", parent_id=None, kind=StepKind.ROOT, label="Root", status=StepStatus.COMPLETED, created_at=100.0)
+        step_b = AgentStep(id="B", task_id="t1", execution_id="ex1", parent_id="A", kind=StepKind.CONTEXT, label="Ctx", status=StepStatus.COMPLETED, created_at=101.0)
+        step_c = AgentStep(id="C", task_id="t1", execution_id="ex1", parent_id="B", kind=StepKind.SEARCH, label="Search", status=StepStatus.RUNNING, created_at=102.0)
+
+        steps = {"A": step_a, "B": step_b, "C": step_c}
+        # Create circular dependency A -> C
+        step_a.parent_id = "C"
+
+        with self.assertRaises(ValueError) as ctx:
+            step_a.validate(steps)
+        self.assertIn("Circular parent chain detected", str(ctx.exception))
+
+    def test_agent_step_root_validation(self):
+        from delta.ai.events import AgentStep, StepKind, StepStatus
+        invalid_root = AgentStep(
+            id="root_1", task_id="t1", execution_id="ex1", parent_id="parent_invalid",
+            kind=StepKind.ROOT, label="Root Task", status=StepStatus.RUNNING, created_at=100.0
+        )
+        with self.assertRaises(ValueError) as ctx:
+            invalid_root.validate()
+        self.assertIn("must have parent_id=None", str(ctx.exception))
+
+        valid_root = AgentStep(
+            id="root_1", task_id="t1", execution_id="ex1", parent_id=None,
+            kind=StepKind.ROOT, label="Root Task", status=StepStatus.RUNNING, created_at=100.0
+        )
+        valid_root.validate()  # Should not raise
+
+    def test_event_bus_sequence_isolation_per_execution(self):
+        bus = EventBus()
+        ev_ex1_a = AgentEvent(type=EventType.AGENT_START, execution_id="exec_1")
+        ev_ex1_b = AgentEvent(type=EventType.TOOL_START, execution_id="exec_1")
+        ev_ex2_a = AgentEvent(type=EventType.AGENT_START, execution_id="exec_2")
+
+        bus.emit(ev_ex1_a)
+        bus.emit(ev_ex1_b)
+        bus.emit(ev_ex2_a)
+
+        self.assertEqual(ev_ex1_a.sequence, 1)
+        self.assertEqual(ev_ex1_b.sequence, 2)
+        self.assertEqual(ev_ex2_a.sequence, 1)  # Sequence resets per execution_id isolation
+
+    def test_engine_emits_structured_agent_steps(self):
+        bus = EventBus()
+        events = []
+        bus.subscribe(lambda ev: events.append(ev))
+
+        import time
+        from delta.ai.events import AgentStep, StepKind, StepStatus, EventType
+        root_step = AgentStep(
+            id="root_exec_1",
+            task_id="t1",
+            execution_id="exec_1",
+            parent_id=None,
+            kind=StepKind.ROOT,
+            label="Root Task",
+            status=StepStatus.RUNNING,
+            created_at=time.time(),
+            started_at=time.time()
+        )
+        root_step.validate()
+
+        child_step = AgentStep(
+            id="tool_1",
+            task_id="t1",
+            execution_id="exec_1",
+            parent_id=root_step.id,
+            kind=StepKind.READ,
+            label="Reading file",
+            status=StepStatus.RUNNING,
+            created_at=time.time(),
+            started_at=time.time(),
+            file_path="test.py"
+        )
+        child_step.validate({"root_exec_1": root_step})
+
+        bus.emit(AgentEvent(
+            type=EventType.AGENT_STEP_STARTED,
+            execution_id="exec_1",
+            task_id="t1",
+            step_id=child_step.id,
+            payload={"step": child_step.to_dict()}
+        ))
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].type, EventType.AGENT_STEP_STARTED)
+        self.assertEqual(events[0].payload["step"]["parent_id"], "root_exec_1")
+        self.assertEqual(events[0].payload["step"]["kind"], "read")
+
 if __name__ == "__main__":
     unittest.main()

@@ -181,6 +181,12 @@ class ToolRegistry:
     def __init__(self) -> None:
 
         self._tools: Dict[str, Tool] = {}
+        self._policy: Optional[Any] = None
+
+    def set_execution_policy(self, policy: Any) -> None:
+
+        """Set an execution policy interceptor on the registry."""
+        self._policy = policy
 
     def register(self, tool: Tool) -> None:
 
@@ -262,15 +268,37 @@ class ToolRegistry:
 
         return "\n".join(lines)
 
-    def execute_call(self, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_call(
+        self,
+        name: str,
+        args: Dict[str, Any],
+        worker_role: str = "main",
+        tool_category: str = "general"
+    ) -> Dict[str, Any]:
 
-        """Execute a tool call by name with keyword arguments."""
+        """Execute a tool call by name with keyword arguments and policy interceptor evaluation."""
 
         tool = self.get(name)
 
         if not tool:
 
             return {"success": False, "output": None, "error": f"Tool '{name}' is not registered."}
+
+        # Policy evaluation interceptor
+        if self._policy is not None:
+            decision = self._policy.evaluate_tool_call(
+                tool_name=name,
+                tool_args=args,
+                worker_role=worker_role,
+                tool_category=getattr(tool, "category", tool_category) or tool_category
+            )
+            if not decision.allowed:
+                return {
+                    "success": False,
+                    "output": None,
+                    "error": f"Policy blocked tool '{name}': {decision.reason}",
+                    "policy_decision": decision
+                }
 
         return tool.execute(**args)
 

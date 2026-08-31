@@ -1,0 +1,211 @@
+"""
+VTuber Event System & Lifecycle Engine for Delta AI.
+"""
+
+from delta.vtuber.events import (
+    VTuberEventType,
+    VTuberEmotion,
+    VTuberEvent,
+    VTuberPayload,
+)
+from delta.vtuber.event_bus import (
+    VTuberEventBus,
+    vtuber_event_bus,
+)
+from delta.vtuber.state_machine import (
+    VTuberState,
+    VTuberStateMachine,
+    InvalidStateTransitionError,
+)
+from delta.vtuber.adapter import (
+    VTuberAgentAdapter,
+)
+from delta.vtuber.emotion import (
+    VTuberExpression,
+    EmotionResult,
+    EmotionChangedEvent,
+    EMOTION_TO_EXPRESSION_MAP,
+    map_emotion_to_expression,
+    resolve_emotion_from_event,
+    EmotionEngine,
+    emotion_engine,
+)
+from delta.vtuber.voice import (
+    SpeechManager,
+    SentenceChunker,
+    SpeechChunk,
+    SpeechState,
+    SpeechLifecycleEventType,
+    SpeechLifecycleEvent,
+    TTSProvider,
+    MockTTSProvider,
+    AudioPlayer,
+    MockAudioPlayer,
+)
+
+from delta.vtuber.avatar import (
+    AvatarState,
+    ExpressionController,
+    LipSyncController,
+    DefaultLipSyncController,
+    AudioAmplitudeAnalyzer,
+    AvatarRenderer,
+    MockAvatarRenderer,
+    AvatarController,
+    avatar_controller,
+    Live2DExpressionMapper,
+    Live2DParameterMapper,
+    Live2DCanvasRenderer,
+    VTS_ALLOWED_PARAMETERS,
+    VTSConnectionState,
+    VTSMessage,
+    VTSMessageType,
+    VTSParameterValue,
+    VTSInjectParameterData,
+    VTSMapper,
+    VTSClient,
+    VTSRenderer,
+)
+
+from delta.vtuber.personality import (
+    PersonaProfile,
+    MoodState,
+    PersonalityBehavior,
+    PersonalityManager,
+    personality_manager,
+)
+from delta.vtuber.memory import (
+    MemoryType,
+    MemoryEntry,
+    ShortTermMemoryBuffer,
+    SecretFilter,
+    SQLiteMemoryStore,
+    MemoryManager,
+    memory_manager,
+)
+
+from delta.vtuber.behavior import (
+    IdleBehaviorManager,
+    idle_behavior_manager,
+)
+from delta.vtuber.avatar.priority import (
+    AnimationPriority,
+    AnimationPrioritySystem,
+)
+from delta.vtuber.runtime import (
+    PersonalVTuberRuntime,
+    personal_vtuber_runtime,
+)
+
+from delta.vtuber.response import (
+    ResponsePayload,
+    ResponseProcessor,
+    response_processor,
+    ResponseDispatcher,
+    response_dispatcher,
+)
+from delta.vtuber.presence import (
+    PresenceActivity,
+    PresenceState,
+    NotificationType,
+    NotificationEvent,
+    MicroReactionEngine,
+    NotificationManager,
+    PresenceScheduler,
+    PresenceManager,
+    presence_manager,
+)
+from delta.vtuber.desktop import (
+    DesktopIntegration,
+    WindowsDesktopIntegration,
+    LinuxDesktopIntegration,
+    NoopDesktopIntegration,
+)
+
+__all__ = [
+    "VTuberEventType",
+    "VTuberEmotion",
+    "VTuberEvent",
+    "VTuberPayload",
+    "VTuberEventBus",
+    "vtuber_event_bus",
+    "VTuberState",
+    "VTuberStateMachine",
+    "InvalidStateTransitionError",
+    "VTuberAgentAdapter",
+    "VTuberExpression",
+    "EmotionResult",
+    "EmotionChangedEvent",
+    "EMOTION_TO_EXPRESSION_MAP",
+    "map_emotion_to_expression",
+    "resolve_emotion_from_event",
+    "EmotionEngine",
+    "emotion_engine",
+    "SpeechManager",
+    "SentenceChunker",
+    "SpeechChunk",
+    "SpeechState",
+    "SpeechLifecycleEventType",
+    "SpeechLifecycleEvent",
+    "TTSProvider",
+    "MockTTSProvider",
+    "AudioPlayer",
+    "MockAudioPlayer",
+    "AvatarState",
+    "ExpressionController",
+    "LipSyncController",
+    "DefaultLipSyncController",
+    "AudioAmplitudeAnalyzer",
+    "AvatarRenderer",
+    "MockAvatarRenderer",
+    "AvatarController",
+    "avatar_controller",
+    "Live2DExpressionMapper",
+    "Live2DParameterMapper",
+    "Live2DCanvasRenderer",
+    "VTS_ALLOWED_PARAMETERS",
+    "VTSConnectionState",
+    "VTSMessage",
+    "VTSMessageType",
+    "VTSParameterValue",
+    "VTSInjectParameterData",
+    "VTSMapper",
+    "VTSClient",
+    "VTSRenderer",
+    "PersonaProfile",
+    "MoodState",
+    "PersonalityBehavior",
+    "PersonalityManager",
+    "personality_manager",
+    "MemoryType",
+    "MemoryEntry",
+    "ShortTermMemoryBuffer",
+    "SecretFilter",
+    "SQLiteMemoryStore",
+    "MemoryManager",
+    "memory_manager",
+    "IdleBehaviorManager",
+    "idle_behavior_manager",
+    "AnimationPriority",
+    "AnimationPrioritySystem",
+    "PersonalVTuberRuntime",
+    "personal_vtuber_runtime",
+    "ResponsePayload",
+    "ResponseProcessor",
+    "response_processor",
+    "ResponseDispatcher",
+    "response_dispatcher",
+    "PresenceActivity",
+    "PresenceState",
+    "NotificationType",
+    "NotificationEvent",
+    "MicroReactionEngine",
+    "NotificationManager",
+    "PresenceScheduler",
+    "PresenceManager",
+    "presence_manager",
+    "DesktopIntegration",
+    "WindowsDesktopIntegration",
+    "LinuxDesktopIntegration",
+    "NoopDesktopIntegration",
+]

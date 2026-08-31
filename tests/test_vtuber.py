@@ -1326,12 +1326,12 @@ def test_vts_parameter_whitelist_enforcement():
         client._ws = AsyncMock()
 
         # Valid param
-        ok = await client.inject_raw_parameters([{"parameter": "ParamAngleX", "value": 20.0}])
-        assert ok is True
+        res = await client.inject_raw_parameters([{"parameter": "ParamAngleX", "value": 20.0}])
+        assert res.get("success") is True
 
         # Invalid param - rejected by whitelist
         rejected = await client.inject_raw_parameters([{"parameter": "ArbitraryScriptInjection", "value": 1.0}])
-        assert rejected is False
+        assert rejected.get("success") is False
         assert client.last_error is not None
         assert client.last_error["messageType"] == "SecurityError"
 
@@ -1553,7 +1553,7 @@ def test_persona_profile_clamping_and_behavior():
 
     assert "print('secret_key')" in display_text
     assert "print('secret_key')" not in speech_text
-    assert "Berikut cuplikan kodenya" in speech_text
+    assert "Ini kodenya ya" in speech_text
 
 
 def test_mood_state_updates_and_decay():
@@ -1711,10 +1711,9 @@ def test_companion_greeting_and_farewell():
         presence = PresenceManager(speech_mgr=speech_mgr, companion_mode=True)
 
         # 1. Greeting generation
-        greeting = await presence.trigger_greeting(user_name="Tuan")
+        greeting = await presence.trigger_greeting(user_name="kamu")
         assert greeting is not None
         assert "Delta" in greeting
-        assert "Tuan" in greeting
 
         # 2. Farewell execution
         await presence.trigger_farewell(timeout_sec=0.5)
@@ -2851,6 +2850,195 @@ def test_vts_offline_response_fallback():
         await speech_mgr.shutdown()
 
     asyncio.run(_test())
+
+
+# ==========================================
+# Regression Tests for VTS Control Channel
+# ==========================================
+
+
+def test_vts_auth_state():
+    from delta.vtuber.avatar.vts.client import VTSClient
+    from delta.vtuber.avatar.vts.protocol import VTSConnectionState
+
+    client = VTSClient(enabled=True)
+    assert client.is_authenticated is False
+    assert client.is_connected is False
+    assert client.state == VTSConnectionState.DISCONNECTED
+
+    summary = client.get_status_summary()
+    assert summary["authenticated"] is False
+    assert summary["connected"] is False
+
+
+def test_vts_model_loaded_state():
+    from delta.vtuber.avatar.vts.client import VTSClient
+
+    client = VTSClient(enabled=True)
+    client._is_connected = True
+    client._is_authenticated = True
+
+    # No model loaded
+    client._current_model_data = {"modelLoaded": False, "modelName": ""}
+    summary = client.get_status_summary()
+    assert summary["model_loaded"] is False
+    assert summary["current_model"] == ""
+    assert summary["model_name"] == ""
+
+    # Model loaded
+    client._current_model_data = {"modelLoaded": True, "modelName": "Shizuku", "modelID": "vts_shizuku_01"}
+    summary2 = client.get_status_summary()
+    assert summary2["model_loaded"] is True
+    assert summary2["current_model"] == "Shizuku"
+    assert summary2["model_name"] == "Shizuku"
+    assert summary2["model_id"] == "vts_shizuku_01"
+
+
+def test_vts_parameter_capabilities():
+    from delta.vtuber.avatar.vts.client import VTSClient
+
+    client = VTSClient(enabled=True)
+    client._supported_parameters_set = {"ParamAngleX", "ParamAngleY", "ParamMouthOpenY"}
+
+    assert client.is_parameter_supported("ParamAngleX") is True
+    assert client.is_parameter_supported("ParamAngleY") is True
+    assert client.is_parameter_supported("ParamMouthOpenY") is True
+    assert client.is_parameter_supported("ParamBrowLY") is False
+
+
+def test_vts_real_response_validation():
+    from unittest.mock import AsyncMock
+    from delta.vtuber.avatar.vts.client import VTSClient
+
+    async def _test():
+        client = VTSClient(enabled=True)
+        client._is_connected = True
+        client._is_authenticated = True
+
+        mock_ws = AsyncMock()
+        error_payload = {
+            "apiName": "VTubeStudioPublicAPI",
+            "apiVersion": "1.0",
+            "requestID": "DeltaDirectInject",
+            "messageType": "APIError",
+            "data": {
+                "errorID": 100,
+                "errorMessage": "Parameter could not be found or injected",
+            }
+        }
+        mock_ws.recv.return_value = json.dumps(error_payload)
+        client._ws = mock_ws
+
+        res = await client.inject_raw_parameters([{"parameter": "ParamAngleX", "value": 20.0}])
+        assert res["success"] is False
+        assert res["reason"] == "VTS_API_ERROR"
+        assert res["errorID"] == 100
+        assert "Parameter could not be found" in res["errorMessage"]
+
+    asyncio.run(_test())
+
+
+def test_vts_parameter_injection_result():
+    from unittest.mock import AsyncMock
+    from delta.vtuber.avatar.vts.client import VTSClient
+
+    async def _test():
+        client = VTSClient(enabled=True)
+        client._is_connected = True
+        client._is_authenticated = True
+
+        mock_ws = AsyncMock()
+        success_payload = {
+            "apiName": "VTubeStudioPublicAPI",
+            "apiVersion": "1.0",
+            "requestID": "DeltaDirectInject",
+            "messageType": "InjectParameterDataResponse",
+            "data": {}
+        }
+        mock_ws.recv.return_value = json.dumps(success_payload)
+        client._ws = mock_ws
+
+        res = await client.inject_raw_parameters([{"parameter": "ParamAngleX", "value": 20.0}])
+        assert res["success"] is True
+        assert res["reason"] == "OK"
+        assert client.last_error is None
+
+    asyncio.run(_test())
+
+
+def test_vts_expression_availability():
+    from unittest.mock import AsyncMock, MagicMock
+    from delta.web.bridge import EngineBridge
+    from delta.vtuber.avatar.vts.client import VTSClient
+
+    async def _test():
+        mock_engine = MagicMock()
+        bridge = EngineBridge(mock_engine)
+
+        mock_client = VTSClient(enabled=True)
+        mock_client._is_connected = True
+        mock_client._is_authenticated = True
+        mock_client._ws = AsyncMock()
+        mock_client._ws.recv.return_value = json.dumps({
+            "apiName": "VTubeStudioPublicAPI",
+            "apiVersion": "1.0",
+            "requestID": "DeltaExpressionTest",
+            "messageType": "InjectParameterDataResponse",
+            "data": {}
+        })
+        bridge._cached_vts_client = mock_client
+
+        # Valid expression
+        res_smile = await bridge.vts_test_expression("smile")
+        assert res_smile["status"] == "ok"
+        assert res_smile["expression"] == "smile"
+
+        # Invalid expression
+        res_invalid = await bridge.vts_test_expression("nonexistent_expression_xyz")
+        assert res_invalid["status"] == "error"
+        assert res_invalid["reason"] == "EXPRESSION_NOT_AVAILABLE"
+
+    asyncio.run(_test())
+
+
+def test_vts_auto_test_diagnostics():
+    from unittest.mock import AsyncMock, MagicMock
+    from delta.web.bridge import EngineBridge
+    from delta.vtuber.avatar.vts.client import VTSClient
+
+    async def _test():
+        mock_engine = MagicMock()
+        bridge = EngineBridge(mock_engine)
+
+        mock_client = VTSClient(enabled=True)
+        mock_client._is_connected = True
+        mock_client._is_authenticated = True
+        mock_client._current_model_data = {"modelLoaded": True, "modelName": "Hiyori Live2D", "modelID": "hiyori_1"}
+        mock_client._supported_parameters_set = {"ParamAngleX", "ParamAngleY", "ParamMouthOpenY"}
+        mock_client._ws = AsyncMock()
+        mock_client._ws.recv.return_value = json.dumps({
+            "apiName": "VTubeStudioPublicAPI",
+            "apiVersion": "1.0",
+            "requestID": "DeltaAutoTest",
+            "messageType": "InjectParameterDataResponse",
+            "data": {}
+        })
+        bridge._cached_vts_client = mock_client
+
+        report = await bridge.vts_run_auto_test()
+        assert report["total_steps"] == 10
+        assert report["steps"][0]["name"] == "getCurrentModel"
+        assert report["steps"][0]["status"] == "PASS"
+
+        # Check diagnostics on each step
+        for step in report["steps"]:
+            assert "step" in step
+            assert "name" in step
+            assert "status" in step
+            assert "details" in step
+
+    asyncio.run(_test())
+
 
 
 

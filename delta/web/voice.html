@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delta AI Voice Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <style>
+        body {
+            background-color: #08080f;
+            color: #f4f4f5;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .waveform {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            height: 48px;
+        }
+        .bar {
+            width: 4px;
+            height: 8px;
+            background: #ec4899;
+            border-radius: 9999px;
+            transition: height 0.1s ease;
+        }
+        .speaking .bar {
+            animation: bounce 0.6s ease infinite alternate;
+        }
+        .speaking .bar:nth-child(2) { animation-delay: 0.1s; }
+        .speaking .bar:nth-child(3) { animation-delay: 0.2s; }
+        .speaking .bar:nth-child(4) { animation-delay: 0.3s; }
+        .speaking .bar:nth-child(5) { animation-delay: 0.4s; }
+        .speaking .bar:nth-child(6) { animation-delay: 0.2s; }
+        .speaking .bar:nth-child(7) { animation-delay: 0.1s; }
+        @keyframes bounce {
+            0% { height: 6px; }
+            100% { height: 42px; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-4 md:p-8 selection:bg-pink-500/30">
+    <!-- Header -->
+    <header class="w-full max-w-3xl flex items-center justify-between border-b border-white/10 pb-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 font-bold">
+                Δ
+            </div>
+            <div>
+                <h1 class="text-base font-semibold tracking-wide">Delta Voice Response</h1>
+                <p class="text-xs text-zinc-400">Asisten Suara Natural Perempuan (id-ID)</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="audio-indicator" class="px-2.5 py-1 rounded-full text-xs font-mono bg-zinc-800 text-zinc-400 border border-white/5 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-zinc-500"></span> IDLE
+            </span>
+            <a href="/" class="text-xs text-zinc-400 hover:text-white px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 transition-colors">
+                Dashboard
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Central Hub -->
+    <main class="w-full max-w-2xl flex-1 flex flex-col items-center justify-center my-6 gap-6">
+        <!-- Voice Avatar Visualizer -->
+        <div class="relative flex flex-col items-center justify-center p-8 rounded-3xl bg-zinc-900/50 border border-white/10 backdrop-blur-xl shadow-2xl w-full">
+            <div id="orb" class="w-32 h-32 rounded-full bg-gradient-to-tr from-pink-600 via-purple-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-pink-500/20 transition-transform duration-300">
+                <span class="material-symbols-outlined text-4xl text-white">graphic_eq</span>
+            </div>
+
+            <!-- Waveform Animation -->
+            <div id="visualizer" class="waveform mt-6">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+            </div>
+
+            <!-- Speech Output Transcript Box -->
+            <div class="w-full mt-6 min-h-[100px] p-4 rounded-xl bg-black/40 border border-white/5 flex flex-col justify-center text-center">
+                <p id="speech-subtitles" class="text-sm md:text-base text-zinc-200 leading-relaxed italic">
+                    "Halo! Aku Delta. Tanyakan apa saja atau minta aku jalankan perintah."
+                </p>
+            </div>
+        </div>
+
+        <!-- Controls & Input Box -->
+        <div class="w-full flex flex-col gap-3">
+            <div class="flex items-center gap-2">
+                <input
+                    type="text"
+                    id="user-prompt"
+                    placeholder="Ketik pesan atau pertanyaan untuk Delta..."
+                    class="flex-1 bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-pink-500 transition-colors"
+                />
+                <button
+                    id="send-btn"
+                    onclick="handleSendMessage()"
+                    class="px-5 py-3 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-medium text-sm flex items-center gap-1.5 transition-all shadow-lg shadow-pink-600/30"
+                >
+                    <span class="material-symbols-outlined text-sm">send</span> Kirim
+                </button>
+            </div>
+            <div class="flex items-center justify-between text-xs text-zinc-500 px-1">
+                <span>Output Suara: <b class="text-pink-400 font-normal">Aktif (Speaker & Web Audio)</b></span>
+                <button onclick="testVoice()" class="hover:text-zinc-300 underline">Tes Suara</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Audio Element -->
+    <audio id="browser-audio-player" class="hidden"></audio>
+
+    <!-- Footer -->
+    <footer class="text-xs text-zinc-600">
+        Delta Autonomous Engine &bull; Voice Modality
+    </footer>
+
+    <script>
+        const audioPlayer = document.getElementById('browser-audio-player');
+        const visualizer = document.getElementById('visualizer');
+        const orb = document.getElementById('orb');
+        const subtitles = document.getElementById('speech-subtitles');
+        const indicator = document.getElementById('audio-indicator');
+        const promptInput = document.getElementById('user-prompt');
+
+        // Connect to Realtime Audio Stream (SSE)
+        function initAudioStream() {
+            const eventSource = new EventSource('/api/vtuber/audio');
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'audio_chunk' && data.audio_base64) {
+                        playAudioBase64(data.audio_base64, data.format || 'wav');
+                    }
+                } catch(e) {}
+            };
+        }
+
+        function playAudioBase64(b64, format) {
+            try {
+                const audioSrc = `data:audio/${format};base64,${b64}`;
+                audioPlayer.src = audioSrc;
+                audioPlayer.play().then(() => {
+                    setSpeakingState(true);
+                }).catch(e => {
+                    console.log("Audio play error, falling back to Web Speech:", e);
+                    speakWithWebSpeech(subtitles.innerText.replace(/^"|"$/g, ''));
+                });
+
+                audioPlayer.onended = () => {
+                    setSpeakingState(false);
+                };
+            } catch(err) {
+                speakWithWebSpeech(subtitles.innerText.replace(/^"|"$/g, ''));
+            }
+        }
+
+        function speakWithWebSpeech(text) {
+            if (!window.speechSynthesis || !text) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'id-ID';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.1;
+
+            const voices = window.speechSynthesis.getVoices();
+            const femaleIdVoice = voices.find(v => (v.lang.includes('id') || v.lang.includes('ID')) && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('gadis') || v.name.toLowerCase().includes('indonesia') || v.name.toLowerCase().includes('siti')));
+            const femaleEnVoice = voices.find(v => v.lang.includes('en') && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('samantha')));
+
+            if (femaleIdVoice) utterance.voice = femaleIdVoice;
+            else if (femaleEnVoice) utterance.voice = femaleEnVoice;
+
+            utterance.onstart = () => setSpeakingState(true);
+            utterance.onend = () => setSpeakingState(false);
+            utterance.onerror = () => setSpeakingState(false);
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function setSpeakingState(speaking) {
+            if (speaking) {
+                visualizer.classList.add('speaking');
+                orb.classList.add('scale-110');
+                indicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></span> BERBICARA';
+                indicator.className = 'px-2.5 py-1 rounded-full text-xs font-mono bg-pink-500/20 text-pink-300 border border-pink-500/30 flex items-center gap-1.5';
+            } else {
+                visualizer.classList.remove('speaking');
+                orb.classList.remove('scale-110');
+                indicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-zinc-500"></span> IDLE';
+                indicator.className = 'px-2.5 py-1 rounded-full text-xs font-mono bg-zinc-800 text-zinc-400 border border-white/5 flex items-center gap-1.5';
+            }
+        }
+
+        async function handleSendMessage() {
+            const text = promptInput.value.trim();
+            if (!text) return;
+            promptInput.value = '';
+            subtitles.innerText = "Delta sedang berpikir...";
+
+            try {
+                const res = await fetch('/api/voice/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+                if (data.result) {
+                    const reply = typeof data.result === 'string' ? data.result : (data.result.output || data.result.message || JSON.stringify(data.result));
+                    subtitles.innerText = `"${reply}"`;
+                    // Direct browser speech synthesis playback
+                    speakWithWebSpeech(reply);
+                }
+            } catch(e) {
+                subtitles.innerText = "Terjadi kesalahan koneksi.";
+            }
+        }
+
+        async function testVoice() {
+            promptInput.value = "Halo Delta, bagaimana kabarmu?";
+            handleSendMessage();
+        }
+
+        promptInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSendMessage();
+        });
+
+        // Initialize audio stream on page load
+        window.addEventListener('load', initAudioStream);
+    </script>
+</body>
+</html>

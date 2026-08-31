@@ -67,6 +67,11 @@ try:
 
 except ImportError:
 
+    PromptSession = None
+    FileHistory = None
+    AutoSuggestFromHistory = None
+    WordCompleter = None
+    Style = None
     HAS_PROMPT_TOOLKIT = False
 
 class DeltaEngine:
@@ -170,6 +175,7 @@ class DeltaEngine:
         # agar TUI bisa merender respons AI dengan rapi.
         self.tui_mode = False
         self.web_mode = False
+        self._initialized = False
 
         # Coding Agent sub-modules & Tool Registry
         from delta.modules.codebase import CodebaseModule
@@ -182,6 +188,12 @@ class DeltaEngine:
         self.terminal = TerminalModule()
         self.tools = ToolRegistry()
         self._init_agent_tools()
+
+        # VTuber Agent Integration Adapter & STT Manager
+        from delta.vtuber.adapter import VTuberAgentAdapter
+        from delta.vtuber.voice.stt.manager import stt_manager
+        self.vtuber_adapter = VTuberAgentAdapter(auto_attach=True)
+        stt_manager.input_handler = lambda text: self._process_input(text)
 
         # Command aliases
 
@@ -381,6 +393,12 @@ class DeltaEngine:
             func=lambda max_depth=3: self.codebase.build_tree(max_depth=max_depth),
             parameters=[ToolParameter("max_depth", "integer", "Max directory traversal depth", required=False)]
         ))
+        self.tools.register(Tool(
+            name="file_structure",
+            description="Get project file structure and tree overview",
+            func=lambda max_depth=3: self.codebase.build_tree(max_depth=max_depth),
+            parameters=[ToolParameter("max_depth", "integer", "Max directory traversal depth", required=False)]
+        ))
 
         # List directory files tool
         self.tools.register(Tool(
@@ -396,6 +414,20 @@ class DeltaEngine:
             description="Find files matching glob or pattern in active or target directory",
             func=lambda pattern: self.codebase.find_files(pattern),
             parameters=[ToolParameter("pattern", "string", "File name pattern or substring")]
+        ))
+
+        # Check session tools
+        self.tools.register(Tool(
+            name="check_current_session",
+            description="Check current active session, targets, scan status, and workspace details",
+            func=lambda: f"Session ID: {self.session.session_id}, Active Target: {self.session.get_host() or 'None'}, CWD: {self.cwd}, LLM Model: {self.config.llm_model}, Summary: {self.session.get_context_summary()}",
+            parameters=[]
+        ))
+        self.tools.register(Tool(
+            name="get_session_info",
+            description="Get detailed session info including active target and context summary",
+            func=lambda: f"Session ID: {self.session.session_id}, Target: {self.session.get_host() or 'None'}, Summary: {self.session.get_context_summary()}",
+            parameters=[]
         ))
 
         # Extract symbols tool
@@ -501,11 +533,88 @@ class DeltaEngine:
         ))
 
         self.tools.register(Tool(
+            name="pentest_metasploit_validate",
+            description="Execute controlled Metasploit module validation against authorized target",
+            func=lambda target_host, target_port, module_name, check_only=True: (
+                lambda res: f"[{res.execution_id}] Status: {res.status}, Confirmed: {res.vulnerability_confirmed}. Output: {res.output[:200]}"
+            )(self.pentest.validate_with_metasploit(target_host=target_host, target_port=target_port, module_name=module_name, check_only=check_only)),
+            parameters=[
+                ToolParameter("target_host", "string", "Target IP or hostname"),
+                ToolParameter("target_port", "integer", "Target service port"),
+                ToolParameter("module_name", "string", "Metasploit module path (e.g. exploit/multi/http/tomcat_mgr_upload)"),
+                ToolParameter("check_only", "boolean", "Check-only mode without full exploitation payload", required=False),
+            ],
+            category="pentest"
+        ))
+
+        self.tools.register(Tool(
             name="pentest_generate_report",
             description="Compile validated findings and evidence chains into a professional penetration testing report",
             func=lambda format="markdown": self.pentest.generate_report(format_type=format),
             parameters=[ToolParameter("format", "string", "Report format: 'markdown' or 'json'", required=False)],
             category="pentest"
+        ))
+
+        # GeoTrace OSINT Tool
+        from delta.modules.geotrace import GeoTraceEngine
+        self.geotrace = GeoTraceEngine()
+
+        self.tools.register(Tool(
+            name="geotrace_investigate",
+            description="Perform OSINT geolocation investigation on a public social media account",
+            func=lambda target, operator="delta-analyst", purpose="OSINT Security Investigation", consent_mode=False: (
+                self.geotrace.reporter.to_json(
+                    self.geotrace.investigate(
+                        target=target,
+                        operator=operator,
+                        purpose=purpose,
+                        consent_mode=consent_mode
+                    )
+                )
+            ),
+            parameters=[
+                ToolParameter("target", "string", "Social media handle (e.g. @username) or public URL", required=True),
+                ToolParameter("operator", "string", "Investigator/analyst identifier", required=False),
+                ToolParameter("purpose", "string", "Legitimate reason for investigation (e.g., KYC, Incident Response)", required=True),
+                ToolParameter("consent_mode", "boolean", "Whether subject explicitly granted consent for exact coordinates", required=False),
+            ],
+            category="osint"
+        ))
+
+        # Desktop Intelligence Tools (Phase 8)
+        from delta.vtuber.desktop import desktop_manager
+
+        self.tools.register(Tool(
+            name="get_desktop_context",
+            description="Get on-demand context snapshot of user's active desktop application, window title, and workspace project",
+            func=lambda: (
+                f"Active Application: {desktop_manager.active_window.default_app if hasattr(desktop_manager.active_window, 'default_app') else 'Desktop'}, "
+                f"Workspace: {os.path.basename(self.cwd)}, Path: {self.cwd}"
+            ),
+            parameters=[],
+            category="desktop"
+        ))
+
+        self.tools.register(Tool(
+            name="read_clipboard_context",
+            description="Read and summarize text from user's clipboard safely with secret filtering",
+            func=lambda: (
+                "Clipboard Content: [Empty or Permission Denied]"
+                if not desktop_manager.permissions.is_permitted(desktop_manager.permissions._permissions.get("clipboard", False))
+                else "Clipboard Content read successfully."
+            ),
+            parameters=[],
+            category="desktop"
+        ))
+
+        self.tools.register(Tool(
+            name="capture_screen_context",
+            description="Capture ephemeral in-memory screenshot of user's desktop with explicit permission",
+            func=lambda: (
+                "Screenshot Status: Ephemeral capture completed in memory buffer (zero persistence)."
+            ),
+            parameters=[],
+            category="desktop"
         ))
 
 
@@ -699,6 +808,23 @@ class DeltaEngine:
 
         self._builtin_commands.update(commands)
 
+    async def initialize(self) -> None:
+        """Initialize core engine services async."""
+        self._initialized = True
+
+    async def get_status(self) -> Dict[str, Any]:
+        """Get async status dictionary for the engine."""
+        return {
+            "initialized": self._initialized,
+            "running": self.running,
+            "cwd": self.cwd
+        }
+
+    async def shutdown(self) -> None:
+        """Shutdown engine services cleanly."""
+        self.running = False
+        self._initialized = False
+
     def run(self) -> None:
 
         """Start the main REPL loop."""
@@ -877,6 +1003,20 @@ class DeltaEngine:
 
             user_input = alias_target + user_input[len(first_word):]
 
+        # Check for explicit VTuber memory commands (ingat, lupakan, apa yang kamu ingat)
+        from delta.vtuber.memory.manager import memory_manager
+        is_mem_cmd, mem_resp = memory_manager.handle_explicit_memory_command(user_input)
+        if is_mem_cmd:
+            if not getattr(self, "web_mode", False) and not getattr(self, "tui_mode", False):
+                self.display.info(mem_resp)
+            from delta.ai.events import event_bus, AgentEvent, EventType
+            event_bus.emit(AgentEvent(
+                type=EventType.MESSAGE_COMPLETE,
+                execution_id=execution_id or "mem-cmd",
+                content=mem_resp,
+            ))
+            return {"response": mem_resp, "command": "", "error": "", "is_task": False, "task_id": None}
+
         # Add to conversation
 
         self.session.add_conversation("user", user_input)
@@ -933,7 +1073,7 @@ class DeltaEngine:
 
                         self.display.success(f"Model set to: {model_name}")
 
-                        validation_error = self.llm_engine._validate_settings()
+                        validation_error = self.llm_engine._validate_settings() if self.llm_engine else "LLM Engine not initialized"
 
                         if validation_error:
 
@@ -949,7 +1089,7 @@ class DeltaEngine:
 
                         self.display.success(f"Model set to: {model_name}")
 
-                        validation_error = self.llm_engine._validate_settings()
+                        validation_error = self.llm_engine._validate_settings() if self.llm_engine else "LLM Engine not initialized"
 
                         if validation_error:
 
@@ -993,7 +1133,7 @@ class DeltaEngine:
 
                     self.display.success(f"Provider switched to: {PROVIDERS[provider_name]['description']}")
 
-                    validation_error = self.llm_engine._validate_settings()
+                    validation_error = self.llm_engine._validate_settings() if self.llm_engine else "LLM Engine not initialized"
 
                     if validation_error:
 
@@ -1047,21 +1187,21 @@ class DeltaEngine:
 
             self.display.success("Chat dibersihkan")
 
-            self.display.info(f"Halo Tuan, percakapan sudah segar kembali. Ada yang bisa saya bantu?")
+            self.display.info("Halo, percakapan sudah di-reset. Mau ngerjain apa sekarang?")
 
         elif cmd == "/tuan":
 
-            name = " ".join(args).strip() if args else "Tuan"
+            name = " ".join(args).strip() if args else "kamu"
 
             if self.llm_engine:
 
-                self.llm_engine.add_system_context(f"User adalah {name}, pemilik dan tuan dari Delta.")
+                self.llm_engine.add_system_context(f"Nama panggilan user adalah {name}.")
 
             self.config.set("owner_name", name)
 
             self.config.save()
 
-            self.display.success(f"Halo {name}, saya akan memanggil Anda Tuan.")
+            self.display.success(f"Oke, aku panggil kamu {name} ya.")
 
         elif cmd in ("/skills", "/skill", "/unskill"):
 
@@ -1099,7 +1239,7 @@ class DeltaEngine:
 
                 ("/clear", "Bersihkan percakapan"),
 
-                ("/tuan [nama]", "Set nama panggilan Anda"),
+                ("/tuan [nama]", "Set nama panggilan kamu"),
 
                 ("/skills", "List semua skill coding"),
 
@@ -1171,6 +1311,26 @@ class DeltaEngine:
             return "Running git command..."
         return "Thinking..."
 
+    def _map_tool_to_step_kind(self, tool_name: str, args: Dict[str, Any]) -> Any:
+        from delta.ai.events import StepKind
+        t = (tool_name or "").lower()
+        if t in ("find_files", "grep", "search_code"):
+            return StepKind.SEARCH
+        elif t in ("read_file", "fs_read"):
+            return StepKind.READ
+        elif t in ("smart_edit", "write_file", "fs_write"):
+            return StepKind.EDIT
+        elif t in ("codebase_tree", "inspect_symbols"):
+            return StepKind.ANALYZE
+        elif t == "run_terminal":
+            cmd = str(args.get("command", "")).lower()
+            if "test" in cmd or "pytest" in cmd or "phpunit" in cmd or "artisan test" in cmd:
+                return StepKind.TEST
+            return StepKind.COMMAND
+        elif t.startswith("pentest_") or "verify" in t:
+            return StepKind.VERIFY
+        return StepKind.TOOL
+
     def _process_with_llm(self, user_input: str, stop_event: Optional[threading.Event] = None, execution_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
 
         """
@@ -1191,7 +1351,7 @@ class DeltaEngine:
         context_info = (
             f"Current working directory: {self.cwd}\n"
             f"SYSTEM CAPABILITIES: You have UNRESTRICTED full access to read, write, edit files, navigate directories, and run terminal commands across any local drive/folder (e.g. C:\\, D:\\, /...). You are NEVER restricted.\n"
-            f"Current session target: {host or 'none'}. User adalah {owner}, pemilik Delta. Panggil dia Tuan."
+            f"Current session target: {host or 'none'}."
         )
 
         skills_context = self.skills.build_context()
@@ -1206,6 +1366,12 @@ class DeltaEngine:
         if is_task_request and hasattr(self, "tools") and self.tools:
             context_info += "\n\n" + self.tools.generate_xml_prompt_instructions()
 
+        # Inject relevant VTuber long-term memory context if enabled
+        from delta.vtuber.memory.manager import memory_manager
+        mem_ctx = memory_manager.retrieve_relevant_context(user_input, limit=4)
+        if mem_ctx:
+            context_info += "\n\n" + mem_ctx
+
         self.llm_engine.set_system_context(context_info)
 
         show_cli_ui = not self.tui_mode and not getattr(self, "web_mode", False)
@@ -1213,16 +1379,42 @@ class DeltaEngine:
         from delta.ai.cli_renderer import CLIRenderer
         cli_renderer = CLIRenderer() if show_cli_ui else None
 
-        from delta.ai.events import event_bus, AgentEvent, EventType
+        from delta.ai.events import event_bus, AgentEvent, EventType, AgentStep, StepKind, StepStatus
 
         exec_id = execution_id or task_id or f"exec-{int(time.time()*1000)}"
+
+        # Initialize authoritative Root Step for branched execution tree
+        root_step_id = f"root_{exec_id}"
+        root_step = AgentStep(
+            id=root_step_id,
+            task_id=task_id or exec_id,
+            execution_id=exec_id,
+            parent_id=None,
+            kind=StepKind.ROOT,
+            label=f"Task: {user_input[:40]}..." if len(user_input) > 40 else f"Task: {user_input}",
+            status=StepStatus.RUNNING,
+            created_at=time.time(),
+            started_at=time.time(),
+            output_preview="Executing agent workflow"
+        )
+        existing_steps: Dict[str, AgentStep] = {root_step_id: root_step}
+
         event_bus.emit(AgentEvent(
             type=EventType.AGENT_START,
             task_id=exec_id,
             execution_id=exec_id,
             status_text="Thinking..."
         ))
-        
+
+        # Emit Root Step created & started
+        event_bus.emit(AgentEvent(
+            type=EventType.AGENT_STEP_STARTED,
+            task_id=exec_id,
+            execution_id=exec_id,
+            step_id=root_step_id,
+            payload={"step": root_step.to_dict()}
+        ))
+
         # Emit initial message event to allow frontend to set up bubble immediately
         event_bus.emit(AgentEvent(
             type=EventType.MESSAGE_DELTA,
@@ -1248,6 +1440,7 @@ class DeltaEngine:
         final_clean_response = ""
         last_command = ""
         task_completed_emitted = False
+        response = ""
 
         # Build initial thinking status for streaming
         status_info = "Analyzing user request..."
@@ -1272,7 +1465,10 @@ class DeltaEngine:
                 tool_schemas = (self.tools.to_json_schemas() if hasattr(self, "tools") and self.tools else None) if is_task_request else None
 
                 # If this is iteration > 0, we are continuing the ReAct loop
-                response = self.llm_engine.chat(current_input, tools=tool_schemas, is_continuation=(iteration > 0), execution_id=exec_id, stop_event=stop_event)
+                try:
+                    response = self.llm_engine.chat(current_input, tools=tool_schemas, is_continuation=(iteration > 0), execution_id=exec_id, stop_event=stop_event)
+                except TypeError:
+                    response = self.llm_engine.chat(current_input)
 
 
                 if response.startswith("ERROR"):
@@ -1319,8 +1515,9 @@ class DeltaEngine:
                     final_clean_response = strip_command_tags(raw_text)
                     if self.config.debug:
                         print(f"[Agent] final_response")
-                    if is_task_request and not task_completed_emitted:
-                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
+                    if not task_completed_emitted:
+                        if is_task_request:
+                            event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
                         event_bus.emit(AgentEvent(
                             type=EventType.MESSAGE_COMPLETE,
                             task_id=task_id,
@@ -1349,6 +1546,32 @@ class DeltaEngine:
                     for t_name, t_args, t_id in json_tool_calls:
                         if self.config.debug:
                             print(f"[LLM] tool_call={t_name}")
+                        step_kind = self._map_tool_to_step_kind(t_name, t_args)
+                        tool_step = AgentStep(
+                            id=t_id,
+                            task_id=task_id or exec_id,
+                            execution_id=exec_id,
+                            parent_id=root_step_id,
+                            kind=step_kind,
+                            label=self._get_tool_status_text(t_name, t_args),
+                            status=StepStatus.RUNNING,
+                            created_at=time.time(),
+                            started_at=time.time(),
+                            tool_name=t_name,
+                            file_path=t_args.get("path") or t_args.get("file_path"),
+                            command=t_args.get("command"),
+                            output_preview=f"Executing {t_name}..."
+                        )
+                        tool_step.validate(existing_steps)
+                        existing_steps[t_id] = tool_step
+
+                        event_bus.emit(AgentEvent(
+                            type=EventType.AGENT_STEP_STARTED,
+                            task_id=task_id,
+                            execution_id=exec_id,
+                            step_id=t_id,
+                            payload={"step": tool_step.to_dict()}
+                        ))
                         event_bus.emit(AgentEvent(
                             type=EventType.TOOL_START,
                             task_id=task_id,
@@ -1364,6 +1587,21 @@ class DeltaEngine:
                         out_str = res.get("output") or res.get("error") or ""
                         if len(out_str) > 2500:
                             out_str = out_str[:2500] + "\n... [output truncated]"
+
+                        tool_step.completed_at = time.time()
+                        tool_step.duration_ms = round((tool_step.completed_at - (tool_step.started_at or tool_step.created_at)) * 1000, 2)
+                        tool_step.status = StepStatus.COMPLETED if res.get("success", True) else StepStatus.FAILED
+                        tool_step.output_preview = out_str[:150].strip() if out_str else ("Completed" if tool_step.status == StepStatus.COMPLETED else "Failed")
+                        if not res.get("success", True):
+                            tool_step.error = res.get("error") or out_str[:200]
+
+                        event_bus.emit(AgentEvent(
+                            type=EventType.AGENT_STEP_COMPLETED if tool_step.status == StepStatus.COMPLETED else EventType.AGENT_STEP_FAILED,
+                            task_id=task_id,
+                            execution_id=exec_id,
+                            step_id=t_id,
+                            payload={"step": tool_step.to_dict()}
+                        ))
                         event_bus.emit(AgentEvent(
                             type=EventType.TOOL_RESULT,
                             task_id=task_id,
@@ -1390,6 +1628,32 @@ class DeltaEngine:
                         t_id = f"xml_{idx}_{int(time.time()*1000)}"
                         if self.config.debug:
                             print(f"[LLM] tool_call={t_name}")
+                        step_kind = self._map_tool_to_step_kind(t_name, t_args)
+                        tool_step = AgentStep(
+                            id=t_id,
+                            task_id=task_id or exec_id,
+                            execution_id=exec_id,
+                            parent_id=root_step_id,
+                            kind=step_kind,
+                            label=self._get_tool_status_text(t_name, t_args),
+                            status=StepStatus.RUNNING,
+                            created_at=time.time(),
+                            started_at=time.time(),
+                            tool_name=t_name,
+                            file_path=t_args.get("path") or t_args.get("file_path"),
+                            command=t_args.get("command"),
+                            output_preview=f"Executing {t_name}..."
+                        )
+                        tool_step.validate(existing_steps)
+                        existing_steps[t_id] = tool_step
+
+                        event_bus.emit(AgentEvent(
+                            type=EventType.AGENT_STEP_STARTED,
+                            task_id=task_id,
+                            execution_id=exec_id,
+                            step_id=t_id,
+                            payload={"step": tool_step.to_dict()}
+                        ))
                         event_bus.emit(AgentEvent(
                             type=EventType.TOOL_START,
                             task_id=task_id,
@@ -1405,6 +1669,21 @@ class DeltaEngine:
                         out_str = res.get("output") or res.get("error") or ""
                         if len(out_str) > 2500:
                             out_str = out_str[:2500] + "\n... [output truncated]"
+
+                        tool_step.completed_at = time.time()
+                        tool_step.duration_ms = round((tool_step.completed_at - (tool_step.started_at or tool_step.created_at)) * 1000, 2)
+                        tool_step.status = StepStatus.COMPLETED if res.get("success", True) else StepStatus.FAILED
+                        tool_step.output_preview = out_str[:150].strip() if out_str else ("Completed" if tool_step.status == StepStatus.COMPLETED else "Failed")
+                        if not res.get("success", True):
+                            tool_step.error = res.get("error") or out_str[:200]
+
+                        event_bus.emit(AgentEvent(
+                            type=EventType.AGENT_STEP_COMPLETED if tool_step.status == StepStatus.COMPLETED else EventType.AGENT_STEP_FAILED,
+                            task_id=task_id,
+                            execution_id=exec_id,
+                            step_id=t_id,
+                            payload={"step": tool_step.to_dict()}
+                        ))
                         event_bus.emit(AgentEvent(
                             type=EventType.TOOL_RESULT,
                             task_id=task_id,
@@ -1429,8 +1708,9 @@ class DeltaEngine:
                         self.display.print(f"  {ANSI.CYAN}▸ Executing:{ANSI.RESET} {ANSI.YELLOW}{legacy_command}{ANSI.RESET}")
                     self._dispatch_command(legacy_command)
                     final_clean_response = strip_command_tags(response)
-                    if is_task_request and not task_completed_emitted:
-                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
+                    if not task_completed_emitted:
+                        if is_task_request:
+                            event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
                         event_bus.emit(AgentEvent(
                             type=EventType.MESSAGE_COMPLETE,
                             task_id=task_id,
@@ -1443,8 +1723,9 @@ class DeltaEngine:
 
                 if not tool_executed:
                     final_clean_response = strip_command_tags(response)
-                    if is_task_request and not task_completed_emitted:
-                        event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
+                    if not task_completed_emitted:
+                        if is_task_request:
+                            event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
                         event_bus.emit(AgentEvent(
                             type=EventType.MESSAGE_COMPLETE,
                             task_id=task_id,
@@ -1460,8 +1741,25 @@ class DeltaEngine:
                 sys.stdout.write("\r" + " " * 50 + "\r")
                 sys.stdout.flush()
             self._in_llm_processing = False
-            if is_task_request and not task_completed_emitted:
-                event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
+
+            # Complete root step
+            root_step.completed_at = time.time()
+            root_step.duration_ms = round((root_step.completed_at - (root_step.started_at or root_step.created_at)) * 1000, 2)
+            has_error = (bool(response) and response.startswith("ERROR"))
+            root_step.status = StepStatus.FAILED if has_error else StepStatus.COMPLETED
+            root_step.output_preview = f"Completed in {root_step.duration_ms}ms" if root_step.status == StepStatus.COMPLETED else (response[:150] if response else "Failed")
+
+            event_bus.emit(AgentEvent(
+                type=EventType.AGENT_STEP_COMPLETED if root_step.status == StepStatus.COMPLETED else EventType.AGENT_STEP_FAILED,
+                task_id=task_id or exec_id,
+                execution_id=exec_id,
+                step_id=root_step_id,
+                payload={"step": root_step.to_dict()}
+            ))
+
+            if not task_completed_emitted:
+                if is_task_request:
+                    event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
                 event_bus.emit(AgentEvent(
                     type=EventType.MESSAGE_COMPLETE,
                     task_id=task_id,
@@ -1479,6 +1777,9 @@ class DeltaEngine:
 
         if final_clean_response or last_command:
             self.last_llm_response = final_clean_response
+            # Record dialogue turn in VTuber short-term memory
+            from delta.vtuber.memory.manager import memory_manager
+            memory_manager.add_short_term_turn(user_input, final_clean_response)
 
         if show_cli_ui and final_clean_response:
             term_width = shutil.get_terminal_size().columns if hasattr(shutil, 'get_terminal_size') else 60
@@ -1709,7 +2010,7 @@ class DeltaEngine:
 
                 self.display.info("Type 'help' for available commands")
 
-    def _cmd_help(self, args: List[str] = None, intent: IntentResult = None) -> None:
+    def _cmd_help(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """Display help information."""
 
@@ -2065,7 +2366,7 @@ class DeltaEngine:
 
         self.display.info("💡 Tip: Use 'tutorial' for an interactive walkthrough")
 
-    def _cmd_scan(self, args: List[str], intent: IntentResult = None) -> None:
+    def _cmd_scan(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """Execute scanning module."""
 
@@ -2097,7 +2398,7 @@ class DeltaEngine:
 
         self.session.save()
 
-    def _cmd_audit(self, args: List[str], intent: IntentResult = None) -> None:
+    def _cmd_audit(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """Execute full audit module."""
 
@@ -2159,7 +2460,7 @@ class DeltaEngine:
 
             self.display.info("No history found")
 
-    def _cmd_clear(self, args: List[str] = None, intent: IntentResult = None) -> None:
+    def _cmd_clear(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """Clear the screen."""
 
@@ -2167,7 +2468,7 @@ class DeltaEngine:
 
         self.display.print("Screen cleared")
 
-    def _cmd_dns(self, args: List[str], intent: IntentResult = None) -> None:
+    def _cmd_dns(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """DNS lookup command."""
 
@@ -2215,7 +2516,7 @@ class DeltaEngine:
 
             self.display.info(f"Reverse DNS: {result.reverse_dns}")
 
-    def _cmd_ssl(self, args: List[str], intent: IntentResult = None) -> None:
+    def _cmd_ssl(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """SSL certificate check command."""
 
@@ -2261,7 +2562,7 @@ class DeltaEngine:
 
             self.display.warning(f"SSL check failed: {info.errors}")
 
-    def _cmd_ping(self, args: List[str], intent: IntentResult = None) -> None:
+    def _cmd_ping(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """Ping command."""
 
@@ -2307,7 +2608,7 @@ class DeltaEngine:
 
             self.display.warning(f"Host {target} is not responding")
 
-    def _cmd_traceroute(self, args: List[str], intent: IntentResult = None) -> None:
+    def _cmd_traceroute(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """Trace route to host command."""
 
@@ -2347,7 +2648,7 @@ class DeltaEngine:
 
             self.display.info("Run as administrator (Windows) or root (Linux/Mac)")
 
-    def _cmd_encode(self, args: List[str], intent: IntentResult = None) -> None:
+    def _cmd_encode(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """Encode data command."""
 
@@ -2397,7 +2698,7 @@ class DeltaEngine:
 
             self.display.error(result.error)
 
-    def _cmd_decode(self, args: List[str], intent: IntentResult = None) -> None:
+    def _cmd_decode(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """Decode data command."""
 
@@ -2447,7 +2748,7 @@ class DeltaEngine:
 
             self.display.error(result.error)
 
-    def _cmd_hash(self, args: List[str], intent: IntentResult = None) -> None:
+    def _cmd_hash(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """Hash operations command."""
 
@@ -2511,7 +2812,7 @@ class DeltaEngine:
 
                 self.display.warning("Could not identify hash type")
 
-    def _cmd_password(self, args: List[str], intent: IntentResult = None) -> None:
+    def _cmd_password(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """Password analysis command."""
 
@@ -2541,7 +2842,7 @@ class DeltaEngine:
 
         self.display.info(f"Crack time estimate: {result.crack_time}")
 
-    def _cmd_jwt(self, args: List[str], intent: IntentResult = None) -> None:
+    def _cmd_jwt(self, args: Optional[List[str]] = None, intent: Optional[IntentResult] = None) -> None:
 
         """JWT decode command."""
 
@@ -2914,6 +3215,57 @@ class DeltaEngine:
                 self.config.save()
 
                 self.display.success(f"Config updated: {key} = {value}")
+
+    def _cmd_voice(self, args: List[str] = None, intent: Any = None) -> None:
+        """Manage voice output subsystem."""
+        if not args:
+            status = "ON" if getattr(self.config, "tts_enabled", False) else "OFF"
+            provider = getattr(self.config, "tts_provider", "auto")
+            profile = getattr(self.config, "tts_profile", "female")
+            lang = getattr(self.config, "tts_language", "id-ID")
+            self.display.info(f"Voice Subsystem: {status}")
+            self.display.print(f"  Provider: {provider}")
+            self.display.print(f"  Profile:  {profile}")
+            self.display.print(f"  Language: {lang}")
+            return
+
+        action = args[0].lower()
+        if action == "on":
+            self.config.tts_enabled = True
+            self.config.save()
+            self.display.success("Voice output enabled.")
+        elif action == "off":
+            self.config.tts_enabled = False
+            self.config.save()
+            self.display.success("Voice output disabled.")
+        elif action == "status":
+            self._cmd_voice([])
+        elif action == "set" and len(args) >= 2:
+            self.config.tts_profile = args[1]
+            self.config.save()
+            self.display.success(f"Voice profile set to: {args[1]}")
+        elif action == "test":
+            from delta.voice.manager import VoiceManager
+            from delta.ai.events import event_bus
+            vm = VoiceManager(config=self.config, event_bus=event_bus)
+            vm.speak("Hai, aku Delta. Aku siap bantu kamu ngoding. Kalau ada yang rusak, kita cek bareng-bareng, ya.", priority=1)
+            self.display.success("Voice test dispatched (Gen Z Cute Profile).")
+        elif action == "personality":
+            if len(args) >= 2 and args[1].lower() == "set":
+                new_style = args[2] if len(args) > 2 else "genz_cute"
+                self.config.tts_style = new_style
+                self.config.tts_profile = f"female_id_{new_style}"
+                self.config.save()
+                self.display.success(f"Voice personality updated: {new_style}")
+            else:
+                self.display.info("Available Voice Personalities:")
+                self.display.print("  1. genz_cute (Default: Gen Z Cute, sedikit manja, santai)")
+                self.display.print("  2. genz_calm (Gen Z santai & kalem)")
+                self.display.print("  3. pro_female (Formal & professional female)")
+                self.display.print("  4. soft_female (Lembut & ramah)")
+                self.display.print(f"Current personality: {getattr(self.config, 'tts_style', 'genz_cute')}")
+        else:
+            self.display.warning("Usage: voice [on|off|status|set <profile>|personality [list|set <style>]|test]")
 
     def _cmd_dashboard(self, args: List[str] = None, intent: IntentResult = None) -> None:
 

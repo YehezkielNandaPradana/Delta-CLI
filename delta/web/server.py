@@ -117,6 +117,16 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                     unsubscribe()
                 return
 
+            if clean_path == "/api/voice/status":
+                res = self.bridge.get_voice_status() if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
             if clean_path == "/api/vtuber/audio":
                 # Realtime Audio stream endpoint for browser audio client
                 from delta.vtuber.voice.browser_player import browser_audio_player
@@ -432,6 +442,23 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self._safe_write(body)
                 return
+
+            if clean_path in ("/voice", "/voice.html"):
+                search_paths = [
+                    os.path.join(self.static_dir, "voice.html"),
+                    os.path.join(os.path.dirname(__file__), "static", "voice.html"),
+                    os.path.join(os.path.dirname(__file__), "voice.html"),
+                ]
+                for vp in search_paths:
+                    if os.path.exists(vp):
+                        with open(vp, "rb") as f:
+                            content = f.read()
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/html; charset=utf-8")
+                        self.send_header("Content-Length", str(len(content)))
+                        self.end_headers()
+                        self._safe_write(content)
+                        return
 
             if clean_path in ("/", "/index.html"):
                 index_path = os.path.join(self.static_dir, "index.html")

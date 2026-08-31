@@ -21,9 +21,14 @@ class SpeakingState(str, Enum):
 class VoiceProfile:
     gender: str = "female"
     language: str = "id-ID"
-    speed: float = 1.0
+    style: str = "genz_cute"
+    personality: str = "cute_manja"
+    formality: str = "casual"
+    energy: str = "medium"
+    speed: float = 0.95
     pitch: float = 0.0
     volume: float = 1.0
+    pause_scale: float = 1.05
 
 @dataclass
 class TTSVoice:

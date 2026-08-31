@@ -50,6 +50,11 @@ class EngineBridge:
         self.engine = engine
         if self.engine:
             self.engine.web_mode = True
+        # Initialize VoiceManager on EventBus
+        from delta.ai.events import event_bus
+        from delta.voice.manager import VoiceManager
+        self.voice_manager = VoiceManager(config=self.config, event_bus=event_bus)
+        self.voice_manager.start()
 
     def cancel_execution(self) -> Dict[str, Any]:
         if self.engine and hasattr(self.engine, "_stop_event") and self.engine._stop_event:
@@ -956,7 +961,20 @@ class EngineBridge:
                     pass
 
             exec_res = self.execute_command(text.strip())
-            return {"status": "ok", "transcript": text.strip(), "result": exec_res}
+            from delta.voice.formatter import VoiceFormatter
+            raw_resp = ""
+            if isinstance(exec_res, dict):
+                raw_resp = exec_res.get("response") or exec_res.get("message") or exec_res.get("output", "")
+            elif isinstance(exec_res, str):
+                raw_resp = exec_res
+
+            speech_text = VoiceFormatter.format_for_speech(raw_resp, style="genz_cute") if raw_resp else ""
+
+            # Output vocal response via voice manager
+            if hasattr(self, "voice_manager") and self.voice_manager and speech_text:
+                self.voice_manager.speak(speech_text, priority=1)
+
+            return {"status": "ok", "transcript": text.strip(), "result": exec_res, "speech_text": speech_text}
         except Exception as exc:
             return {"status": "error", "message": str(exc)}
 
@@ -1043,8 +1061,11 @@ class EngineBridge:
                     "vts": client.get_status_summary(),
                 }
 
-        sent = await client.inject_raw_parameters([{"parameter": parameter, "value": float(value)}])
-        if sent:
+        res = await client.inject_raw_parameters(
+            [{"parameter": parameter, "value": float(value)}],
+            request_id="DeltaDirectTest",
+        )
+        if res.get("success"):
             return {
                 "status": "ok",
                 "message": f"Injected {parameter} = {value}",
@@ -1055,12 +1076,18 @@ class EngineBridge:
         else:
             return {
                 "status": "error",
-                "message": "Failed to inject parameter into VTube Studio",
+                "message": res.get("errorMessage") or f"Failed to inject parameter {parameter} ({res.get('reason')})",
+                "reason": res.get("reason"),
+                "errorID": res.get("errorID"),
                 "vts": client.get_status_summary(),
             }
 
     async def vts_test_expression(self, expression_name: str, intensity: float = 0.8) -> Dict[str, Any]:
         """Test an expression on VTS using Live2DExpressionMapper."""
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("VTS_EXPRESSION_TEST_START\nexpression=%s\nintensity=%s", expression_name, intensity)
+
         from delta.vtuber.emotion.schemas import VTuberExpression
         from delta.vtuber.avatar.live2d_mapper import Live2DExpressionMapper
         from delta.vtuber.avatar.vts.protocol import VTS_ALLOWED_PARAMETERS
@@ -1070,9 +1097,11 @@ class EngineBridge:
             matched_expr = VTuberExpression(expr_clean)
         except ValueError:
             valid_exprs = [e.value for e in VTuberExpression]
+            logger.info("VTS_EXPRESSION_TEST_RESULT\nstatus=FAIL\nreason=EXPRESSION_NOT_AVAILABLE")
             return {
                 "status": "error",
                 "message": f"Expression '{expression_name}' unavailable. Valid expressions: {valid_exprs}",
+                "reason": "EXPRESSION_NOT_AVAILABLE",
             }
 
         client = self._get_active_vts_client()
@@ -1080,9 +1109,11 @@ class EngineBridge:
             client.enabled = True
             ok = await client.connect()
             if not ok:
+                logger.info("VTS_EXPRESSION_TEST_RESULT\nstatus=FAIL\nreason=VTS_NOT_AUTHENTICATED")
                 return {
                     "status": "error",
                     "message": f"VTube Studio not connected or unauthenticated ({client.state.value})",
+                    "reason": "VTS_NOT_AUTHENTICATED",
                     "vts": client.get_status_summary(),
                 }
 
@@ -1094,8 +1125,11 @@ class EngineBridge:
             if k in VTS_ALLOWED_PARAMETERS
         ]
 
-        sent = await client.inject_raw_parameters(param_list, request_id="DeltaExpressionTest")
-        if sent:
+        logger.info("VTS_EXPRESSION_REQUEST_SENT")
+        res = await client.inject_raw_parameters(param_list, request_id="DeltaExpressionTest")
+        logger.info("VTS_EXPRESSION_RESPONSE")
+        if res.get("success"):
+            logger.info("VTS_EXPRESSION_TEST_RESULT\nstatus=PASS")
             return {
                 "status": "ok",
                 "message": f"Expression '{matched_expr.value}' applied",
@@ -1104,9 +1138,12 @@ class EngineBridge:
                 "vts": client.get_status_summary(),
             }
         else:
+            logger.info("VTS_EXPRESSION_TEST_RESULT\nstatus=FAIL\nreason=%s", res.get("reason", "UNKNOWN"))
             return {
                 "status": "error",
-                "message": f"Failed to inject expression '{matched_expr.value}'",
+                "message": res.get("errorMessage") or f"Failed to inject expression '{matched_expr.value}'",
+                "reason": res.get("reason"),
+                "errorID": res.get("errorID"),
                 "vts": client.get_status_summary(),
             }
 
@@ -1125,11 +1162,16 @@ class EngineBridge:
         curve = [0.0, 0.3, 0.7, 1.0, 0.6, 0.2, 0.8, 0.4, 0.9, 0.0]
         steps = []
         for i, amp in enumerate(curve):
-            ok = await client.inject_raw_parameters(
+            res = await client.inject_raw_parameters(
                 [{"parameter": "ParamMouthOpenY", "value": float(amp)}],
                 request_id="DeltaLipSyncTest",
             )
-            steps.append({"step": i + 1, "amplitude": amp, "status": "PASS" if ok else "FAIL"})
+            steps.append({
+                "step": i + 1,
+                "amplitude": amp,
+                "status": "PASS" if res.get("success") else "FAIL",
+                "reason": res.get("reason"),
+            })
             await asyncio.sleep(0.12)
 
         passed = all(s["status"] == "PASS" for s in steps)
@@ -1154,8 +1196,13 @@ class EngineBridge:
                 {"parameter": "ParamAngleX", "value": float(angle)},
                 {"parameter": "ParamAngleZ", "value": round(angle * 0.3, 2)},
             ]
-            ok = await client.inject_raw_parameters(payload, request_id="DeltaPhysicsTest")
-            steps.append({"step": i + 1, "ParamAngleX": angle, "status": "PASS" if ok else "FAIL"})
+            res = await client.inject_raw_parameters(payload, request_id="DeltaPhysicsTest")
+            steps.append({
+                "step": i + 1,
+                "ParamAngleX": angle,
+                "status": "PASS" if res.get("success") else "FAIL",
+                "reason": res.get("reason"),
+            })
             await asyncio.sleep(0.1)
 
         passed = all(s["status"] == "PASS" for s in steps)
@@ -1163,11 +1210,16 @@ class EngineBridge:
 
     async def vts_reset_parameters(self) -> Dict[str, Any]:
         """Reset test parameters back to neutral default rest posture."""
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("VTS_RESET_START")
+
         client = self._get_active_vts_client()
         if not client.is_connected or not client.is_authenticated:
             client.enabled = True
             ok = await client.connect()
             if not ok:
+                logger.info("VTS_RESET_RESULT\nstatus=FAIL\nreason=VTS_NOT_AUTHENTICATED")
                 return {
                     "status": "error",
                     "message": f"VTube Studio not connected ({client.state.value})",
@@ -1190,22 +1242,30 @@ class EngineBridge:
             {"parameter": "ParamBreath", "value": 0.5},
         ]
 
-        sent = await client.inject_raw_parameters(reset_payload, request_id="DeltaResetInject")
-        if sent:
+        res = await client.inject_raw_parameters(reset_payload, request_id="DeltaResetInject")
+        if res.get("success"):
+            logger.info("VTS_RESET_RESULT\nstatus=PASS")
             return {
                 "status": "ok",
                 "message": "VTube Studio parameters reset to neutral",
                 "vts": client.get_status_summary(),
             }
+        logger.info("VTS_RESET_RESULT\nstatus=FAIL\nreason=%s", res.get("reason"))
         return {
             "status": "error",
-            "message": "Failed to reset parameters",
+            "message": res.get("errorMessage") or "Failed to reset parameters",
+            "reason": res.get("reason"),
+            "errorID": res.get("errorID"),
             "vts": client.get_status_summary(),
         }
 
     async def vts_run_auto_test(self) -> Dict[str, Any]:
-        """Run sequential 10-step VTS automated test suite."""
+        """Run sequential 10-step VTS automated test suite with capability awareness."""
         import asyncio
+        import logging
+        logger = logging.getLogger(__name__)
+
+        logger.info("VTS_TEST_START")
         client = self._get_active_vts_client()
         if not client.is_connected or not client.is_authenticated:
             client.enabled = True
@@ -1226,24 +1286,65 @@ class EngineBridge:
             steps_results.append({
                 "step": 1,
                 "name": "getCurrentModel",
-                "status": "PASS",
+                "status": "PASS" if has_model else "FAIL",
+                "reason": "OK" if has_model else "NO_MODEL_LOADED",
+                "request": "CurrentModelRequest",
+                "response": m_data,
                 "details": f"Model: {m_data.get('modelName', 'None')}" if has_model else "No model loaded",
             })
         except Exception as exc:
-            steps_results.append({"step": 1, "name": "getCurrentModel", "status": "FAIL", "error": str(exc)})
+            steps_results.append({
+                "step": 1,
+                "name": "getCurrentModel",
+                "status": "FAIL",
+                "reason": "EXCEPTION",
+                "error": str(exc),
+                "details": str(exc),
+            })
 
         # Helper step runner
         async def _exec_param_step(step_no: int, name: str, param: str, val: float):
             try:
-                ok = await client.inject_raw_parameters([{"parameter": param, "value": val}])
+                # Validate capability if model capabilities are populated
+                if client.supported_parameters and not client.is_parameter_supported(param):
+                    steps_results.append({
+                        "step": step_no,
+                        "name": name,
+                        "status": "FAIL",
+                        "reason": "PARAMETER_NOT_SUPPORTED",
+                        "request": f"{param} = {val}",
+                        "details": f"Parameter {param} not supported by active model",
+                    })
+                    return
+
+                res = await client.inject_raw_parameters(
+                    [{"parameter": param, "value": val}],
+                    request_id=f"DeltaAutoTest_{step_no}",
+                )
+                status_str = "PASS" if res.get("success") else "FAIL"
+                step_dict = {
+                    "step": step_no,
+                    "name": name,
+                    "status": status_str,
+                    "reason": res.get("reason", "OK" if res.get("success") else "FAILED"),
+                    "request": f"{param} = {val}",
+                    "details": f"{param} = {val}",
+                }
+                if not res.get("success"):
+                    if res.get("errorID") is not None:
+                        step_dict["errorID"] = res.get("errorID")
+                    if res.get("errorMessage"):
+                        step_dict["errorMessage"] = res.get("errorMessage")
+                steps_results.append(step_dict)
+            except Exception as e:
                 steps_results.append({
                     "step": step_no,
                     "name": name,
-                    "status": "PASS" if ok else "FAIL",
-                    "details": f"{param} = {val}",
+                    "status": "FAIL",
+                    "reason": "EXCEPTION",
+                    "error": str(e),
+                    "details": str(e),
                 })
-            except Exception as e:
-                steps_results.append({"step": step_no, "name": name, "status": "FAIL", "error": str(e)})
             await asyncio.sleep(0.15)
 
         # 2. ParamAngleX +20
@@ -1266,10 +1367,17 @@ class EngineBridge:
                 "step": 8,
                 "name": "expression smile",
                 "status": "PASS" if res_smile.get("status") == "ok" else "FAIL",
+                "reason": res_smile.get("reason", "OK" if res_smile.get("status") == "ok" else "EXPRESSION_FAILED"),
                 "details": res_smile.get("message", ""),
             })
         except Exception as e:
-            steps_results.append({"step": 8, "name": "expression smile", "status": "FAIL", "error": str(e)})
+            steps_results.append({
+                "step": 8,
+                "name": "expression smile",
+                "status": "FAIL",
+                "reason": "EXCEPTION",
+                "error": str(e),
+            })
         await asyncio.sleep(0.15)
 
         # 9. expression neutral
@@ -1279,10 +1387,17 @@ class EngineBridge:
                 "step": 9,
                 "name": "expression neutral",
                 "status": "PASS" if res_neutral.get("status") == "ok" else "FAIL",
+                "reason": res_neutral.get("reason", "OK" if res_neutral.get("status") == "ok" else "EXPRESSION_FAILED"),
                 "details": res_neutral.get("message", ""),
             })
         except Exception as e:
-            steps_results.append({"step": 9, "name": "expression neutral", "status": "FAIL", "error": str(e)})
+            steps_results.append({
+                "step": 9,
+                "name": "expression neutral",
+                "status": "FAIL",
+                "reason": "EXCEPTION",
+                "error": str(e),
+            })
         await asyncio.sleep(0.15)
 
         # 10. reset
@@ -1292,10 +1407,17 @@ class EngineBridge:
                 "step": 10,
                 "name": "reset",
                 "status": "PASS" if res_reset.get("status") == "ok" else "FAIL",
+                "reason": res_reset.get("reason", "OK" if res_reset.get("status") == "ok" else "RESET_FAILED"),
                 "details": res_reset.get("message", ""),
             })
         except Exception as e:
-            steps_results.append({"step": 10, "name": "reset", "status": "FAIL", "error": str(e)})
+            steps_results.append({
+                "step": 10,
+                "name": "reset",
+                "status": "FAIL",
+                "reason": "EXCEPTION",
+                "error": str(e),
+            })
 
         all_pass = all(s.get("status") == "PASS" for s in steps_results)
         return {
@@ -1337,6 +1459,39 @@ class EngineBridge:
                 self.engine.config.vad_threshold = float(settings["vad_threshold"])
 
         return {"status": "ok", "message": "VTuber settings updated successfully"}
+
+    @property
+    def config(self) -> Any:
+        if self.engine and hasattr(self.engine, "config"):
+            return self.engine.config
+        from delta.core.config import DeltaConfig
+        return DeltaConfig()
+
+    def get_voice_status(self) -> Dict[str, Any]:
+        """Fetch current voice output subsystem configuration & status."""
+        cfg = self.config
+        return {
+            "enabled": getattr(cfg, "tts_enabled", True),
+            "provider": getattr(cfg, "tts_provider", "auto"),
+            "profile": getattr(cfg, "tts_profile", "female"),
+            "language": getattr(cfg, "tts_language", "id-ID"),
+            "speed": getattr(cfg, "tts_speed", 1.0),
+            "volume": getattr(cfg, "tts_volume", 1.0),
+        }
+
+    def update_voice_config(self, enabled: Optional[bool] = None, profile: Optional[str] = None, provider: Optional[str] = None, language: Optional[str] = None) -> None:
+        """Update voice output configuration and persist."""
+        cfg = self.config
+        if enabled is not None:
+            cfg.tts_enabled = enabled
+        if profile is not None:
+            cfg.tts_profile = profile
+        if provider is not None:
+            cfg.tts_provider = provider
+        if language is not None:
+            cfg.tts_language = language
+        if hasattr(cfg, "save"):
+            cfg.save()
 
     async def get_desktop_context(self) -> Dict[str, Any]:
         """Fetch on-demand snapshot of desktop context and active window metadata."""

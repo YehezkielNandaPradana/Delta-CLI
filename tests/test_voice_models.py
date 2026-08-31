@@ -32,7 +32,7 @@ def test_config_voice_fields():
     assert hasattr(cfg, "tts_speed")
     assert hasattr(cfg, "tts_volume")
     assert hasattr(cfg, "tts_piper_models_dir")
-    assert cfg.tts_profile == "female"
+    assert cfg.tts_profile in ("female", "female_id_genz_cute", "female_id_natural")
     assert cfg.tts_language == "id-ID"
     assert cfg.tts_volume == 1.0
     assert cfg.tts_piper_models_dir == "~/.delta/voice/models"

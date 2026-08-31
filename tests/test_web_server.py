@@ -173,5 +173,91 @@ def test_exploit_endpoints():
     finally:
         server.shutdown()
 
+def test_web_research_endpoints():
+    server = DeltaWebServer(engine=None, host="127.0.0.1", port=8990)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.5)
+
+    try:
+        # GET /api/web/inspect
+        req = urllib.request.Request("http://127.0.0.1:8990/api/web/inspect?target=127.0.0.1&port=8990&fast=1")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["status"] == "ok"
+            assert "security_grade" in data
+            assert "security_headers" in data
+            assert "technologies" in data
+
+        # GET /api/web/search
+        req = urllib.request.Request("http://127.0.0.1:8990/api/web/search?q=test&type=search")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["status"] == "ok"
+            assert "results" in data
+
+        # POST /api/web/raw-request
+        payload = json.dumps({
+            "method": "GET",
+            "url": "http://127.0.0.1:8990/api/status",
+            "headers": {"X-Custom-Test": "1"},
+            "body": ""
+        }).encode("utf-8")
+        req = urllib.request.Request("http://127.0.0.1:8990/api/web/raw-request", data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["status"] == "ok"
+            assert data["status_code"] == 200
+            assert "duration_ms" in data
+    finally:
+        server.shutdown()
+
+def test_network_diagnostics_endpoints():
+    server = DeltaWebServer(engine=None, host="127.0.0.1", port=8989)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.5)
+
+    try:
+        # GET /api/network/ping
+        req = urllib.request.Request("http://127.0.0.1:8989/api/network/ping?host=127.0.0.1&count=1")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["status"] == "ok"
+            assert "alive" in data
+            assert "rtt_ms" in data
+
+        # GET /api/network/dns
+        req = urllib.request.Request("http://127.0.0.1:8989/api/network/dns?domain=localhost")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["status"] == "ok"
+            assert "a_records" in data
+            assert "mx_records" in data
+
+        # GET /api/network/geoip
+        req = urllib.request.Request("http://127.0.0.1:8989/api/network/geoip?host=1.1.1.1")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert "status" in data
+
+        # GET /api/network/ssl
+        req = urllib.request.Request("http://127.0.0.1:8989/api/network/ssl?host=google.com&port=443")
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["status"] == "ok"
+            assert "valid" in data
+    finally:
+        server.shutdown()
+
+
+
 
 

@@ -285,6 +285,9 @@
                 <button onclick="navigate('#/vtuber/avatar')" id="rail-btn-avatar" class="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-pink-300 hover:bg-white/[0.04]" title="Delta VTuber Avatar">
                     <span class="material-symbols-outlined text-[18px]">face</span>
                 </button>
+                <a href="/voice" target="_blank" id="rail-btn-voice-hub" class="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-pink-300 hover:bg-pink-500/10" title="Delta Voice Response Hub">
+                    <span class="material-symbols-outlined text-[18px] text-pink-400">graphic_eq</span>
+                </a>
             </div>
 
             <div class="flex flex-col items-center gap-3 text-zinc-400">
@@ -434,6 +437,13 @@
                         </span>
                         <span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30">AI Soul</span>
                     </button>
+                    <a href="/voice" target="_blank" id="sidebar-btn-voice-hub" class="sidebar-nav-btn w-full text-left flex items-center justify-between px-2.5 py-1.5 rounded-lg text-zinc-400 hover:text-pink-300 hover:bg-pink-500/10 border border-transparent hover:border-pink-500/20 transition-all group">
+                        <span class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-[15px] text-pink-400 group-hover:scale-110 transition-transform">graphic_eq</span>
+                            <span>Delta Voice Hub</span>
+                        </span>
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-pink-500/20 text-pink-300 border border-pink-500/30">AUDIO</span>
+                    </a>
                 </div>
 
             </div>
@@ -536,9 +546,9 @@
                                     <span class="text-[10px] text-zinc-500 hidden sm:inline">Shift+Enter newline</span>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <button type="button" id="voice-mode-btn" onclick="DeltaVoiceController.toggleVoiceMode()" class="px-2.5 py-1 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 text-pink-300 flex items-center gap-1.5 transition-all" title="Toggle Voice Mode / Microphone">
-                                        <span class="material-symbols-outlined text-[13px]" id="voice-btn-icon">mic</span>
-                                        <span id="voice-btn-text" class="text-[10px] font-semibold">Voice Mode</span>
+                                    <button type="button" id="voice-mode-btn" onclick="openVoiceModal()" class="px-2.5 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/40 text-pink-300 flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(236,72,153,0.15)]" title="Open Delta Voice Response Popup">
+                                        <span class="material-symbols-outlined text-[14px] text-pink-400">graphic_eq</span>
+                                        <span id="voice-btn-text" class="text-[10px] font-semibold tracking-wide">Voice Mode</span>
                                     </button>
                                     <button type="button" id="stop-btn" onclick="handleStopExecution()" class="hidden bg-rose-600/80 hover:bg-rose-600 text-white px-3 py-1.5 rounded-xl font-medium text-xs flex items-center gap-1.5 transition-all shadow-md">
                                         <span class="material-symbols-outlined text-[14px]">stop</span>
@@ -2766,6 +2776,71 @@
             </div>
         </aside>
 
+    </div>
+
+    <!-- DELTA VOICE ASSISTANT POPUP MODAL -->
+    <div id="voice-modal" class="fixed inset-0 bg-black/70 backdrop-blur-lg z-50 flex items-center justify-center hidden animate-fade-in" onclick="if(event.target===this) toggleModal('voice-modal')">
+        <div class="glass-panel border border-pink-500/30 rounded-3xl w-full max-w-lg shadow-[0_0_50px_rgba(236,72,153,0.25)] p-6 flex flex-col items-center gap-5 relative bg-[#0d0d18]/95 overflow-hidden">
+            <!-- Close Button -->
+            <button onclick="toggleModal('voice-modal')" class="absolute top-4 right-4 text-zinc-400 hover:text-white p-1 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+
+            <!-- Header -->
+            <div class="flex flex-col items-center text-center gap-1">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-pink-500 animate-pulse"></span>
+                    <h3 class="text-sm font-bold text-zinc-100 uppercase tracking-widest font-mono">Delta Voice Companion</h3>
+                </div>
+                <p class="text-xs text-zinc-400">Asisten Suara Natural Perempuan (id-ID / en-US)</p>
+            </div>
+
+            <!-- Glowing Animated Voice Orb -->
+            <div id="voice-modal-orb" class="w-28 h-28 rounded-full bg-gradient-to-tr from-pink-600 via-purple-600 to-indigo-600 flex items-center justify-center shadow-[0_0_40px_rgba(236,72,153,0.4)] transition-all duration-300 transform scale-100">
+                <span class="material-symbols-outlined text-4xl text-white">graphic_eq</span>
+            </div>
+
+            <!-- Waveform Equalizer -->
+            <div id="voice-modal-waveform" class="flex items-center justify-center gap-1.5 h-8">
+                <span class="w-1 bg-pink-500 rounded-full h-2 transition-all duration-150"></span>
+                <span class="w-1 bg-pink-500 rounded-full h-3 transition-all duration-150"></span>
+                <span class="w-1 bg-pink-500 rounded-full h-5 transition-all duration-150"></span>
+                <span class="w-1 bg-pink-500 rounded-full h-3 transition-all duration-150"></span>
+                <span class="w-1 bg-pink-500 rounded-full h-2 transition-all duration-150"></span>
+            </div>
+
+            <!-- Subtitle Transcript Box -->
+            <div class="w-full p-4 rounded-2xl bg-black/50 border border-white/10 min-h-[90px] flex items-center justify-center text-center">
+                <p id="voice-modal-subtitle" class="text-xs md:text-sm text-zinc-200 leading-relaxed font-sans italic">
+                    "Halo! Aku Delta. Tanyakan apa saja atau minta aku jalankan tugas."
+                </p>
+            </div>
+
+            <!-- Input & Speak Controls -->
+            <div class="w-full flex flex-col gap-2.5">
+                <div class="flex items-center gap-2">
+                    <input
+                        type="text"
+                        id="voice-modal-input"
+                        placeholder="Ketik pertanyaan untuk Delta..."
+                        class="flex-1 bg-zinc-900 border border-white/15 rounded-xl px-4 py-2.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-pink-500 transition-colors"
+                        onkeydown="if(event.key==='Enter') handleVoiceModalSend()"
+                    />
+                    <button
+                        onclick="handleVoiceModalSend()"
+                        class="px-4 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-medium text-xs flex items-center gap-1.5 transition-all shadow-lg shadow-pink-600/30"
+                    >
+                        <span class="material-symbols-outlined text-sm">send</span> Kirim
+                    </button>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-zinc-400 px-1">
+                    <button onclick="testVoiceModalAudio()" class="text-pink-400 hover:text-pink-300 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">volume_up</span> Tes Suara
+                    </button>
+                    <span id="voice-modal-status-badge" class="px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono text-[9px]">IDLE</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- ARSENAL CONFIRMATION MODAL -->
@@ -6134,6 +6209,95 @@
                 setState: function(st) { handleAvatarStateMessage(st); }
             };
         })();
+
+        // --- VOICE POPUP MODAL HANDLER ---
+        function openVoiceModal() {
+            toggleModal('voice-modal');
+            const input = document.getElementById('voice-modal-input');
+            if (input) setTimeout(() => input.focus(), 100);
+        }
+
+        function setVoiceModalSpeaking(speaking) {
+            const orb = document.getElementById('voice-modal-orb');
+            const badge = document.getElementById('voice-modal-status-badge');
+            const waveform = document.getElementById('voice-modal-waveform');
+            if (speaking) {
+                if (orb) orb.className = 'w-28 h-28 rounded-full bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center shadow-[0_0_50px_rgba(236,72,153,0.7)] transition-all duration-300 transform scale-110 animate-pulse';
+                if (badge) {
+                    badge.innerText = 'BERBICARA';
+                    badge.className = 'px-2 py-0.5 rounded bg-pink-500/20 text-pink-300 border border-pink-500/30 font-mono text-[9px]';
+                }
+                if (waveform) {
+                    Array.from(waveform.children).forEach((bar, idx) => {
+                        bar.style.height = `${12 + (idx % 3) * 10}px`;
+                    });
+                }
+            } else {
+                if (orb) orb.className = 'w-28 h-28 rounded-full bg-gradient-to-tr from-pink-600 via-purple-600 to-indigo-600 flex items-center justify-center shadow-[0_0_40px_rgba(236,72,153,0.4)] transition-all duration-300 transform scale-100';
+                if (badge) {
+                    badge.innerText = 'IDLE';
+                    badge.className = 'px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono text-[9px]';
+                }
+                if (waveform) {
+                    Array.from(waveform.children).forEach(bar => bar.style.height = '6px');
+                }
+            }
+        }
+
+        function speakTextInBrowser(text) {
+            if (!window.speechSynthesis || !text) return;
+            window.speechSynthesis.cancel();
+            const clean = text.replace(/[*#`_]/g, '').trim();
+            const utterance = new SpeechSynthesisUtterance(clean);
+            utterance.lang = 'id-ID';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.1;
+
+            const voices = window.speechSynthesis.getVoices();
+            const femaleIdVoice = voices.find(v => (v.lang.includes('id') || v.lang.includes('ID')) && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('gadis') || v.name.toLowerCase().includes('indonesia') || v.name.toLowerCase().includes('siti')));
+            const femaleEnVoice = voices.find(v => v.lang.includes('en') && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('samantha')));
+
+            if (femaleIdVoice) utterance.voice = femaleIdVoice;
+            else if (femaleEnVoice) utterance.voice = femaleEnVoice;
+
+            utterance.onstart = () => setVoiceModalSpeaking(true);
+            utterance.onend = () => setVoiceModalSpeaking(false);
+            utterance.onerror = () => setVoiceModalSpeaking(false);
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        async function handleVoiceModalSend() {
+            const input = document.getElementById('voice-modal-input');
+            const subtitle = document.getElementById('voice-modal-subtitle');
+            if (!input || !input.value.trim()) return;
+            const text = input.value.trim();
+            input.value = '';
+            if (subtitle) subtitle.innerText = "Delta sedang memproses...";
+
+            try {
+                const res = await fetch('/api/voice/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+                let reply = "Perintah telah diproses.";
+                if (data && data.result) {
+                    reply = typeof data.result === 'string' ? data.result : (data.result.output || data.result.message || JSON.stringify(data.result));
+                }
+                if (subtitle) subtitle.innerText = `"${reply}"`;
+                speakTextInBrowser(reply);
+            } catch(e) {
+                if (subtitle) subtitle.innerText = "Gagal terhubung ke Delta backend.";
+            }
+        }
+
+        function testVoiceModalAudio() {
+            const input = document.getElementById('voice-modal-input');
+            if (input) input.value = "Halo Delta, ceritakan status keamanan sistem saat ini.";
+            handleVoiceModalSend();
+        }
 
         // --- DELTA BROWSER VOICE CAPTURE & STT CONTROLLER ---
         const DeltaVoiceController = (function() {

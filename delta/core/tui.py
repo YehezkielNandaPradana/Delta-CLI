@@ -2196,7 +2196,7 @@ class DeltaTUI:
 
                 self.engine.llm_engine.reset_conversation()
 
-            self.messages.append({"kind": "notice", "text": "Chat dibersihkan — Delta Siap Melayani Anda Tuan Naxx"})
+            self.messages.append({"kind": "notice", "text": "Chat dibersihkan — Delta siap bantu kamu."})
 
             self._repaint()
 

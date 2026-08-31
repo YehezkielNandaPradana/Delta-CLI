@@ -486,7 +486,6 @@ CHAT_TEMPLATE = """
 
             // Add Delta's signature style to important parts
             html = html.replace(/Delta AI/g, '<span style="color: var(--accent-purple); font-weight: 600;">Delta AI</span>');
-            html = html.replace(/Tuan/g, '<span style="color: var(--accent-yellow); font-weight: 600;">Tuan</span>');
 
             return html;
         }
@@ -554,7 +553,7 @@ CHAT_TEMPLATE = """
 
             } catch (error) {
                 showTypingIndicator(false);
-                addMessage('Sorry Tuan, something went wrong. Please try again later.', false);
+                addMessage('Ada kendala koneksi nih. Coba lagi bentar ya.', false);
                 console.error('Chat error:', error);
             } finally {
                 input.disabled = false;
@@ -603,9 +602,9 @@ CHAT_TEMPLATE = """
 
             // Add welcome message
             setTimeout(() => {
-                addMessage('Halo Tuan! 💅 Selamat datang di Delta AI Security Chat! Aku Delta, asisten keamanan AI-mu yang manja dan toxic. Aku siap membantu Tuan dengan semua kebutuhan keamanan cyber-mu!', false);
+                addMessage('Hai! Aku Delta. Mau ngerjain project atau ada bug apa yang mau dibenerin?', false);
                 setTimeout(() => {
-                    addMessage('Coba `scan localhost` atau `check security on localhost` untuk memulai!', false);
+                    addMessage('Coba ketik `scan localhost` atau langsung ngobrol santai ya.', false);
                 }, 1000);
             }, 500);
         }
@@ -723,7 +722,7 @@ class DeltaChatInterface:
             except Exception as e:
                 return jsonify({
                     'error': str(e),
-                    'response': 'Maaf Tuan, terjadi kesalahan. Coba lagi nanti.'
+                    'response': 'Ada kendala teknis sebentar nih. Coba lagi ya.'
                 }), 500
 
         @self.app.route('/api/status')
@@ -774,7 +773,7 @@ class DeltaChatInterface:
             return f"Command executed: {message}"
 
         except Exception as e:
-            return f"Maaf Tuan, terjadi kesalahan saat memproses pesan: {str(e)}"
+            return f"Ada kendala saat proses pesan: {str(e)}"
 
     def run(self, host='0.0.0.0', port=8000):
         """Run the web chat server."""
