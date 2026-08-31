@@ -526,8 +526,8 @@
                                     <span class="text-[10px] text-zinc-500 hidden sm:inline">Shift+Enter newline</span>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <button type="button" id="voice-mode-btn" onclick="openVoiceModal()" class="px-2.5 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/40 text-pink-300 flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(236,72,153,0.15)]" title="Open Delta Voice Response Popup">
-                                        <span class="material-symbols-outlined text-[14px] text-pink-400">graphic_eq</span>
+                                    <button type="button" id="voice-mode-btn" onclick="DeltaVoiceController.toggleVoiceMode()" class="px-2.5 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/40 text-pink-300 flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(236,72,153,0.15)]" title="Toggle Voice Recognition Mode">
+                                        <span id="voice-btn-icon" class="material-symbols-outlined text-[14px] text-pink-400">mic</span>
                                         <span id="voice-btn-text" class="text-[10px] font-semibold tracking-wide">Voice Mode</span>
                                     </button>
                                     <button type="button" id="stop-btn" onclick="handleStopExecution()" class="hidden bg-rose-600/80 hover:bg-rose-600 text-white px-3 py-1.5 rounded-xl font-medium text-xs flex items-center gap-1.5 transition-all shadow-md">
@@ -6557,13 +6557,19 @@
                 const cleanText = text.trim();
                 updateVoiceUI(true, `Sent: "${cleanText}"`, false);
 
-                appendUserMessage(cleanText);
-
-                fetch('/api/voice/process', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: cleanText })
-                }).catch(() => {});
+                // Populate canvas input and submit directly
+                const chatInput = document.getElementById('user-input');
+                if (chatInput) {
+                    chatInput.value = cleanText;
+                    handleSubmit();
+                } else {
+                    appendUserMessage(cleanText);
+                    fetch('/api/voice/process', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: cleanText })
+                    }).catch(() => {});
+                }
             }
 
             function stopVoiceMode() {
