@@ -407,6 +407,65 @@ class DeltaEngine:
             func=lambda path="": self.fs.list_dir(path)[1],
             parameters=[ToolParameter("path", "string", "Target directory path to list (relative or absolute)", required=False)]
         ))
+        self.tools.register(Tool(
+            name="list_files",
+            description="List all files and folders in a specific directory (alias for list_directory)",
+            func=lambda path="": self.fs.list_dir(path)[1],
+            parameters=[ToolParameter("path", "string", "Target directory path to list (relative or absolute)", required=False)]
+        ))
+
+        # Make directory tool
+        self.tools.register(Tool(
+            name="make_directory",
+            description="Create a new directory (with optional parent dirs)",
+            func=lambda path, parents=True: self.fs.mkdir(path, parents=parents)[1],
+            parameters=[
+                ToolParameter("path", "string", "Directory path to create"),
+                ToolParameter("parents", "boolean", "Create parent directories if needed", required=False)
+            ]
+        ))
+
+        # Remove file or directory tool
+        self.tools.register(Tool(
+            name="remove_file",
+            description="Delete a file or directory on disk",
+            func=lambda path, recursive=False: self.fs.remove(path, recursive=recursive)[1],
+            parameters=[
+                ToolParameter("path", "string", "Path of file or folder to delete"),
+                ToolParameter("recursive", "boolean", "Remove directories recursively", required=False)
+            ]
+        ))
+
+        # Copy file or directory tool
+        self.tools.register(Tool(
+            name="copy_file",
+            description="Copy file or directory from source to destination",
+            func=lambda src, dst, recursive=False: self.fs.copy(src, dst, recursive=recursive)[1],
+            parameters=[
+                ToolParameter("src", "string", "Source file or directory path"),
+                ToolParameter("dst", "string", "Destination file or directory path"),
+                ToolParameter("recursive", "boolean", "Copy recursively for directories", required=False)
+            ]
+        ))
+
+        # Move / rename file tool
+        self.tools.register(Tool(
+            name="move_file",
+            description="Move or rename a file or directory",
+            func=lambda src, dst: self.fs.move(src, dst)[1],
+            parameters=[
+                ToolParameter("src", "string", "Source path"),
+                ToolParameter("dst", "string", "Destination path")
+            ]
+        ))
+
+        # Directory info tool
+        self.tools.register(Tool(
+            name="directory_info",
+            description="Analyze directory size, total files, and extension statistics",
+            func=lambda path="": self.fs.dirinfo(path)[1],
+            parameters=[ToolParameter("path", "string", "Directory path to analyze", required=False)]
+        ))
 
         # Find files tool
         self.tools.register(Tool(
@@ -1287,29 +1346,34 @@ class DeltaEngine:
         return any(kw in inp for kw in task_keywords)
 
     def _get_tool_status_text(self, t_name: str, t_args: dict) -> str:
-        path = t_args.get("path") or ""
+        path = t_args.get("path") or t_args.get("file_path") or ""
         filename = os.path.basename(path) if path else ""
+        cmd = t_args.get("command") or ""
 
-        if t_name in ("read_file", "cat", "view"):
-            return f"Reading {filename}" if filename else "Reading files..."
-        elif t_name in ("write_file", "touch"):
-            return f"Writing {filename}" if filename else "Writing files..."
+        if t_name in ("read_file", "cat", "view", "fs_read"):
+            return f"Reading {filename}" if filename else "Reading file"
+        elif t_name in ("write_file", "touch", "fs_write"):
+            return f"Writing {filename}" if filename else "Writing file"
         elif t_name in ("edit_file", "smart_edit"):
-            return f"Editing {filename}" if filename else "Editing files..."
-        elif t_name == "execute_command":
-            cmd = t_args.get("command", "").lower()
-            if "test" in cmd or "pytest" in cmd:
-                return "Running tests..."
-            return "Running command..."
-        elif t_name in ("find_files", "grep"):
-            return "Searching code..."
-        elif t_name == "codebase_tree":
-            return "Analyzing project..."
+            return f"Editing {filename}" if filename else "Editing file"
+        elif t_name in ("execute_command", "run_terminal"):
+            if cmd:
+                cmd_short = cmd if len(cmd) <= 35 else cmd[:34] + "…"
+                return f"Running: {cmd_short}"
+            return "Running command"
+        elif t_name in ("find_files", "grep", "search_code"):
+            pat = t_args.get("pattern") or ""
+            return f"Searching '{pat}'" if pat else "Searching code"
+        elif t_name in ("codebase_tree", "file_structure"):
+            return "Analyzing project structure"
+        elif t_name == "list_directory":
+            return f"Listing {filename}" if filename else "Listing directory"
         elif t_name == "change_directory":
-            return f"Navigating to {filename}..." if filename else "Changing directory..."
+            return f"Navigating to {filename}" if filename else "Changing directory"
         elif t_name.startswith("git_"):
-            return "Running git command..."
-        return "Thinking..."
+            sub = t_name.replace("git_", "")
+            return f"Git {sub}"
+        return f"Executing {t_name}"
 
     def _map_tool_to_step_kind(self, tool_name: str, args: Dict[str, Any]) -> Any:
         from delta.ai.events import StepKind
@@ -1383,7 +1447,36 @@ class DeltaEngine:
 
         exec_id = execution_id or task_id or f"exec-{int(time.time()*1000)}"
 
-        # Initialize authoritative Root Step for branched execution tree
+        # FAST SHORT CIRCUIT FOR CASUAL CONVERSATION
+        if not is_task_request:
+            t0 = time.time()
+            event_bus.emit(AgentEvent(
+                type=EventType.MESSAGE_DELTA,
+                task_id=exec_id,
+                execution_id=exec_id,
+                content="",
+                status_text="Thinking..."
+            ))
+            try:
+                response = self.llm_engine.chat(user_input, tools=None, is_continuation=False, execution_id=exec_id, stop_event=stop_event)
+            except Exception as e:
+                response = f"Halo! Ada yang bisa aku bantu seputar coding atau security? ({e})"
+
+            from delta.ai.personality import DeltaResponseStyleProcessor
+            clean_resp = DeltaResponseStyleProcessor.clean_conversational_response(response)
+
+            event_bus.emit(AgentEvent(
+                type=EventType.MESSAGE_COMPLETE,
+                task_id=exec_id,
+                execution_id=exec_id,
+                content=clean_resp,
+                status_text="Completed"
+            ))
+            if self.config.debug:
+                print(f"[Delta Timing] casual_chat: {((time.time() - t0)*1000):.1f}ms")
+            return {"response": clean_resp, "command": "", "error": "", "is_task": False, "task_id": None}
+
+        # Initialize authoritative Root Step for branched execution tree (Only for real tasks)
         root_step_id = f"root_{exec_id}"
         root_step = AgentStep(
             id=root_step_id,
@@ -1433,7 +1526,7 @@ class DeltaEngine:
 
         self._in_llm_processing = True
 
-        from delta.ai.tools import parse_xml_tool_calls, parse_json_tool_calls
+        from delta.ai.tools import parse_xml_tool_calls, parse_json_tool_calls, strip_tool_calls
 
         max_iterations = 25
         current_input = user_input
@@ -1512,7 +1605,7 @@ class DeltaEngine:
 
                 # If no tool calls and no legacy command, we have our final response
                 if not json_tool_calls and not xml_tool_calls and not legacy_command:
-                    final_clean_response = strip_command_tags(raw_text)
+                    final_clean_response = strip_tool_calls(strip_command_tags(raw_text))
                     if self.config.debug:
                         print(f"[Agent] final_response")
                     if not task_completed_emitted:
@@ -1707,7 +1800,7 @@ class DeltaEngine:
                     if self.config.debug:
                         self.display.print(f"  {ANSI.CYAN}▸ Executing:{ANSI.RESET} {ANSI.YELLOW}{legacy_command}{ANSI.RESET}")
                     self._dispatch_command(legacy_command)
-                    final_clean_response = strip_command_tags(response)
+                    final_clean_response = strip_tool_calls(strip_command_tags(response))
                     if not task_completed_emitted:
                         if is_task_request:
                             event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))
@@ -1722,7 +1815,7 @@ class DeltaEngine:
                     break
 
                 if not tool_executed:
-                    final_clean_response = strip_command_tags(response)
+                    final_clean_response = strip_tool_calls(strip_command_tags(response))
                     if not task_completed_emitted:
                         if is_task_request:
                             event_bus.emit(AgentEvent(type=EventType.AGENT_COMPLETE, task_id=task_id, execution_id=exec_id, status_text="Task completed"))

@@ -124,6 +124,31 @@ class TestFileSystemModule(unittest.TestCase):
         self.assertIn(".py", stats["extensions"])
         self.assertEqual(stats["extensions"][".py"]["size"], 100)
 
+    def test_remove_file_and_dir(self):
+        self.fs.write("del.txt", "hapus aku")
+        ok, _ = self.fs.remove("del.txt")
+        self.assertTrue(ok)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp.name, "del.txt")))
+
+        self.fs.mkdir("folder_del/sub", parents=True)
+        ok, _ = self.fs.remove("folder_del", recursive=True)
+        self.assertTrue(ok)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp.name, "folder_del")))
+
+    def test_copy_file_and_dir(self):
+        self.fs.write("src.txt", "data asli")
+        ok, _ = self.fs.copy("src.txt", "dst.txt")
+        self.assertTrue(ok)
+        _, content = self.fs.read("dst.txt")
+        self.assertEqual(content, "data asli")
+
+    def test_move_file(self):
+        self.fs.write("old.txt", "pindah")
+        ok, _ = self.fs.move("old.txt", "renamed.txt")
+        self.assertTrue(ok)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp.name, "old.txt")))
+        self.assertTrue(os.path.exists(os.path.join(self.tmp.name, "renamed.txt")))
+
     def test_filler_words(self):
         self.assertIn("buat", FILLER_WORDS)
         self.assertIn("bikin", FILLER_WORDS)

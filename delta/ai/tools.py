@@ -305,48 +305,97 @@ class ToolRegistry:
 # --- Tool Call Parsers ---
 
 XML_TOOL_CALL_PATTERN = re.compile(
-
     r"<tool_call>\s*<name>(.*?)</name>\s*<args>(.*?)</args>\s*</tool_call>",
-
     re.DOTALL | re.IGNORECASE,
-
 )
 
-def parse_xml_tool_calls(text: str) -> List[Tuple[str, Dict[str, Any]]]:
+# Alternative XML format: <tool_call><function=name><parameter=key>value</parameter></function></tool_call>
+ALT_XML_FUNCTION_PATTERN = re.compile(
+    r"<function=([a-zA-Z0-9_\-]+)>(.*?)</function>",
+    re.DOTALL | re.IGNORECASE,
+)
+ALT_XML_PARAM_PATTERN = re.compile(
+    r"<parameter=([a-zA-Z0-9_\-]+)>(.*?)</parameter>",
+    re.DOTALL | re.IGNORECASE,
+)
 
-    """Parse XML-formatted tool calls from LLM text output."""
+# Tag-style tool call block: <tool_call>...</tool_call>
+TOOL_CALL_CONTAINER_PATTERN = re.compile(
+    r"<tool_call>(.*?)</tool_call>",
+    re.DOTALL | re.IGNORECASE,
+)
 
-    calls: List[Tuple[str, Dict[str, Any]]] = []
+TOOL_TAG_CLEANUP_PATTERN = re.compile(
+    r"<tool_call>.*?</tool_call>|<function=.*?</function>|<parameter=.*?</parameter>",
+    re.DOTALL | re.IGNORECASE,
+)
 
+def strip_tool_calls(text: str) -> str:
+    """Remove any raw XML tool calling tags from assistant messages."""
     if not text:
+        return ""
+    cleaned = TOOL_TAG_CLEANUP_PATTERN.sub("", text)
+    # Also strip stray closing or opening tags if any
+    cleaned = re.sub(r"</?(?:tool_call|function|parameter)[^>]*>", "", cleaned, flags=re.IGNORECASE)
+    return cleaned.strip()
 
+def parse_xml_tool_calls(text: str) -> List[Tuple[str, Dict[str, Any]]]:
+    """Parse XML-formatted tool calls from LLM text output supporting multiple dialect formats."""
+    calls: List[Tuple[str, Dict[str, Any]]] = []
+    if not text:
         return calls
 
+    # Format 1: Standard Delta XML: <tool_call><name>X</name><args>{...}</args></tool_call>
     matches = XML_TOOL_CALL_PATTERN.findall(text)
-
     for name, raw_args in matches:
-
         name = name.strip()
-
         raw_args = raw_args.strip()
-
         try:
-
             args = json.loads(raw_args) if raw_args else {}
-
         except json.JSONDecodeError:
-
-            # Fallback to key-value regex extraction if JSON parsing fails
-
             args = {}
-
             kv_pairs = re.findall(r'"(\w+)":\s*"([^"]+)"', raw_args)
-
             for k, v in kv_pairs:
-
                 args[k] = v
-
         calls.append((name, args))
+
+    if calls:
+        return calls
+
+    # Format 2: <tool_call><function=name><parameter=k>v</parameter></function></tool_call>
+    # or standalone <function=name><parameter=k>v</parameter></function>
+    fn_matches = ALT_XML_FUNCTION_PATTERN.findall(text)
+    for fn_name, body in fn_matches:
+        fn_name = fn_name.strip()
+        args: Dict[str, Any] = {}
+        param_matches = ALT_XML_PARAM_PATTERN.findall(body)
+        for p_name, p_val in param_matches:
+            p_name = p_name.strip()
+            p_val = p_val.strip()
+            # Try parsing numeric or json if applicable
+            try:
+                args[p_name] = json.loads(p_val)
+            except Exception:
+                args[p_name] = p_val
+        calls.append((fn_name, args))
+
+    if calls:
+        return calls
+
+    # Format 3: Generic <tool_call> with embedded JSON or function name
+    container_matches = TOOL_CALL_CONTAINER_PATTERN.findall(text)
+    for block in container_matches:
+        block = block.strip()
+        # Check if block is valid JSON dictionary
+        try:
+            obj = json.loads(block)
+            if isinstance(obj, dict):
+                name = obj.get("name") or obj.get("tool") or obj.get("function")
+                args = obj.get("args") or obj.get("arguments") or obj.get("parameters") or {}
+                if name:
+                    calls.append((str(name), args if isinstance(args, dict) else {}))
+        except Exception:
+            pass
 
     return calls
 

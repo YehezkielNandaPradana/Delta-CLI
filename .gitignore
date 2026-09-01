@@ -33,3 +33,9 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Temp/Scraping test files
+response.html
+delta/mobile/node_modules/
+delta/mobile/.expo/
+delta/mobile/dist/

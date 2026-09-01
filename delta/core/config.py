@@ -68,7 +68,7 @@ class DeltaConfig:
 
     llm_api_base_url: str = "http://localhost:20128/v1"
 
-    llm_model: str = "OpenRouterCombo"
+    llm_model: str = "ag/gemini-3.7-flash-high"
 
     llm_provider: str = "9router"
 

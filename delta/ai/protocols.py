@@ -123,6 +123,27 @@ MODEL_PRESETS: Dict[str, Dict[str, Any]] = {
         "provider": "9router",
         "description": "Google Gemini 2.5 Pro, routed via 9Router",
     },
+    "google/gemini-3.7-flash": {
+        "model": "google/gemini-3.7-flash",
+        "base_url": "http://localhost:20128/v1",
+        "provider": "9router",
+        "description": "Google Gemini 3.7 Flash via Antigravity provider in 9Router",
+        "fast_mode": True,
+    },
+    "gemini-3.7-flash": {
+        "model": "gemini-3.7-flash",
+        "base_url": "http://localhost:20128/v1",
+        "provider": "9router",
+        "description": "Gemini 3.7 Flash via Antigravity provider in 9Router",
+        "fast_mode": True,
+    },
+    "antigravity/gemini-3.7-flash": {
+        "model": "antigravity/gemini-3.7-flash",
+        "base_url": "http://localhost:20128/v1",
+        "provider": "9router",
+        "description": "Gemini 3.7 Flash directly via Antigravity on 9Router",
+        "fast_mode": True,
+    },
     "mistral/mistral-large-latest": {
         "model": "mistral/mistral-large-latest",
         "base_url": "http://localhost:20128/v1",
@@ -231,6 +252,13 @@ MODEL_PRESETS: Dict[str, Dict[str, Any]] = {
         "base_url": "http://localhost:20128/v1",
         "provider": "9router",
         "description": "KiloCombo on 9Router (Advanced coding capabilities)",
+        "fast_mode": True,
+    },
+    "ag/gemini-3.7-flash-high": {
+        "model": "ag/gemini-3.7-flash-high",
+        "base_url": "http://localhost:20128/v1",
+        "provider": "9router",
+        "description": "Gemini 3.7 Flash High via Antigravity in 9Router",
         "fast_mode": True,
     },
     "AntigravityCombo": {

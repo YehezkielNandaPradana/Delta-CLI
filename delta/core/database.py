@@ -332,6 +332,12 @@ class Database:
 
         return [dict(row) for row in self.cursor.fetchall()]
 
+    def delete_history_item(self, history_id: int) -> bool:
+        """Delete a single history item by ID."""
+        self.cursor.execute("DELETE FROM history WHERE id = ?", (history_id,))
+        self.connection.commit()
+        return self.cursor.rowcount > 0
+
     def clear_history(self) -> None:
 
         """Clear all history."""

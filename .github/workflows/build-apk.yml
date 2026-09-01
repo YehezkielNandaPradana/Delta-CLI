@@ -1,0 +1,53 @@
+name: Build Delta Agent Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: delta/mobile/package-lock.json
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Mobile Dependencies
+        working-directory: delta/mobile
+        run: npm ci || npm install
+
+      - name: Prebuild Native Android Project
+        working-directory: delta/mobile
+        run: npx expo prebuild --platform android --clean
+
+      - name: Grant Execute Permission for Gradlew
+        working-directory: delta/mobile/android
+        run: chmod +x gradlew
+
+      - name: Build Android Release APK
+        working-directory: delta/mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Rename & Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Delta-Agent-Release-APK
+          path: delta/mobile/android/app/build/outputs/apk/release/*.apk
+          retention-days: 14

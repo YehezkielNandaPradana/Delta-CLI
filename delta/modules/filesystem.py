@@ -539,91 +539,108 @@ class FileSystemModule:
         return True, "\n".join(lines)
 
     def dirinfo(self, path: str = "") -> Tuple[bool, Dict[str, Any]]:
-
         """Analisis folder/direktori: jumlah file, ukuran, tipe file, dst."""
-
         root = self._resolve(path)
-
         if not os.path.isdir(root):
-
             return False, {}
 
         stats = {
-
             "path": root,
-
             "files": 0,
-
             "dirs": 0,
-
             "hidden": 0,
-
             "total_size": 0,
-
             "extensions": {},  # ext -> {"count": n, "size": s}
-
             "largest": [],     # [(name, size)]
-
             "recent": [],      # [(name, mtime)]
-
         }
 
         for dirpath, dirnames, filenames in os.walk(root):
-
             for d in dirnames:
-
                 stats["dirs"] += 1
-
                 if d.startswith("."):
-
                     stats["hidden"] += 1
-
             for fn in filenames:
-
                 full = os.path.join(dirpath, fn)
-
                 if fn.startswith("."):
-
                     stats["hidden"] += 1
-
                 try:
-
                     size = os.path.getsize(full)
-
                     mtime = os.path.getmtime(full)
-
                 except OSError:
-
                     continue
-
                 stats["files"] += 1
-
                 stats["total_size"] += size
-
                 ext = os.path.splitext(fn)[1].lower() or "(tanpa ekstensi)"
-
                 ext_info = stats["extensions"].setdefault(ext, {"count": 0, "size": 0})
-
                 ext_info["count"] += 1
-
                 ext_info["size"] += size
-
                 stats["largest"].append((os.path.relpath(full, root), size))
-
                 stats["recent"].append((os.path.relpath(full, root), mtime))
 
         stats["largest"].sort(key=lambda x: -x[1])
-
         stats["recent"].sort(key=lambda x: -x[1])
-
         stats["largest"] = stats["largest"][:5]
-
         stats["recent"] = stats["recent"][:5]
-
         stats["extensions"] = dict(
-
             sorted(stats["extensions"].items(), key=lambda kv: -kv[1]["size"])
-
         )
-
         return True, stats
+
+    # ------------------------------------------------------------ manipulasi berkas
+    def remove(self, path: str, recursive: bool = False) -> Tuple[bool, str]:
+        """Hapus file atau direktori."""
+        import shutil
+        if not path:
+            return False, "Path kosong. Usage: rm <path> [-r]"
+        target = self._resolve(path)
+        if not os.path.exists(target):
+            return False, f"Target tidak ditemukan: {target}"
+        try:
+            if os.path.isdir(target):
+                if recursive:
+                    shutil.rmtree(target)
+                    return True, f"Direktori dihapus: {target}"
+                os.rmdir(target)
+                return True, f"Direktori kosong dihapus: {target}"
+            os.remove(target)
+            return True, f"File dihapus: {target}"
+        except OSError as e:
+            return False, f"Gagal menghapus {target}: {e}"
+
+    def copy(self, src: str, dst: str, recursive: bool = False) -> Tuple[bool, str]:
+        """Salin file atau direktori."""
+        import shutil
+        if not src or not dst:
+            return False, "Usage: cp <src> <dst> [-r]"
+        src_path = self._resolve(src)
+        dst_path = self._resolve(dst)
+        if not os.path.exists(src_path):
+            return False, f"Sumber tidak ditemukan: {src_path}"
+        try:
+            if os.path.isdir(src_path):
+                if recursive:
+                    shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
+                    return True, f"Direktori disalin dari {src_path} ke {dst_path}"
+                return False, f"{src_path} adalah direktori. Gunakan recursive (-r) untuk menyalin direktori."
+            os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+            shutil.copy2(src_path, dst_path)
+            return True, f"File disalin dari {src_path} ke {dst_path}"
+        except OSError as e:
+            return False, f"Gagal menyalin: {e}"
+
+    def move(self, src: str, dst: str) -> Tuple[bool, str]:
+        """Pindahkan atau ganti nama file/direktori."""
+        import shutil
+        if not src or not dst:
+            return False, "Usage: mv <src> <dst>"
+        src_path = self._resolve(src)
+        dst_path = self._resolve(dst)
+        if not os.path.exists(src_path):
+            return False, f"Sumber tidak ditemukan: {src_path}"
+        try:
+            os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+            shutil.move(src_path, dst_path)
+            return True, f"Berhasil dipindahkan dari {src_path} ke {dst_path}"
+        except OSError as e:
+            return False, f"Gagal memindahkan: {e}"

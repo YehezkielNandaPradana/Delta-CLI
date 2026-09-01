@@ -1,5 +1,6 @@
 """Bridge between Delta CLI Engine and Web Interface."""
 import io
+import json
 import os
 import re
 import sys
@@ -51,10 +52,13 @@ class EngineBridge:
         if self.engine:
             self.engine.web_mode = True
         # Initialize VoiceManager on EventBus
-        from delta.ai.events import event_bus
-        from delta.voice.manager import VoiceManager
-        self.voice_manager = VoiceManager(config=self.config, event_bus=event_bus)
-        self.voice_manager.start()
+        try:
+            from delta.ai.events import event_bus
+            from delta.voice.manager import VoiceManager
+            self.voice_manager = VoiceManager(config=self.config, event_bus=event_bus)
+            self.voice_manager.start()
+        except Exception:
+            self.voice_manager = None
 
     def cancel_execution(self) -> Dict[str, Any]:
         if self.engine and hasattr(self.engine, "_stop_event") and self.engine._stop_event:
@@ -182,6 +186,15 @@ class EngineBridge:
         except Exception as exc:
             return {"status": "error", "message": str(exc), "history": []}
 
+    def delete_history_item(self, history_id: int) -> Dict[str, Any]:
+        if not self.engine or not hasattr(self.engine, "database"):
+            return {"status": "error", "message": "Database not initialized"}
+        try:
+            res = self.engine.database.delete_history_item(history_id)
+            return {"status": "ok", "deleted": res}
+        except Exception as exc:
+            return {"status": "error", "message": str(exc)}
+
     def clear_history(self) -> Dict[str, Any]:
         if not self.engine or not hasattr(self.engine, "database"):
             return {"status": "error", "message": "Database not initialized"}
@@ -197,13 +210,40 @@ class EngineBridge:
         current_provider = getattr(self.engine.config, "llm_provider", "9router") if self.engine and hasattr(self.engine, "config") else "9router"
 
         models_list = []
+
+        # 1. First attempt dynamic query to live 9Router gateway (http://localhost:20128/v1/models)
+        try:
+            import urllib.request
+            req = urllib.request.Request("http://127.0.0.1:20128/v1/models", headers={"User-Agent": "Delta-Workstation/1.0"})
+            with urllib.request.urlopen(req, timeout=1.5) as resp:
+                if resp.status == 200:
+                    raw_data = json.loads(resp.read().decode("utf-8"))
+                    router_data = raw_data.get("data", []) if isinstance(raw_data, dict) else []
+                    for rm in router_data:
+                        m_id = rm.get("id") if isinstance(rm, dict) else str(rm)
+                        if m_id:
+                            models_list.append({
+                                "name": m_id,
+                                "description": f"9Router Live Gateway Model ({m_id})",
+                                "provider": "9router",
+                                "is_current": (m_id == current_model)
+                            })
+        except Exception:
+            pass
+
+        # 2. Add or merge known presets
+        seen_names = {m["name"].lower() for m in models_list}
         for name, info in MODEL_PRESETS.items():
-            models_list.append({
-                "name": name,
-                "description": info.get("description", ""),
-                "provider": info.get("provider", "openai"),
-                "is_current": (name == current_model or info.get("model") == current_model)
-            })
+            if name.lower() not in seen_names:
+                p_name = info.get("provider", "openai")
+                models_list.append({
+                    "name": name,
+                    "description": info.get("description", ""),
+                    "provider": p_name,
+                    "is_current": (name == current_model or info.get("model") == current_model)
+                })
+                seen_names.add(name.lower())
+
         return {
             "status": "ok",
             "current_model": current_model,
@@ -244,6 +284,35 @@ class EngineBridge:
             "port": 20128,
             "latency_ms": 12 if router_running else None
         }
+
+    def start_router(self) -> Dict[str, Any]:
+        from delta.utils.router_manager import is_9router_running, start_9router, wait_for_9router
+        if is_9router_running():
+            return {
+                "status": "ok",
+                "running": True,
+                "message": "9Router is already running on port 20128"
+            }
+        try:
+            start_9router()
+            ready = wait_for_9router(timeout=15.0)
+            if ready:
+                return {
+                    "status": "ok",
+                    "running": True,
+                    "message": "9Router local gateway started successfully on port 20128"
+                }
+            return {
+                "status": "error",
+                "running": False,
+                "message": "Failed to start 9Router within 15 seconds"
+            }
+        except Exception as exc:
+            return {
+                "status": "error",
+                "running": False,
+                "message": f"Error starting 9Router: {str(exc)}"
+            }
 
     def get_evidence(self) -> Dict[str, Any]:
         evidence_items = []
@@ -972,7 +1041,8 @@ class EngineBridge:
 
             # Output vocal response via voice manager
             if hasattr(self, "voice_manager") and self.voice_manager and speech_text:
-                self.voice_manager.speak(speech_text, priority=1)
+                from delta.voice.model import VoicePriority
+                self.voice_manager.speak(speech_text, priority=VoicePriority.NORMAL)
 
             return {"status": "ok", "transcript": text.strip(), "result": exec_res, "speech_text": speech_text}
         except Exception as exc:

@@ -57,6 +57,25 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 return False
             raise
 
+    def _send_cors_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept")
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._send_cors_headers()
+        self.end_headers()
+
+    def _send_json_response(self, data: Any, status_code: int = 200) -> None:
+        body = json.dumps(data).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self._send_cors_headers()
+        self.end_headers()
+        self._safe_write(body)
+
     def do_GET(self):
         try:
             parsed_url = urlparse(self.path)
@@ -514,17 +533,11 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
                 body = body_bytes.decode("utf-8") if body_bytes else "{}"
                 data = json.loads(body) if body else {}
-                cmd = data.get("command", "") or data.get("prompt", "")
+                cmd = data.get("command", "") or data.get("prompt", "") or data.get("message", "")
                 execution_id = data.get("execution_id")
 
                 res = self.bridge.execute_command(cmd, execution_id=execution_id) if self.bridge else {"output": f"Engine offline: {cmd}", "is_task": False, "task_id": None}
-                resp_bytes = json.dumps(res).encode("utf-8")
-
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(resp_bytes)))
-                self.end_headers()
-                self._safe_write(resp_bytes)
+                self._send_json_response(res)
                 return
 
             if clean_path == "/api/voice/process":
@@ -758,12 +771,42 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 self._safe_write(resp_bytes)
                 return
 
+            if clean_path == "/api/history/delete":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                item_id = data.get("id")
+                if item_id is None:
+                    res = {"status": "error", "message": "Missing history id"}
+                else:
+                    res = self.bridge.delete_history_item(int(item_id)) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self._send_cors_headers()
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
             if clean_path == "/api/history/clear":
                 res = self.bridge.clear_history() if self.bridge else {"status": "error", "message": "Bridge offline"}
                 resp_bytes = json.dumps(res).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/router/start":
+                res = self.bridge.start_router() if self.bridge else {"status": "error", "message": "Bridge offline"}
+                status_code = 200 if res.get("status") == "ok" else 500
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(status_code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self._send_cors_headers()
                 self.end_headers()
                 self._safe_write(resp_bytes)
                 return
@@ -950,7 +993,7 @@ class ThreadingDeltaWebServer(ThreadingMixIn, HTTPServer):
     """Multi-threaded HTTP server allowing concurrent long-lived SSE streams & REST requests."""
     daemon_threads = True
 
-    def __init__(self, engine: Optional[Any] = None, host: str = "127.0.0.1", port: int = 8000):
+    def __init__(self, engine: Optional[Any] = None, host: str = "0.0.0.0", port: int = 8080):
         self.bridge = EngineBridge(engine)
         DeltaRequestHandler.bridge = self.bridge
         super().__init__((host, port), DeltaRequestHandler)
@@ -965,10 +1008,24 @@ class ThreadingDeltaWebServer(ThreadingMixIn, HTTPServer):
 
 DeltaWebServer = ThreadingDeltaWebServer
 
-def start_web_server(engine: Optional[Any] = None, host: str = "127.0.0.1", port: int = 8000):
+def start_web_server(engine: Optional[Any] = None, host: str = "0.0.0.0", port: int = 8080, open_browser: bool = False):
+    if engine is None:
+        try:
+            from delta.main import create_engine
+            engine = create_engine()
+        except Exception as e:
+            print(f"[!] Warning: Could not initialize full Delta Engine: {e}")
+            engine = None
     server = ThreadingDeltaWebServer(engine, host, port)
-    print(f"[*] Delta Web UI server running at http://{host}:{port}")
+    url = f"http://localhost:{port}"
+    print(f"[*] Delta Web & Mobile API server running at {url} (listening on {host}:{port})")
+    if open_browser:
+        from delta.web.launcher import launch_delta_browser
+        launch_delta_browser(url=url)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         server.shutdown()
+
+if __name__ == "__main__":
+    start_web_server()
