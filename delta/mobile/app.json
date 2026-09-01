@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Delta Agent",
+    "slug": "delta-agent",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/LogoDelta.png",
+    "scheme": "delta",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/LogoDelta.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0e17"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.deltasec.mobile",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/LogoDelta.png",
+        "backgroundColor": "#0a0e17"
+      },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "VIBRATE"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
