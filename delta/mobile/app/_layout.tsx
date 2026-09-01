@@ -27,6 +27,12 @@ export default function RootLayout() {
   useEffect(() => {
     if (!isLoaded) return;
 
+    // Only connect local SSE stream if in local server mode
+    if (connectionMode !== 'local') {
+      sseClient.stop();
+      return;
+    }
+
     const unsubscribe = sseClient.subscribe((event) => {
       if (event.type.startsWith('agent_step_') && event.payload?.step) {
         updateStep(event.payload.step);
@@ -48,7 +54,7 @@ export default function RootLayout() {
       unsubscribe();
       sseClient.stop();
     };
-  }, [isLoaded]);
+  }, [isLoaded, connectionMode]);
 
   return (
     <SafeAreaProvider style={{ backgroundColor: colors.bgPrimary }}>

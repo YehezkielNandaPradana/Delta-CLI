@@ -204,7 +204,9 @@ export const Header: React.FC<HeaderProps> = ({
               styles.connectionIndicatorDot,
               {
                 backgroundColor:
-                  status === 'connected'
+                  connectionMode === 'cloud'
+                    ? '#10b981'
+                    : status === 'connected'
                     ? (isEngineRunning ? colors.accentCyan : '#10b981')
                     : status === 'connecting'
                     ? colors.accentYellow
@@ -213,7 +215,9 @@ export const Header: React.FC<HeaderProps> = ({
             ]}
           />
           <Text style={[styles.hudStateText, { color: colors.textSecondary }]}>
-            {status === 'connected' ? (isEngineRunning ? 'PROCESSING' : 'ONLINE') : status.toUpperCase()}
+            {connectionMode === 'cloud'
+              ? (isEngineRunning ? 'PROCESSING' : 'CLOUD ONLINE')
+              : (status === 'connected' ? (isEngineRunning ? 'PROCESSING' : 'ONLINE') : status.toUpperCase())}
           </Text>
         </View>
 
