@@ -58,12 +58,21 @@ export class Embedded9Router {
     const rawKey = account?.apiKey?.trim() || '';
     const customBaseUrl = (account?.baseUrl || '').trim();
 
-    // 1. If user provided a Google AI Studio key (or no key yet with Google fallback)
+    // 1. If user connects to Termux 9Router (localhost / 127.0.0.1 on port 20128)
+    if (
+      customBaseUrl.includes('127.0.0.1') ||
+      customBaseUrl.includes('localhost') ||
+      customBaseUrl.includes(':20128')
+    ) {
+      return this.executeGatewayRoute(message, modelName, customBaseUrl, rawKey);
+    }
+
+    // 2. If user provided a Google AI Studio key (or no key yet with Google fallback)
     if (rawKey.startsWith('AIzaSy') || !customBaseUrl) {
       return this.executeGoogleRoute(message, modelName, rawKey);
     }
 
-    // 2. OpenAI / Antigravity Cloud Gateway route
+    // 3. OpenAI / Antigravity Cloud Gateway route
     return this.executeGatewayRoute(message, modelName, customBaseUrl, rawKey);
   }
 
