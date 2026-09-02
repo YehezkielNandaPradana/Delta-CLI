@@ -18,6 +18,7 @@
     "android": {
       "package": "com.deltasec.mobile",
       "versionCode": 1,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/LogoDelta.png",
         "backgroundColor": "#0a0e17"
