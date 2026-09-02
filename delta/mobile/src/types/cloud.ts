@@ -4,6 +4,9 @@ export interface AntigravityAccount {
   apiKey: string;
   baseUrl: string;
   defaultModel: string;
+  accountType?: 'google' | 'antigravity' | 'custom';
+  tier?: 'pro' | 'flash' | 'standard';
+  availableModels?: string[];
 }
 
-export type ConnectionMode = 'cloud' | 'local';
+export type ConnectionMode = 'cloud' | 'local' | 'tunnel';

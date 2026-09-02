@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  Dimensions,
   Platform,
 } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -20,11 +19,16 @@ const TAB_CONFIG: Record<
 > = {
   index: {
     label: 'Chat',
-    activeIcon: 'chatbubble-ellipses',
-    inactiveIcon: 'chatbubble-ellipses-outline',
+    activeIcon: 'terminal',
+    inactiveIcon: 'terminal-outline',
+  },
+  notes: {
+    label: 'Notes',
+    activeIcon: 'document-text',
+    inactiveIcon: 'document-text-outline',
   },
   activity: {
-    label: '9Router',
+    label: 'Router',
     activeIcon: 'git-network',
     inactiveIcon: 'git-network-outline',
   },
@@ -35,14 +39,13 @@ const TAB_CONFIG: Record<
   },
   settings: {
     label: 'Settings',
-    activeIcon: 'settings',
+    activeIcon: 'settings-sharp',
     inactiveIcon: 'settings-outline',
   },
 };
 
 export const FluidBottomBar: React.FC<BottomTabBarProps> = ({
   state,
-  descriptors,
   navigation,
 }) => {
   const { colors, isDark } = useThemeColors();
@@ -55,8 +58,8 @@ export const FluidBottomBar: React.FC<BottomTabBarProps> = ({
     Animated.spring(slideAnim, {
       toValue: state.index,
       useNativeDriver: false,
-      damping: 18,
-      stiffness: 220,
+      damping: 24,
+      stiffness: 280,
     }).start();
   }, [state.index]);
 
@@ -89,25 +92,12 @@ export const FluidBottomBar: React.FC<BottomTabBarProps> = ({
         style={[
           styles.container,
           {
-            backgroundColor: colors.bottomBarBg,
-            borderColor: colors.bottomBarBorder,
-            shadowColor: isDark ? '#000000' : '#475569',
+            backgroundColor: colors.bgSecondary,
+            borderColor: colors.border,
           },
         ]}
       >
-        {/* Specular Edge Line */}
-        <View
-          style={[
-            styles.specularTopBorder,
-            {
-              backgroundColor: isDark
-                ? 'rgba(255, 255, 255, 0.2)'
-                : 'rgba(255, 255, 255, 0.9)',
-            },
-          ]}
-        />
-
-        {/* Animated Liquid Pill Active Slider */}
+        {/* Subtle Selected Tab Active Pill */}
         <Animated.View
           style={[
             styles.activePillIndicator,
@@ -121,8 +111,7 @@ export const FluidBottomBar: React.FC<BottomTabBarProps> = ({
             style={[
               styles.pillInner,
               {
-                backgroundColor: colors.bottomBarActivePill,
-                borderColor: colors.accentGreen,
+                backgroundColor: isDark ? '#262626' : '#E5E5E5',
               },
             ]}
           />
@@ -143,21 +132,21 @@ export const FluidBottomBar: React.FC<BottomTabBarProps> = ({
                 key={route.key}
                 onPress={() => handleTabPress(route, index, isFocused)}
                 style={styles.tabButton}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: isFocused }}
                 accessibilityLabel={config.label}
               >
                 <Ionicons
                   name={isFocused ? config.activeIcon : config.inactiveIcon}
-                  size={21}
-                  color={isFocused ? colors.accentGreen : colors.textMuted}
+                  size={19}
+                  color={isFocused ? colors.accent : colors.textMuted}
                 />
                 <Text
                   style={[
                     styles.tabLabel,
                     {
-                      color: isFocused ? colors.accentGreen : colors.textMuted,
+                      color: isFocused ? colors.textPrimary : colors.textMuted,
                       fontWeight: isFocused ? '700' : '500',
                     },
                   ]}
@@ -176,7 +165,7 @@ export const FluidBottomBar: React.FC<BottomTabBarProps> = ({
 const styles = StyleSheet.create({
   floatingWrapper: {
     position: 'absolute',
-    bottom: 14,
+    bottom: 12,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -185,45 +174,32 @@ const styles = StyleSheet.create({
   },
   container: {
     width: '100%',
-    maxWidth: 420,
-    height: 64,
-    borderRadius: 32,
+    maxWidth: 440,
+    height: 58,
+    borderRadius: 24,
     borderWidth: 1,
     position: 'relative',
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.18,
-        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 6,
+        elevation: 3,
       },
-      web: {
-        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18)',
-        backdropFilter: 'blur(20px)',
-      } as any,
     }),
-  },
-  specularTopBorder: {
-    position: 'absolute',
-    top: 0,
-    left: 16,
-    right: 16,
-    height: 1.2,
-    borderRadius: 1,
   },
   activePillIndicator: {
     position: 'absolute',
-    top: 6,
-    bottom: 6,
-    paddingHorizontal: 6,
+    top: 4,
+    bottom: 4,
+    paddingHorizontal: 4,
   },
   pillInner: {
     flex: 1,
-    borderRadius: 24,
-    borderWidth: 1,
+    borderRadius: 18,
   },
   tabsRow: {
     flex: 1,
@@ -236,11 +212,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    paddingVertical: 6,
+    paddingVertical: 4,
     zIndex: 2,
   },
   tabLabel: {
-    fontSize: 10.5,
+    fontSize: 10,
     letterSpacing: 0.2,
   },
 });

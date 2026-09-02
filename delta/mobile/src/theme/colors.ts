@@ -1,151 +1,210 @@
 export interface ThemePalette {
-  bgPrimary: string;
-  bgSecondary: string;
-  bgSurface: string;
-
+  // Surfaces
+  bgPrimary: string;       // Layer 0: Screen background
+  bgSecondary: string;     // Layer 1: Primary container / Header / Tab bar
+  bgSurface: string;       // Layer 2: Elevated surface / Cards
+  surfaceElevated: string; // Layer 3: Modal / Dropdown / Sheet
+  surfaceHover: string;    // Interactive item surface / pill background
+  
+  // Cards & Legacy Surface Aliases
   cardBg: string;
   cardBorder: string;
   cardSpecular: string;
+  bgCard: string;
+  bgCardHover: string;
+  background: string;
 
-  textPrimary: string;
-  textSecondary: string;
-  textMuted: string;
-  textDim: string;
+  // Borders
+  border: string;          // Subtle separation line
+  borderStrong: string;    // Highlight / active border
+  borderActive: string;    // Focused border
 
-  // Primary Navy Brand Accents
-  accentGreen: string; // Brand Primary (Navy / Royal)
+  // Typography
+  textPrimary: string;     // High contrast main text
+  textSecondary: string;   // Secondary descriptions
+  textMuted: string;       // Metadata / timestamps
+  textDim: string;         // Low contrast labels
+  textDisabled: string;    // Inactive / disabled states
+
+  // Pure Monochrome Accent
+  accent: string;          // Primary monochrome accent
+  accentStrong: string;
+  accentMuted: string;
+  accentSurface: string;
+  accentGreen: string;     // Backward-compatible alias
   accentGreenSubtle: string;
   accentGreenGlow: string;
 
+  // Semantic Status Colors (Clean & Restrained)
+  success: string;
+  successSubtle: string;
+  warning: string;
+  warningSubtle: string;
+  error: string;
+  errorSubtle: string;
+  info: string;
+  infoSubtle: string;
+
+  // Backward-compatible semantic aliases
+  accentCyan: string;
+  accentCyanSubtle: string;
+  accentPurple: string;
+  accentPurpleSubtle: string;
+  accentRed: string;
+  accentRedSubtle: string;
+  accentYellow: string;
+  accentYellowSubtle: string;
   accentNavy: string;
   accentNavyLight: string;
   accentNavyDark: string;
 
-  accentCyan: string;
-  accentCyanSubtle: string;
-
-  accentPurple: string;
-  accentPurpleSubtle: string;
-
-  accentRed: string;
-  accentRedSubtle: string;
-
-  accentYellow: string;
-  accentYellowSubtle: string;
-
+  // Navigation & Interactive Bars
   bottomBarBg: string;
   bottomBarBorder: string;
   bottomBarActivePill: string;
   bottomBarActiveGlow: string;
 
+  // Code & Terminal
   codeBg: string;
   codeBorder: string;
-
-  // Compatibility tokens
-  bgCard: string;
-  bgCardHover: string;
-  border: string;
-  borderActive: string;
 }
 
 export const DARK_THEME: ThemePalette = {
-  // Deep Navy Cosmic Base
-  bgPrimary: '#070d19',
-  bgSecondary: '#0c1629',
-  bgSurface: '#12203a',
+  // Pure Pitch Black & Clean Grayscale System
+  bgPrimary: '#000000',
+  bgSecondary: '#0A0A0A',
+  bgSurface: '#121212',
+  surfaceElevated: '#171717',
+  surfaceHover: '#262626',
 
-  cardBg: '#0f1c35',
-  cardBorder: 'rgba(59, 130, 246, 0.16)',
-  cardSpecular: 'rgba(147, 197, 253, 0.28)',
+  cardBg: '#121212',
+  cardBorder: '#262626',
+  cardSpecular: '#404040',
+  bgCard: '#121212',
+  bgCardHover: '#171717',
+  background: '#000000',
 
-  textPrimary: '#f8fafc',
-  textSecondary: '#94a3b8',
-  textMuted: '#64748b',
-  textDim: '#3b4d6b',
+  border: '#262626',
+  borderStrong: '#404040',
+  borderActive: '#FFFFFF',
 
-  // Primary Brand Accent -> Electric Navy / Royal Blue
-  accentGreen: '#3b82f6',
-  accentGreenSubtle: 'rgba(59, 130, 246, 0.16)',
-  accentGreenGlow: 'rgba(59, 130, 246, 0.35)',
+  // Typography Hierarchy
+  textPrimary: '#FFFFFF',
+  textSecondary: '#A3A3A3',
+  textMuted: '#737373',
+  textDim: '#525252',
+  textDisabled: '#404040',
 
-  accentNavy: '#1d4ed8',
-  accentNavyLight: '#60a5fa',
-  accentNavyDark: '#0a192f',
+  // Pure White Accent
+  accent: '#FFFFFF',
+  accentStrong: '#F5F5F5',
+  accentMuted: '#D4D4D4',
+  accentSurface: 'rgba(255, 255, 255, 0.10)',
+  accentGreen: '#FFFFFF',
+  accentGreenSubtle: 'rgba(255, 255, 255, 0.08)',
+  accentGreenGlow: 'rgba(255, 255, 255, 0.20)',
 
-  accentCyan: '#38bdf8',
-  accentCyanSubtle: 'rgba(56, 189, 248, 0.16)',
+  // Clean Restrained Status
+  success: '#E5E5E5',
+  successSubtle: 'rgba(255, 255, 255, 0.08)',
+  warning: '#D4D4D4',
+  warningSubtle: 'rgba(255, 255, 255, 0.08)',
+  error: '#EF4444',
+  errorSubtle: 'rgba(239, 68, 68, 0.12)',
+  info: '#FFFFFF',
+  infoSubtle: 'rgba(255, 255, 255, 0.08)',
 
-  accentPurple: '#818cf8',
-  accentPurpleSubtle: 'rgba(129, 140, 248, 0.16)',
+  // Aliases
+  accentCyan: '#FFFFFF',
+  accentCyanSubtle: 'rgba(255, 255, 255, 0.08)',
+  accentPurple: '#E5E5E5',
+  accentPurpleSubtle: 'rgba(255, 255, 255, 0.08)',
+  accentRed: '#EF4444',
+  accentRedSubtle: 'rgba(239, 68, 68, 0.12)',
+  accentYellow: '#D4D4D4',
+  accentYellowSubtle: 'rgba(255, 255, 255, 0.08)',
+  accentNavy: '#FFFFFF',
+  accentNavyLight: '#F5F5F5',
+  accentNavyDark: '#000000',
 
-  accentRed: '#f43f5e',
-  accentRedSubtle: 'rgba(244, 63, 94, 0.16)',
+  // Navigation
+  bottomBarBg: 'rgba(0, 0, 0, 0.95)',
+  bottomBarBorder: '#262626',
+  bottomBarActivePill: 'rgba(255, 255, 255, 0.12)',
+  bottomBarActiveGlow: 'rgba(255, 255, 255, 0.18)',
 
-  accentYellow: '#fbbf24',
-  accentYellowSubtle: 'rgba(251, 191, 36, 0.16)',
-
-  bottomBarBg: 'rgba(10, 20, 38, 0.94)',
-  bottomBarBorder: 'rgba(59, 130, 246, 0.22)',
-  bottomBarActivePill: 'rgba(37, 99, 235, 0.22)',
-  bottomBarActiveGlow: 'rgba(59, 130, 246, 0.45)',
-
-  codeBg: '#060a14',
-  codeBorder: 'rgba(59, 130, 246, 0.14)',
-
-  bgCard: '#0f1c35',
-  bgCardHover: '#17284a',
-  border: 'rgba(59, 130, 246, 0.16)',
-  borderActive: 'rgba(59, 130, 246, 0.45)',
+  // Code
+  codeBg: '#0A0A0A',
+  codeBorder: '#262626',
 };
 
 export const LIGHT_THEME: ThemePalette = {
-  // Crisp Porcelain & Ice Navy Base
-  bgPrimary: '#f0f5fc',
-  bgSecondary: '#e2ebf7',
-  bgSurface: '#ffffff',
+  // Pure White & Deep Charcoal System
+  bgPrimary: '#FFFFFF',
+  bgSecondary: '#FAFAFA',
+  bgSurface: '#FFFFFF',
+  surfaceElevated: '#FFFFFF',
+  surfaceHover: '#F5F5F5',
 
-  cardBg: '#ffffff',
-  cardBorder: 'rgba(30, 58, 138, 0.12)',
-  cardSpecular: 'rgba(255, 255, 255, 0.95)',
+  cardBg: '#FFFFFF',
+  cardBorder: '#E5E5E5',
+  cardSpecular: '#D4D4D4',
+  bgCard: '#FFFFFF',
+  bgCardHover: '#FAFAFA',
+  background: '#FFFFFF',
 
-  textPrimary: '#0f172a',
-  textSecondary: '#334155',
-  textMuted: '#64748b',
-  textDim: '#94a3b8',
+  border: '#E5E5E5',
+  borderStrong: '#A3A3A3',
+  borderActive: '#000000',
 
-  // Primary Brand Accent -> Deep Royal Navy Blue
-  accentGreen: '#1d4ed8',
-  accentGreenSubtle: 'rgba(29, 78, 216, 0.12)',
-  accentGreenGlow: 'rgba(29, 78, 216, 0.25)',
+  // Typography Hierarchy
+  textPrimary: '#000000',
+  textSecondary: '#525252',
+  textMuted: '#737373',
+  textDim: '#A3A3A3',
+  textDisabled: '#D4D4D4',
 
-  accentNavy: '#1e3a8a',
-  accentNavyLight: '#3b82f6',
-  accentNavyDark: '#0f172a',
+  // Pure Black Accent
+  accent: '#000000',
+  accentStrong: '#171717',
+  accentMuted: '#404040',
+  accentSurface: 'rgba(0, 0, 0, 0.06)',
+  accentGreen: '#000000',
+  accentGreenSubtle: 'rgba(0, 0, 0, 0.06)',
+  accentGreenGlow: 'rgba(0, 0, 0, 0.12)',
 
-  accentCyan: '#0284c7',
-  accentCyanSubtle: 'rgba(2, 132, 199, 0.12)',
+  // Clean Restrained Status
+  success: '#171717',
+  successSubtle: 'rgba(0, 0, 0, 0.06)',
+  warning: '#404040',
+  warningSubtle: 'rgba(0, 0, 0, 0.06)',
+  error: '#DC2626',
+  errorSubtle: 'rgba(220, 38, 38, 0.08)',
+  info: '#000000',
+  infoSubtle: 'rgba(0, 0, 0, 0.06)',
 
-  accentPurple: '#6366f1',
-  accentPurpleSubtle: 'rgba(99, 102, 241, 0.12)',
+  // Aliases
+  accentCyan: '#000000',
+  accentCyanSubtle: 'rgba(0, 0, 0, 0.06)',
+  accentPurple: '#171717',
+  accentPurpleSubtle: 'rgba(0, 0, 0, 0.06)',
+  accentRed: '#DC2626',
+  accentRedSubtle: 'rgba(220, 38, 38, 0.08)',
+  accentYellow: '#404040',
+  accentYellowSubtle: 'rgba(0, 0, 0, 0.06)',
+  accentNavy: '#000000',
+  accentNavyLight: '#404040',
+  accentNavyDark: '#000000',
 
-  accentRed: '#e11d48',
-  accentRedSubtle: 'rgba(225, 29, 72, 0.12)',
+  // Navigation
+  bottomBarBg: 'rgba(255, 255, 255, 0.96)',
+  bottomBarBorder: '#E5E5E5',
+  bottomBarActivePill: 'rgba(0, 0, 0, 0.08)',
+  bottomBarActiveGlow: 'rgba(0, 0, 0, 0.12)',
 
-  accentYellow: '#d97706',
-  accentYellowSubtle: 'rgba(217, 119, 6, 0.12)',
-
-  bottomBarBg: 'rgba(255, 255, 255, 0.95)',
-  bottomBarBorder: 'rgba(30, 58, 138, 0.12)',
-  bottomBarActivePill: 'rgba(29, 78, 216, 0.12)',
-  bottomBarActiveGlow: 'rgba(29, 78, 216, 0.25)',
-
-  codeBg: '#f8fafc',
-  codeBorder: 'rgba(30, 58, 138, 0.08)',
-
-  bgCard: '#ffffff',
-  bgCardHover: '#f8fafc',
-  border: 'rgba(30, 58, 138, 0.12)',
-  borderActive: 'rgba(29, 78, 216, 0.35)',
+  // Code
+  codeBg: '#F5F5F5',
+  codeBorder: '#E5E5E5',
 };
 
 export const THEME_PALETTES = {
@@ -153,5 +212,4 @@ export const THEME_PALETTES = {
   light: LIGHT_THEME,
 } as const;
 
-// Backward-compatible default colors
 export const COLORS = DARK_THEME;

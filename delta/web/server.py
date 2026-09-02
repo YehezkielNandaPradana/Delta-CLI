@@ -229,6 +229,28 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 self._safe_write(body)
                 return
 
+            if clean_path == "/api/tunnel":
+                res = self.bridge.get_tunnel_status() if self.bridge else {"status": "error", "message": "Bridge offline"}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
+            if clean_path == "/api/tunnel/logs":
+                query = parse_qs(parsed_url.query)
+                limit = int(query.get("limit", [100])[0]) if query.get("limit", [""])[0].isdigit() else 100
+                res = self.bridge.get_tunnel_logs(limit=limit) if self.bridge else {"status": "error", "message": "Bridge offline", "logs": []}
+                body = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self._safe_write(body)
+                return
+
             if clean_path == "/api/router":
                 res = self.bridge.get_router_status() if self.bridge else {"status": "error", "message": "Bridge offline"}
                 body = json.dumps(res).encode("utf-8")
@@ -517,6 +539,30 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
         try:
             parsed_url = urlparse(self.path)
             clean_path = parsed_url.path
+
+            if clean_path == "/api/tunnel/start":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                port = int(data.get("port", 8080))
+                res = self.bridge.start_tunnel(port=port) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
+            if clean_path == "/api/tunnel/stop":
+                res = self.bridge.stop_tunnel() if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
 
             if clean_path == "/api/cancel":
                 res = self.bridge.cancel_execution() if self.bridge else {"status": "error", "message": "Bridge unavailable"}

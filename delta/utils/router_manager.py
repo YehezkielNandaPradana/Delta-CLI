@@ -13,11 +13,13 @@ def is_9router_running() -> bool:
         return False
 
 def start_9router() -> None:
-    """Start 9router in the background."""
+    """Start 9router in the background listening on all network interfaces (0.0.0.0)."""
     router_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "9router"))
 
     env = os.environ.copy()
     env["PORT"] = "20128"
+    env["HOST"] = "0.0.0.0"
+    env["HOSTNAME"] = "0.0.0.0"
     env["NEXT_PUBLIC_BASE_URL"] = "http://localhost:20128"
 
     if sys.platform == "win32":

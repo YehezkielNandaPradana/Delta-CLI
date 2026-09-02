@@ -9,765 +9,452 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Header } from '../../src/components/common/Header';
-import { LiquidGlassCard } from '../../src/components/common/LiquidGlassCard';
+import { PageTransition } from '../../src/components/common/PageTransition';
 import { RouterAlertModal } from '../../src/components/chat/RouterAlertModal';
 import { AccountManagerModal } from '../../src/components/settings/AccountManagerModal';
+import { SkillsManagerModal } from '../../src/components/settings/SkillsManagerModal';
 import { useSettingsStore, ThemeMode } from '../../src/store/useSettingsStore';
+import { useSkillsStore } from '../../src/store/useSkillsStore';
 import { useConnectionStore } from '../../src/store/useConnectionStore';
-import { getModels, selectModel, getSystemStatus, getRouterStatus } from '../../src/services/api/systemApi';
-import { sseClient } from '../../src/services/realtime/sseClient';
-import { AIModel } from '../../src/types/system';
-import { AntigravityAccount, ConnectionMode } from '../../src/types/cloud';
+import { test9RouterPing } from '../../src/services/api/systemApi';
+import { AntigravityAccount } from '../../src/types/cloud';
 import { useThemeColors } from '../../src/theme/theme';
 
-const CLOUD_MODEL_PRESETS: { name: string; description: string }[] = [
-  {
-    name: 'gemini-1.5-flash',
-    description: 'Google Gemini 1.5 Flash (Most Stable & High Availability)',
-  },
-  {
-    name: 'gemini-1.5-pro',
-    description: 'Google Gemini 1.5 Pro (Deep Reasoning & Analysis)',
-  },
-  {
-    name: 'gemini-3.6-flash',
-    description: 'Google Gemini 3.6 Flash',
-  },
-];
-
-const DEFAULT_9ROUTER_PRESETS: AIModel[] = [
-  {
-    name: 'ag/gemini-3.7-flash-high',
-    description: 'Gemini 3.7 Flash High via Antigravity in 9Router',
-    provider: '9router',
-    is_current: true,
-  },
-  {
-    name: 'google/gemini-3.7-flash',
-    description: 'Google Gemini 3.7 Flash via Antigravity in 9Router',
-    provider: '9router',
-    is_current: false,
-  },
-  {
-    name: 'antigravity/gemini-3.7-flash',
-    description: 'Direct Gemini 3.7 Flash Antigravity Route',
-    provider: '9router',
-    is_current: false,
-  },
-  {
-    name: 'deepseek/deepseek-v4-flash',
-    description: 'DeepSeek V4 Flash - fast & efficient',
-    provider: '9router',
-    is_current: false,
-  },
-  {
-    name: 'anthropic/claude-sonnet-4-20250514',
-    description: 'Claude Sonnet 4 via 9Router Gateway',
-    provider: '9router',
-    is_current: false,
-  },
-  {
-    name: 'openai/gpt-4o-mini',
-    description: 'OpenAI GPT-4o Mini via 9Router',
-    provider: '9router',
-    is_current: false,
-  },
-  {
-    name: 'AntigravityCombo',
-    description: 'Antigravity Multi-provider Hybrid Combo',
-    provider: '9router',
-    is_current: false,
-  },
+const CLOUD_MODEL_PRESETS = [
+  { name: 'gemini-1.5-pro', description: 'Google Gemini 1.5 Pro (Deep Cybersecurity Reasoning)', tag: 'PRO' },
+  { name: 'gemini-2.0-flash', description: 'Google Gemini 2.0 Flash (Next-Gen Ultra Fast)', tag: 'FAST' },
+  { name: 'gemini-1.5-flash', description: 'Google Gemini 1.5 Flash (High Stability & Free Quota)', tag: 'FREE' },
+  { name: 'ag/gemini-3.7-flash-high', description: 'Antigravity Gemini 3.7 Flash High Router', tag: 'ROUTER' },
 ];
 
 export default function SettingsScreen() {
   const { colors, isDark } = useThemeColors();
   const {
     serverUrl,
-    activeModel,
+    routerHostUrl,
     hapticEnabled,
     theme,
     connectionMode,
-    accounts,
-    activeAccountId,
     cloudModel,
     setServerUrl,
-    setActiveModel,
+    setRouterHostUrl,
     setHapticEnabled,
     setTheme,
     setConnectionMode,
     setCloudModel,
     addAccount,
     updateAccount,
-    deleteAccount,
-    setActiveAccount,
     getActiveAccount,
   } = useSettingsStore();
-  const { status, workingDirectory, isRouterRunning, setIsRouterRunning } = useConnectionStore();
 
-  const [inputUrl, setInputUrl] = useState(serverUrl);
-  const [models, setModels] = useState<AIModel[]>(DEFAULT_9ROUTER_PRESETS);
-  const [loadingModels, setLoadingModels] = useState(false);
-  const [switchingModel, setSwitchingModel] = useState<string | null>(null);
-  const [selectedProviderFilter, setSelectedProviderFilter] = useState<string>('9router');
-  const [customModelInput, setCustomModelInput] = useState('');
-  const [testingConnection, setTestingConnection] = useState(false);
+  const [inputServerUrl, setInputServerUrl] = useState(serverUrl);
+  const [inputRouterHostUrl, setInputRouterHostUrl] = useState(routerHostUrl);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showSkillsModal, setShowSkillsModal] = useState(false);
   const [showRouterModal, setShowRouterModal] = useState(false);
+  const [isTestingPing, setIsTestingPing] = useState(false);
 
-  // Account Modal State
-  const [accountModalVisible, setAccountModalVisible] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<AntigravityAccount | null>(null);
-
-  useEffect(() => {
-    setInputUrl(serverUrl);
-  }, [serverUrl]);
-
-  const loadModelsList = async () => {
-    if (connectionMode === 'cloud') return;
-    setLoadingModels(true);
-    try {
-      const res = await getModels();
-      if (res.status === 'ok' && res.models && res.models.length > 0) {
-        setModels(res.models);
-        if (res.current_model) {
-          setActiveModel(res.current_model);
-        }
-      } else {
-        setModels(DEFAULT_9ROUTER_PRESETS);
-      }
-    } catch (e) {
-      setModels(DEFAULT_9ROUTER_PRESETS);
-    } finally {
-      setLoadingModels(false);
-    }
-  };
+  const { skills } = useSkillsStore();
+  const activeSkillsCount = skills.filter((s) => s.isActive).length;
 
   useEffect(() => {
-    loadModelsList();
-  }, [serverUrl, connectionMode]);
+    setInputServerUrl(serverUrl);
+    setInputRouterHostUrl(routerHostUrl);
+  }, [serverUrl, routerHostUrl]);
 
-  const handleSaveUrl = async () => {
-    await setServerUrl(inputUrl);
-    sseClient.restart();
-    Alert.alert('Saved', 'Server URL updated and reconnecting.');
+  const activeAccount = getActiveAccount();
+
+  const handleSaveHost = async () => {
+    await setServerUrl(inputServerUrl);
+    await setRouterHostUrl(inputRouterHostUrl);
+    if (hapticEnabled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+    Alert.alert('Tersimpan', 'Konfigurasi host jaringan berhasil diperbarui.');
   };
 
-  const handleSelectModel = async (modelName: string) => {
-    if (connectionMode === 'cloud') {
-      await setCloudModel(modelName);
-      Alert.alert('Cloud Model Set', `Active cloud model: ${modelName}`);
-      return;
+  const handleTestPing = async () => {
+    setIsTestingPing(true);
+    if (hapticEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
-
-    setSwitchingModel(modelName);
     try {
-      const res = await selectModel(modelName);
-      if (res.status === 'ok') {
-        await setActiveModel(modelName);
-        Alert.alert('Model Switched', `Active model is now ${modelName}`);
-        loadModelsList();
+      const res = await test9RouterPing(inputRouterHostUrl || undefined);
+      if (res.success) {
+        Alert.alert('9Router Online', `Terhubung ke: ${res.url}\nLatency: ${res.latencyMs} ms\nModels: ${res.modelsCount}`);
       } else {
-        await setActiveModel(modelName);
-        Alert.alert('Model Switched', `Selected model: ${modelName}`);
+        Alert.alert('Koneksi Gagal', res.error || '9Router tidak merespon pada port 20128');
       }
-    } catch (err: any) {
-      await setActiveModel(modelName);
-      Alert.alert('Model Updated', `Active model set to ${modelName}`);
+    } catch (e: any) {
+      Alert.alert('Ping Error', e.message);
     } finally {
-      setSwitchingModel(null);
+      setIsTestingPing(false);
     }
   };
 
-  const handleApplyCustomModel = async () => {
-    const trimmed = customModelInput.trim();
-    if (!trimmed) return;
-    await handleSelectModel(trimmed);
-    setCustomModelInput('');
+  const handleSelectModel = (modelName: string) => {
+    if (hapticEnabled) {
+      Haptics.selectionAsync().catch(() => {});
+    }
+    setCloudModel(modelName);
   };
 
-  const handleSaveAccount = async (
-    accData: Omit<AntigravityAccount, 'id'>,
-    editId?: string
-  ) => {
+  const handleSaveAccount = async (accData: Omit<AntigravityAccount, 'id'>, editId?: string) => {
     if (editId) {
       await updateAccount(editId, accData);
-      Alert.alert('Success', 'Akun berhasil diperbarui.');
     } else {
       await addAccount(accData);
-      Alert.alert('Success', 'Akun Antigravity berhasil ditambahkan.');
     }
   };
-
-  const handleDeleteAccount = (acc: AntigravityAccount) => {
-    Alert.alert('Hapus Akun', `Yakin ingin menghapus akun "${acc.name}"?`, [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Hapus',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteAccount(acc.id);
-        },
-      },
-    ]);
-  };
-
-  const themeOptions: { mode: ThemeMode; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-    { mode: 'dark', label: 'Dark', icon: 'moon' },
-    { mode: 'light', label: 'Light', icon: 'sunny' },
-    { mode: 'system', label: 'System', icon: 'phone-portrait-outline' },
-  ];
-
-  const currentActiveAccount = getActiveAccount();
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
-      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
-        <Header
-          title="DELTA"
-          subtitle="Connection & AI Configuration"
-          onRouterWarningPress={() => setShowRouterModal(true)}
-        />
+      <PageTransition style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <Header title="Settings" subtitle="Konfigurasi & Preferensi Sistem" />
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-          {/* CONNECTION MODE TOGGLE */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-              CONNECTION ARCHITECTURE
-            </Text>
-            <View style={styles.connectionToggleRow}>
-              <TouchableOpacity
-                style={[
-                  styles.connectionPill,
-                  {
-                    backgroundColor:
-                      connectionMode === 'cloud' ? colors.accentGreenSubtle : colors.cardBg,
-                    borderColor:
-                      connectionMode === 'cloud' ? colors.accentGreen : colors.cardBorder,
-                  },
-                ]}
-                onPress={() => setConnectionMode('cloud')}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name="cloud-outline"
-                  size={18}
-                  color={connectionMode === 'cloud' ? colors.accentGreen : colors.textMuted}
-                />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* SECTION 1: KONEKSI & MODE */}
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
+            KONEKSI & MODE OPERASI
+          </Text>
+
+          <View style={[styles.groupCard, { backgroundColor: colors.bgSurface, borderColor: colors.border }]}>
+            {/* Mode Cloud / Direct */}
+            <View style={styles.rowItem}>
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconBox, { backgroundColor: isDark ? '#262626' : '#E5E5E5' }]}>
+                  <Ionicons name="cloud-outline" size={17} color={colors.textPrimary} />
+                </View>
                 <View>
-                  <Text
-                    style={[
-                      styles.connectionPillTitle,
-                      {
-                        color:
-                          connectionMode === 'cloud' ? colors.accentGreen : colors.textPrimary,
-                      },
-                    ]}
-                  >
-                    Direct Cloud (Internet)
-                  </Text>
-                  <Text style={[styles.connectionPillDesc, { color: colors.textMuted }]}>
-                    Antigravity API · No Server Needed
+                  <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Mode Cloud / 9Router</Text>
+                  <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
+                    {connectionMode === 'cloud' ? 'Langsung via Google AI & 9Router' : 'Terhubung ke Local CLI Backend'}
                   </Text>
                 </View>
+              </View>
+              <Switch
+                value={connectionMode === 'cloud'}
+                onValueChange={(val) => setConnectionMode(val ? 'cloud' : 'local')}
+                trackColor={{ false: isDark ? '#262626' : '#E5E5E5', true: colors.textPrimary }}
+                thumbColor={isDark ? '#000000' : '#FFFFFF'}
+              />
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            {/* Server Backend Host */}
+            <View style={styles.inputRow}>
+              <View style={styles.inputLabelRow}>
+                <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Host Backend Server</Text>
+                <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>IP Delta CLI / FastAPI (Port 8080)</Text>
+              </View>
+              <TextInput
+                value={inputServerUrl}
+                onChangeText={setInputServerUrl}
+                placeholder="http://192.168.1.6:8080"
+                placeholderTextColor={colors.textMuted}
+                style={[styles.textInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: isDark ? '#0A0A0A' : '#FAFAFA' }]}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            {/* Custom 9Router Host IP */}
+            <View style={styles.inputRow}>
+              <View style={styles.inputLabelRow}>
+                <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Custom 9Router IP (Port 20128)</Text>
+                <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>Loopback / PRoot / Laptop Gateway</Text>
+              </View>
+              <TextInput
+                value={inputRouterHostUrl}
+                onChangeText={setInputRouterHostUrl}
+                placeholder="http://192.168.1.6:20128"
+                placeholderTextColor={colors.textMuted}
+                style={[styles.textInput, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: isDark ? '#0A0A0A' : '#FAFAFA' }]}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            {/* Action Buttons Row */}
+            <View style={styles.btnRow}>
+              <TouchableOpacity
+                onPress={handleTestPing}
+                disabled={isTestingPing}
+                style={[styles.secondaryActionBtn, { borderColor: colors.border, backgroundColor: isDark ? '#1F1F1F' : '#F0F0F0' }]}
+                activeOpacity={0.7}
+              >
+                {isTestingPing ? (
+                  <ActivityIndicator size="small" color={colors.textPrimary} />
+                ) : (
+                  <>
+                    <Ionicons name="flash-outline" size={14} color={colors.textPrimary} />
+                    <Text style={[styles.btnText, { color: colors.textPrimary }]}>Test Ping</Text>
+                  </>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.connectionPill,
-                  {
-                    backgroundColor:
-                      connectionMode === 'local' ? colors.accentCyanSubtle : colors.cardBg,
-                    borderColor:
-                      connectionMode === 'local' ? colors.accentCyan : colors.cardBorder,
-                  },
-                ]}
-                onPress={() => setConnectionMode('local')}
+                onPress={handleSaveHost}
+                style={[styles.primaryActionBtn, { backgroundColor: colors.textPrimary }]}
                 activeOpacity={0.8}
               >
-                <Ionicons
-                  name="laptop-outline"
-                  size={18}
-                  color={connectionMode === 'local' ? colors.accentCyan : colors.textMuted}
-                />
-                <View>
-                  <Text
-                    style={[
-                      styles.connectionPillTitle,
-                      {
-                        color:
-                          connectionMode === 'local' ? colors.accentCyan : colors.textPrimary,
-                      },
-                    ]}
-                  >
-                    Local Delta Server
-                  </Text>
-                  <Text style={[styles.connectionPillDesc, { color: colors.textMuted }]}>
-                    FastAPI + Local 9Router
-                  </Text>
-                </View>
+                <Ionicons name="checkmark" size={15} color={colors.bgPrimary} />
+                <Text style={[styles.btnText, { color: colors.bgPrimary }]}>Simpan Host</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* CLOUD MODE: ANTIGRAVITY ACCOUNTS & MODELS */}
-          {connectionMode === 'cloud' ? (
-            <>
-              {/* ANTIGRAVITY ACCOUNTS MANAGEMENT */}
-              <View style={styles.section}>
-                <View style={styles.sectionHeaderRow}>
-                  <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-                    ANTIGRAVITY ACCOUNTS ({accounts.length})
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setEditingAccount(null);
-                      setAccountModalVisible(true);
-                    }}
-                    style={[styles.addAccountHeaderBtn, { backgroundColor: colors.accentGreenSubtle }]}
-                  >
-                    <Feather name="plus" size={13} color={colors.accentGreen} />
-                    <Text style={[styles.addAccountHeaderText, { color: colors.accentGreen }]}>
-                      Tambah Akun
-                    </Text>
-                  </TouchableOpacity>
+          {/* SECTION 2: AKUN & MODEL AI */}
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
+            AKUN & MODEL AI
+          </Text>
+
+          <View style={[styles.groupCard, { backgroundColor: colors.bgSurface, borderColor: colors.border }]}>
+            {/* Active Account Row */}
+            <TouchableOpacity
+              onPress={() => setShowAccountModal(true)}
+              style={styles.clickableRow}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconBox, { backgroundColor: isDark ? '#262626' : '#E5E5E5' }]}>
+                  <Ionicons name="key-outline" size={17} color={colors.textPrimary} />
                 </View>
+                <View>
+                  <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>
+                    {activeAccount ? activeAccount.name : 'Hubungkan Akun AI'}
+                  </Text>
+                  <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
+                    {activeAccount?.apiKey ? 'API Key Terhubung' : 'Google AI Studio / Antigravity'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.rowRightChevron}>
+                <Feather name="chevron-right" size={16} color={colors.textMuted} />
+              </View>
+            </TouchableOpacity>
 
-                <LiquidGlassCard style={styles.glassCard}>
-                  {accounts.map((acc) => {
-                    const isActive = acc.id === activeAccountId;
-                    const maskedKey = acc.apiKey
-                      ? `${acc.apiKey.slice(0, 4)}••••••••${acc.apiKey.slice(-4)}`
-                      : 'Belum ada API Key';
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-                    return (
+            {/* Coding Skills Manager Row */}
+            <TouchableOpacity
+              onPress={() => setShowSkillsModal(true)}
+              style={styles.clickableRow}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconBox, { backgroundColor: isDark ? '#262626' : '#E5E5E5' }]}>
+                  <Ionicons name="construct-outline" size={17} color={colors.textPrimary} />
+                </View>
+                <View>
+                  <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>
+                    Skill Coding & Desain Delta
+                  </Text>
+                  <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
+                    {activeSkillsCount} skill aktif (UI/UX Pro, Clean Arch, dll.)
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.rowRightChevron}>
+                <Feather name="chevron-right" size={16} color={colors.textMuted} />
+              </View>
+            </TouchableOpacity>
+
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            {/* Model Presets List (iOS Radio List Table) */}
+            <View style={styles.presetSectionWrapper}>
+              <Text style={[styles.rowTitleSmall, { color: colors.textSecondary }]}>
+                PRESET MODEL DEFAULT
+              </Text>
+
+              <View style={styles.presetList}>
+                {CLOUD_MODEL_PRESETS.map((preset, index) => {
+                  const isSelected = cloudModel === preset.name;
+                  const isLast = index === CLOUD_MODEL_PRESETS.length - 1;
+
+                  return (
+                    <View key={preset.name}>
                       <TouchableOpacity
-                        key={acc.id}
+                        onPress={() => handleSelectModel(preset.name)}
                         style={[
-                          styles.accountItem,
-                          {
-                            backgroundColor: isActive
-                              ? colors.accentGreenSubtle
-                              : colors.bgSecondary,
-                            borderColor: isActive ? colors.accentGreen : colors.cardBorder,
+                          styles.presetRow,
+                          isSelected && {
+                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
                           },
                         ]}
-                        onPress={() => setActiveAccount(acc.id)}
-                        activeOpacity={0.7}
+                        activeOpacity={0.65}
                       >
-                        <View style={styles.accountItemLeft}>
-                          <View style={styles.accountHeaderRow}>
+                        <View style={styles.presetLeftContent}>
+                          <View style={styles.presetNameRow}>
                             <Text
                               style={[
-                                styles.accountName,
-                                { color: isActive ? colors.accentGreen : colors.textPrimary },
+                                styles.presetNameText,
+                                {
+                                  color: colors.textPrimary,
+                                  fontWeight: isSelected ? '700' : '500',
+                                },
                               ]}
                             >
-                              {acc.name}
+                              {preset.name}
                             </Text>
-                            {isActive && (
-                              <View
-                                style={[
-                                  styles.activeBadge,
-                                  { backgroundColor: colors.accentGreen },
-                                ]}
-                              >
-                                <Text
-                                  style={[
-                                    styles.activeBadgeText,
-                                    { color: isDark ? '#000000' : '#ffffff' },
-                                  ]}
-                                >
-                                  AKTIF
-                                </Text>
-                              </View>
-                            )}
+                            <View
+                              style={[
+                                styles.tagPill,
+                                {
+                                  backgroundColor: isDark ? '#262626' : '#E5E5E5',
+                                },
+                              ]}
+                            >
+                              <Text style={[styles.tagPillText, { color: colors.textPrimary }]}>
+                                {preset.tag}
+                              </Text>
+                            </View>
                           </View>
-                          <Text style={[styles.accountKeyText, { color: colors.textMuted }]}>
-                            Key: {maskedKey}
-                          </Text>
-                          <Text
-                            style={[styles.accountUrlText, { color: colors.textDim }]}
-                            numberOfLines={1}
-                          >
-                            URL: {acc.baseUrl ? acc.baseUrl : 'Google Gemini Official API (Default)'}
+                          <Text style={[styles.presetDescText, { color: colors.textMuted }]}>
+                            {preset.description}
                           </Text>
                         </View>
 
-                        <View style={styles.accountActions}>
-                          <TouchableOpacity
-                            onPress={() => {
-                              setEditingAccount(acc);
-                              setAccountModalVisible(true);
-                            }}
-                            style={styles.actionIconBtn}
-                          >
-                            <Feather name="edit-2" size={15} color={colors.accentCyan} />
-                          </TouchableOpacity>
-                          {accounts.length > 1 && (
-                            <TouchableOpacity
-                              onPress={() => handleDeleteAccount(acc)}
-                              style={styles.actionIconBtn}
-                            >
-                              <Feather name="trash-2" size={15} color={colors.accentRed} />
-                            </TouchableOpacity>
+                        {/* Right Checkmark */}
+                        <View style={styles.checkmarkWrapper}>
+                          {isSelected && (
+                            <Ionicons name="checkmark-sharp" size={18} color={colors.textPrimary} />
                           )}
                         </View>
                       </TouchableOpacity>
-                    );
-                  })}
-                </LiquidGlassCard>
-              </View>
 
-              {/* CLOUD MODEL SELECTION */}
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-                  ANTIGRAVITY CLOUD MODEL
-                </Text>
-                <LiquidGlassCard style={styles.glassCard}>
-                  {CLOUD_MODEL_PRESETS.map((m) => {
-                    const isSelected = (cloudModel || 'ag/gemini-3.7-flash-high') === m.name;
-                    return (
-                      <TouchableOpacity
-                        key={m.name}
-                        style={[
-                          styles.modelItem,
-                          {
-                            backgroundColor: isSelected
-                              ? colors.accentGreenSubtle
-                              : colors.bgSecondary,
-                            borderColor: isSelected ? colors.accentGreen : colors.cardBorder,
-                          },
-                        ]}
-                        onPress={() => handleSelectModel(m.name)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.modelInfo}>
-                          <Text
-                            style={[
-                              styles.modelName,
-                              { color: isSelected ? colors.accentGreen : colors.textPrimary },
-                            ]}
-                          >
-                            {m.name}
-                          </Text>
-                          <Text style={[styles.modelDesc, { color: colors.textMuted }]}>
-                            {m.description}
-                          </Text>
-                        </View>
-                        {isSelected ? (
-                          <View
-                            style={[
-                              styles.activeCheckCircle,
-                              { backgroundColor: colors.accentGreen },
-                            ]}
-                          >
-                            <Feather name="check" size={13} color={isDark ? '#000000' : '#ffffff'} />
-                          </View>
-                        ) : (
-                          <Feather name="chevron-right" size={16} color={colors.textDim} />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-
-                  {/* Custom Model Input */}
-                  <View style={[styles.customModelSection, { borderTopColor: colors.cardBorder }]}>
-                    <Text style={[styles.label, { color: colors.textSecondary }]}>
-                      Custom Cloud Model ID
-                    </Text>
-                    <View style={styles.inputRow}>
-                      <TextInput
-                        style={[
-                          styles.textInput,
-                          {
-                            backgroundColor: colors.codeBg,
-                            borderColor: colors.codeBorder,
-                            color: colors.textPrimary,
-                          },
-                        ]}
-                        value={customModelInput}
-                        onChangeText={setCustomModelInput}
-                        placeholder="Contoh: gemini-3.7-flash-high"
-                        placeholderTextColor={colors.textMuted}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                      />
-                      <TouchableOpacity
-                        style={[styles.saveBtn, { backgroundColor: colors.accentGreen }]}
-                        onPress={handleApplyCustomModel}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[styles.saveBtnText, { color: isDark ? '#000000' : '#ffffff' }]}
-                        >
-                          Terapkan
-                        </Text>
-                      </TouchableOpacity>
+                      {!isLast && (
+                        <View style={[styles.presetDivider, { backgroundColor: colors.border }]} />
+                      )}
                     </View>
-                  </View>
-                </LiquidGlassCard>
+                  );
+                })}
               </View>
-            </>
-          ) : (
-            /* LOCAL MODE SECTIONS */
-            <>
-              {/* 9ROUTER DIAGNOSTICS */}
-              <View style={styles.section}>
-                <View style={styles.sectionHeaderRow}>
-                  <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-                    9ROUTER GATEWAY DIAGNOSTICS
-                  </Text>
-                  <TouchableOpacity
-                    onPress={async () => {
-                      try {
-                        const r = await getRouterStatus();
-                        setIsRouterRunning(r.running);
-                        Alert.alert(
-                          '9Router Status',
-                          r.running ? 'Active on port 20128' : 'Offline / Inactive'
-                        );
-                      } catch (e: any) {
-                        Alert.alert('9Router Check Failed', e.message);
-                      }
-                    }}
-                    style={styles.refreshBtn}
-                  >
-                    <Feather name="refresh-cw" size={13} color={colors.accentGreen} />
-                  </TouchableOpacity>
-                </View>
-
-                <LiquidGlassCard style={styles.glassCard}>
-                  <View style={styles.statusRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.switchLabel, { color: colors.textPrimary }]}>
-                        Local 9Router Proxy (Port 20128)
-                      </Text>
-                      <Text style={[styles.switchDesc, { color: colors.textMuted }]}>
-                        {isRouterRunning
-                          ? 'Online and accepting AI requests'
-                          : 'Offline — click below to configure'}
-                      </Text>
-                    </View>
-                    <View style={styles.statusPillBadge}>
-                      <View
-                        style={[
-                          styles.statusDot,
-                          {
-                            backgroundColor: isRouterRunning
-                              ? colors.accentGreen
-                              : colors.accentYellow,
-                          },
-                        ]}
-                      />
-                      <Text
-                        style={[
-                          styles.statusValue,
-                          {
-                            color: isRouterRunning
-                              ? colors.accentGreen
-                              : colors.accentYellow,
-                          },
-                        ]}
-                      >
-                        {isRouterRunning ? 'Online' : 'Inactive'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {!isRouterRunning && (
-                    <TouchableOpacity
-                      style={[
-                        styles.testBtn,
-                        {
-                          backgroundColor: colors.accentYellowSubtle,
-                          borderColor: colors.accentYellow,
-                          marginTop: 10,
-                        },
-                      ]}
-                      onPress={() => setShowRouterModal(true)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="flash-outline" size={14} color={colors.accentYellow} />
-                      <Text
-                        style={[
-                          styles.testBtnText,
-                          { color: colors.accentYellow, fontWeight: '700' },
-                        ]}
-                      >
-                        Open 9Router Activation Center
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </LiquidGlassCard>
-              </View>
-
-              {/* LOCAL SERVER CONNECTION */}
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-                  LOCAL SERVER CONNECTION
-                </Text>
-                <LiquidGlassCard style={styles.glassCard}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>
-                    Host / API URL
-                  </Text>
-                  <View style={styles.inputRow}>
-                    <TextInput
-                      style={[
-                        styles.textInput,
-                        {
-                          backgroundColor: colors.codeBg,
-                          borderColor: colors.codeBorder,
-                          color: colors.textPrimary,
-                        },
-                      ]}
-                      value={inputUrl}
-                      onChangeText={setInputUrl}
-                      placeholder="http://10.0.2.2:8080"
-                      placeholderTextColor={colors.textMuted}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
-                    <TouchableOpacity
-                      style={[styles.saveBtn, { backgroundColor: colors.accentGreen }]}
-                      onPress={handleSaveUrl}
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        style={[styles.saveBtnText, { color: isDark ? '#000000' : '#ffffff' }]}
-                      >
-                        Save
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </LiquidGlassCard>
-              </View>
-            </>
-          )}
-
-          {/* THEME SELECTION */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-              APPEARANCE & THEME
-            </Text>
-            <View style={styles.themeSelectorRow}>
-              {themeOptions.map((opt) => {
-                const isSelected = theme === opt.mode;
-                return (
-                  <TouchableOpacity
-                    key={opt.mode}
-                    style={[
-                      styles.themeCard,
-                      {
-                        backgroundColor: colors.cardBg,
-                        borderColor: isSelected ? colors.accentGreen : colors.cardBorder,
-                      },
-                    ]}
-                    onPress={() => setTheme(opt.mode)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons
-                      name={opt.icon}
-                      size={20}
-                      color={isSelected ? colors.accentGreen : colors.textMuted}
-                    />
-                    <Text
-                      style={[
-                        styles.themeLabel,
-                        {
-                          color: isSelected ? colors.accentGreen : colors.textSecondary,
-                          fontWeight: isSelected ? '700' : '500',
-                        },
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
             </View>
           </View>
 
-          {/* PREFERENCES */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-              PREFERENCES
-            </Text>
-            <LiquidGlassCard style={styles.glassCard}>
-              <View style={styles.switchRow}>
-                <View>
-                  <Text style={[styles.switchLabel, { color: colors.textPrimary }]}>
-                    Haptic Feedback
-                  </Text>
-                  <Text style={[styles.switchDesc, { color: colors.textMuted }]}>
-                    Tactile vibration on events and responses
-                  </Text>
+          {/* SECTION 3: PREFERENSI SISTEM */}
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
+            PREFERENSI SISTEM
+          </Text>
+
+          <View style={[styles.groupCard, { backgroundColor: colors.bgSurface, borderColor: colors.border }]}>
+            {/* Theme Selector */}
+            <View style={styles.rowItem}>
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconBox, { backgroundColor: isDark ? '#262626' : '#E5E5E5' }]}>
+                  <Ionicons name={isDark ? 'moon-outline' : 'sunny-outline'} size={17} color={colors.textPrimary} />
                 </View>
-                <Switch
-                  value={hapticEnabled}
-                  onValueChange={setHapticEnabled}
-                  trackColor={{
-                    false: colors.bgSecondary,
-                    true: colors.accentGreenSubtle,
-                  }}
-                  thumbColor={hapticEnabled ? colors.accentGreen : colors.textMuted}
-                />
+                <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Tema Tampilan</Text>
               </View>
-            </LiquidGlassCard>
+
+              <View style={styles.themeSelectorGroup}>
+                {(['dark', 'light', 'system'] as ThemeMode[]).map((t) => {
+                  const isCur = theme === t;
+                  return (
+                    <TouchableOpacity
+                      key={t}
+                      onPress={() => setTheme(t)}
+                      style={[
+                        styles.themeTab,
+                        {
+                          backgroundColor: isCur ? (isDark ? '#262626' : '#FFFFFF') : 'transparent',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.themeTabText,
+                          {
+                            color: isCur ? colors.textPrimary : colors.textMuted,
+                            fontWeight: isCur ? '700' : '500',
+                          },
+                        ]}
+                      >
+                        {t === 'dark' ? 'Dark' : t === 'light' ? 'Light' : 'Auto'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            {/* Haptic Feedback */}
+            <View style={styles.rowItem}>
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconBox, { backgroundColor: isDark ? '#262626' : '#E5E5E5' }]}>
+                  <Ionicons name="hardware-chip-outline" size={17} color={colors.textPrimary} />
+                </View>
+                <View>
+                  <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Haptic Feedback</Text>
+                  <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>Getaran responsif pada tombol</Text>
+                </View>
+              </View>
+              <Switch
+                value={hapticEnabled}
+                onValueChange={setHapticEnabled}
+                trackColor={{ false: isDark ? '#262626' : '#E5E5E5', true: colors.textPrimary }}
+                thumbColor={isDark ? '#000000' : '#FFFFFF'}
+              />
+            </View>
           </View>
 
-          {/* ABOUT & TELEMETRY */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-              WORKSPACE & TELEMETRY
-            </Text>
-            <LiquidGlassCard style={styles.glassCard}>
-              <View style={styles.aboutRow}>
-                <Text style={[styles.aboutLabel, { color: colors.textMuted }]}>Mode Koneksi</Text>
-                <Text style={[styles.aboutVal, { color: colors.accentGreen }]}>
-                  {connectionMode === 'cloud' ? 'Direct Cloud (Internet)' : 'Local Server'}
-                </Text>
-              </View>
-              <View style={styles.aboutRow}>
-                <Text style={[styles.aboutLabel, { color: colors.textMuted }]}>
-                  Akun Antigravity
-                </Text>
-                <Text style={[styles.aboutVal, { color: colors.textPrimary }]}>
-                  {currentActiveAccount?.name || 'Default'}
-                </Text>
-              </View>
-              <View style={styles.aboutRow}>
-                <Text style={[styles.aboutLabel, { color: colors.textMuted }]}>Model Aktif</Text>
-                <Text style={[styles.aboutVal, { color: colors.accentGreen }]}>
-                  {connectionMode === 'cloud' ? cloudModel : activeModel}
-                </Text>
-              </View>
-            </LiquidGlassCard>
+          {/* SECTION 4: TENTANG DELTA */}
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
+            TENTANG DELTA
+          </Text>
+
+          <View style={[styles.groupCard, { backgroundColor: colors.bgSurface, borderColor: colors.border }]}>
+            <View style={styles.rowItem}>
+              <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Versi Aplikasi</Text>
+              <Text style={[styles.rowValue, { color: colors.textMuted }]}>1.0.0 (Build 2026)</Text>
+            </View>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={styles.rowItem}>
+              <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Arsitektur Engine</Text>
+              <Text style={[styles.rowValue, { color: colors.textMuted }]}>Delta Hybrid CLI & 9Router</Text>
+            </View>
           </View>
         </ScrollView>
 
+        {/* Account Manager Modal */}
         <AccountManagerModal
-          visible={accountModalVisible}
-          onClose={() => {
-            setAccountModalVisible(false);
-            setEditingAccount(null);
-          }}
+          visible={showAccountModal}
+          onClose={() => setShowAccountModal(false)}
           onSave={handleSaveAccount}
-          editingAccount={editingAccount}
+          editingAccount={activeAccount}
         />
 
+        {/* Skills Manager Modal */}
+        <SkillsManagerModal
+          visible={showSkillsModal}
+          onClose={() => setShowSkillsModal(false)}
+        />
+
+        {/* Router Alert Modal */}
         <RouterAlertModal
           visible={showRouterModal}
           onClose={() => setShowRouterModal(false)}
-          onStartSuccess={() => {
-            setIsRouterRunning(true);
-            loadModelsList();
-          }}
         />
-      </View>
+      </PageTransition>
     </SafeAreaView>
   );
 }
@@ -782,254 +469,186 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  content: {
-    padding: 16,
-    paddingBottom: 110,
+  contentContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 90,
   },
-  section: {
-    marginBottom: 20,
+  sectionHeader: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginTop: 14,
+    paddingHorizontal: 4,
   },
-  sectionHeaderRow: {
+  groupCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  rowItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
-    paddingHorizontal: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  sectionTitle: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  refreshBtn: {
-    padding: 4,
-  },
-  addAccountHeaderBtn: {
+  clickableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  addAccountHeaderText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  connectionToggleRow: {
-    gap: 8,
-  },
-  connectionPill: {
+  rowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  connectionPillTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  connectionPillDesc: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  glassCard: {
-    padding: 16,
-    borderRadius: 18,
-  },
-  accountItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-  },
-  accountItemLeft: {
     flex: 1,
-    marginRight: 8,
   },
-  accountHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  rowRightChevron: {
+    marginLeft: 8,
   },
-  accountName: {
-    fontSize: 13.5,
-    fontWeight: '700',
-  },
-  activeBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  activeBadgeText: {
-    fontSize: 8.5,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  accountKeyText: {
-    fontSize: 11.5,
-    marginTop: 2,
-    fontFamily: 'monospace',
-  },
-  accountUrlText: {
-    fontSize: 10.5,
-    marginTop: 2,
-  },
-  accountActions: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  actionIconBtn: {
-    padding: 6,
-  },
-  themeSelectorRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  themeCard: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: 1,
+  iconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
   },
-  themeLabel: {
-    fontSize: 12,
+  rowTitle: {
+    fontSize: 14.5,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
-  label: {
-    fontSize: 12,
+  rowTitleSmall: {
+    fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 0.4,
     marginBottom: 8,
+    paddingHorizontal: 14,
+  },
+  rowSubtitle: {
+    fontSize: 11.5,
+    marginTop: 1,
+  },
+  rowValue: {
+    fontSize: 13,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 58,
   },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  inputLabelRow: {
+    marginBottom: 6,
   },
   textInput: {
-    flex: 1,
-    height: 44,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    fontSize: 13,
-  },
-  saveBtn: {
-    height: 44,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  saveBtnText: {
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  testBtn: {
-    marginTop: 14,
-    height: 44,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  testBtnText: {
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusPillBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 3.5,
+    height: 38,
     borderRadius: 8,
     borderWidth: 1,
+    paddingHorizontal: 10,
+    fontSize: 13,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
+  btnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  statusValue: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    fontFamily: 'monospace',
+  primaryActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 36,
+    borderRadius: 8,
+    gap: 4,
   },
-  modelItem: {
+  secondaryActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 4,
+  },
+  btnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  presetSectionWrapper: {
+    paddingTop: 10,
+  },
+  presetList: {
+    overflow: 'hidden',
+  },
+  presetRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
     paddingHorizontal: 14,
-    borderRadius: 14,
-    marginBottom: 8,
-    borderWidth: 1,
+    paddingVertical: 11,
   },
-  modelInfo: {
+  presetLeftContent: {
     flex: 1,
     marginRight: 10,
   },
-  modelName: {
-    fontSize: 13.5,
-    fontWeight: '700',
+  presetNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  modelDesc: {
+  presetNameText: {
+    fontSize: 13.5,
+    letterSpacing: -0.2,
+  },
+  tagPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  tagPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  presetDescText: {
     fontSize: 11.5,
-    marginTop: 3,
+    marginTop: 2,
     lineHeight: 16,
   },
-  activeCheckCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  checkmarkWrapper: {
+    width: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  customModelSection: {
-    marginTop: 14,
-    paddingTop: 14,
-    borderTopWidth: 1,
+  presetDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 14,
   },
-  switchRow: {
+  themeSelectorGroup: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    borderRadius: 8,
+    padding: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(128, 128, 128, 0.2)',
   },
-  switchLabel: {
-    fontSize: 13.5,
-    fontWeight: '700',
+  themeTab: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
   },
-  switchDesc: {
-    fontSize: 11.5,
-    marginTop: 2,
-  },
-  aboutRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  aboutLabel: {
+  themeTabText: {
     fontSize: 12,
-  },
-  aboutVal: {
-    fontSize: 12,
-    fontWeight: '600',
   },
 });

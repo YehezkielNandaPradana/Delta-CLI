@@ -1,12 +1,17 @@
 /**
  * Embedded 9Router Engine for Delta Mobile
- * Provides zero-server, zero-manual-setup in-app AI model routing.
- * Automatically runs on app launch inside React Native/Expo.
+ * Provides robust AI model routing across:
+ * 1. 9Router Local / Termux Gateway (127.0.0.1:20128, localhost:20128, 10.0.2.2:20128)
+ * 2. Google Gemini Official API (Direct AI Studio Key)
+ * 3. Antigravity Cloud Gateway
  */
 
+import { Platform } from 'react-native';
 import { AntigravityAccount } from '../../types/cloud';
 import { ChatResponse } from '../api/chatApi';
-import { DELTA_SYSTEM_PROMPT } from '../api/directCloudClient';
+import { DELTA_SYSTEM_PROMPT, KNOWN_GOOGLE_MODELS } from '../api/directCloudClient';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { useSkillsStore } from '../../store/useSkillsStore';
 
 export interface EmbeddedRouterStatus {
   running: boolean;
@@ -18,6 +23,14 @@ export interface EmbeddedRouterStatus {
 }
 
 const startTime = Date.now();
+
+// Candidate host addresses for 9Router local daemon
+const LOCAL_ROUTER_HOSTS = [
+  'http://192.168.1.6:20128',
+  'http://127.0.0.1:20128',
+  'http://localhost:20128',
+  Platform.OS === 'android' ? 'http://10.0.2.2:20128' : '',
+].filter(Boolean);
 
 export class Embedded9Router {
   private static instance: Embedded9Router;
@@ -39,16 +52,16 @@ export class Embedded9Router {
   public getStatus(): EmbeddedRouterStatus {
     return {
       running: true,
-      version: '9router-embedded-v2.5',
+      version: '9router-embedded-v2.6',
       mode: 'embedded',
-      activeProviders: ['antigravity', 'google', 'opencode', 'deepseek'],
+      activeProviders: ['9router-local', 'google', 'antigravity', 'deepseek'],
       activeCombo: 'AntigravityCombo',
       uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     };
   }
 
   /**
-   * Route any combo model or custom provider model directly to best endpoint
+   * Intelligently route prompt to available provider
    */
   public async routeCompletion(
     message: string,
@@ -58,22 +71,84 @@ export class Embedded9Router {
     const rawKey = account?.apiKey?.trim() || '';
     const customBaseUrl = (account?.baseUrl || '').trim();
 
-    // 1. If user connects to Termux 9Router (localhost / 127.0.0.1 on port 20128)
-    if (
-      customBaseUrl.includes('127.0.0.1') ||
-      customBaseUrl.includes('localhost') ||
-      customBaseUrl.includes(':20128')
-    ) {
+    // 1. Check & Route to Local 9Router (Port 20128) if live or specified
+    const activeLocalHost = await this.findLivePort20128(customBaseUrl);
+    if (activeLocalHost) {
+      try {
+        return await this.executeGatewayRoute(message, modelName, `${activeLocalHost}/v1`, rawKey);
+      } catch (err: any) {
+        // If 9Router port was detected but failed and we have an API Key, fall through
+        if (!rawKey) {
+          throw new Error(`9Router (Port 20128): ${err.message}`);
+        }
+      }
+    }
+
+    // 2. Custom OpenAI/9Router Cloud Gateway if baseUrl is present
+    if (customBaseUrl) {
       return this.executeGatewayRoute(message, modelName, customBaseUrl, rawKey);
     }
 
-    // 2. If user provided a Google AI Studio key (or no key yet with Google fallback)
-    if (rawKey.startsWith('AIzaSy') || !customBaseUrl) {
+    // 3. Google Gemini Direct REST API
+    if (rawKey.startsWith('AIzaSy') || account?.accountType === 'google' || rawKey) {
       return this.executeGoogleRoute(message, modelName, rawKey);
     }
 
-    // 3. OpenAI / Antigravity Cloud Gateway route
-    return this.executeGatewayRoute(message, modelName, customBaseUrl, rawKey);
+    // 4. Fallback attempt to local 9router even without explicit ping success
+    const fallbackCandidates = [
+      customBaseUrl,
+      'http://127.0.0.1:20128/v1',
+      'http://localhost:20128/v1',
+      'http://192.168.1.6:20128/v1',
+    ].filter(Boolean);
+
+    for (const fb of fallbackCandidates) {
+      try {
+        return await this.executeGatewayRoute(message, modelName, fb, rawKey);
+      } catch (_) {}
+    }
+
+    // 5. No 9Router daemon & no API key
+    throw new Error(
+      '9Router gateway (port 20128) belum aktif dan belum ada API Key tersambung.\n\nSolusi Cepat:\n1. Buka Settings → Sambungkan Google AI Studio (Gratis), ATAU\n2. Jalankan 9Router di Termux/PC (port 20128).'
+    );
+  }
+
+  private async findLivePort20128(customUrl?: string): Promise<string | null> {
+    const { routerHostUrl, serverUrl } = useSettingsStore.getState();
+
+    // Extract hostname / IP from serverUrl if configured
+    let inferredServerHost = '';
+    try {
+      if (serverUrl && !serverUrl.includes('localhost') && !serverUrl.includes('127.0.0.1')) {
+        const u = new URL(serverUrl);
+        inferredServerHost = `http://${u.hostname}:20128`;
+      }
+    } catch (_) {}
+
+    const candidates = [
+      customUrl ? customUrl.replace(/\/+$/, '') : '',
+      routerHostUrl ? routerHostUrl.replace(/\/+$/, '') : '',
+      inferredServerHost,
+      ...LOCAL_ROUTER_HOSTS,
+    ].filter(Boolean);
+
+    for (const host of candidates) {
+      const cleanHost = host.replace(/\/v1\/?$/, '').replace(/\/+$/, '');
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1200);
+        const res = await fetch(`${cleanHost}/v1/models`, {
+          method: 'GET',
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          return cleanHost;
+        }
+      } catch (_) {}
+    }
+    return null;
   }
 
   private async executeGoogleRoute(
@@ -81,20 +156,18 @@ export class Embedded9Router {
     modelName: string,
     apiKey: string
   ): Promise<ChatResponse> {
-    if (!apiKey) {
-      throw new Error(
-        '9Router Embedded: API Key belum diisi. Silakan tambahkan API Key di menu Settings.'
-      );
+    let cleanModel = modelName.replace(/^(ag|google|antigravity)\//i, '');
+    if (!cleanModel || cleanModel.toLowerCase().includes('combo') || cleanModel.includes('3.7-flash-high')) {
+      cleanModel = 'gemini-1.5-flash';
     }
 
-    // Curated model priorities for Google AI Studio
     const candidateModels = [
-      'gemini-1.5-flash',
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-pro',
-      'gemini-1.5-pro-latest',
-      'gemini-3.6-flash',
+      cleanModel,
+      ...KNOWN_GOOGLE_MODELS.filter((m) => m !== cleanModel),
     ];
+
+    const dynamicSkills = useSkillsStore.getState().getActiveSkillPrompts(message);
+    const fullPrompt = `${DELTA_SYSTEM_PROMPT}${dynamicSkills}`;
 
     let lastError = '';
 
@@ -103,7 +176,7 @@ export class Embedded9Router {
 
       const payload = {
         system_instruction: {
-          parts: [{ text: DELTA_SYSTEM_PROMPT }],
+          parts: [{ text: fullPrompt }],
         },
         contents: [
           {
@@ -137,7 +210,7 @@ export class Embedded9Router {
             if (errJson.error?.message) errMsg = errJson.error.message;
           } catch (_) {}
           lastError = errMsg;
-          continue; // Try next candidate in 9Router chain
+          continue;
         }
 
         const data = await res.json();
@@ -151,7 +224,7 @@ export class Embedded9Router {
       }
     }
 
-    throw new Error(`9Router Google Route Failed: ${lastError}`);
+    throw new Error(`Google Gemini: ${lastError}`);
   }
 
   private async executeGatewayRoute(
@@ -160,8 +233,8 @@ export class Embedded9Router {
     baseUrl: string,
     apiKey: string
   ): Promise<ChatResponse> {
-    const cleanBaseUrl = (baseUrl || 'https://api.antigravity.ai/v1').replace(/\/+$/, '');
-    const url = `${cleanBaseUrl}/chat/completions`;
+    const cleanBaseUrl = (baseUrl || 'http://127.0.0.1:20128/v1').replace(/\/+$/, '');
+    const url = cleanBaseUrl.endsWith('/v1') ? `${cleanBaseUrl}/chat/completions` : `${cleanBaseUrl}/v1/chat/completions`;
 
     const payload = {
       model: modelName || 'ag/gemini-3.7-flash-high',

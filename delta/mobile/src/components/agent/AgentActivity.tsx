@@ -184,7 +184,7 @@ export const AgentActivity: React.FC<AgentActivityProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
     marginVertical: 6,
     overflow: 'hidden',
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 22,
     height: 22,
-    borderRadius: 6,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     paddingHorizontal: 6,
     paddingVertical: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
   },
   stepBadgeText: {

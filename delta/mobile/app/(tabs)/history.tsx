@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,129 +6,121 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
-  Animated,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Header } from '../../src/components/common/Header';
+import { PageTransition } from '../../src/components/common/PageTransition';
 import {
   getConversationHistory,
   clearConversationHistory,
   deleteHistoryItem,
 } from '../../src/services/api/sessionApi';
-import { ConversationHistoryItem } from '../../src/types/chat';
 import { useChatStore } from '../../src/store/useChatStore';
 import { useSettingsStore } from '../../src/store/useSettingsStore';
 import { useThemeColors } from '../../src/theme/theme';
-import { LiquidGlassCard } from '../../src/components/common/LiquidGlassCard';
-import { formatTimestamp, formatDate, truncateText } from '../../src/utils/formatters';
+import { formatTimestamp } from '../../src/utils/formatters';
 
-// Skeleton Shimmer Loading Card
-const SkeletonCard = () => {
-  const { colors, isDark } = useThemeColors();
-  const shimmerAnim = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerAnim, {
-          toValue: 0.8,
-          duration: 750,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerAnim, {
-          toValue: 0.3,
-          duration: 750,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, []);
-
-  const blockBg = isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.06)';
-
-  return (
-    <LiquidGlassCard style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Animated.View
-          style={[styles.skeletonBlock, { width: 110, height: 12, backgroundColor: blockBg, opacity: shimmerAnim }]}
-        />
-        <Animated.View
-          style={[styles.skeletonBlock, { width: 60, height: 18, borderRadius: 6, backgroundColor: blockBg, opacity: shimmerAnim }]}
-        />
-      </View>
-      <Animated.View
-        style={[styles.skeletonBlock, { width: '85%', height: 15, marginVertical: 6, backgroundColor: blockBg, opacity: shimmerAnim }]}
-      />
-      <Animated.View
-        style={[styles.skeletonBlock, { width: '65%', height: 13, backgroundColor: blockBg, opacity: shimmerAnim }]}
-      />
-    </LiquidGlassCard>
-  );
-};
+interface CombinedHistoryItem {
+  id: string;
+  title: string;
+  preview: string;
+  source: 'session' | 'server';
+  timestamp: number;
+  messageCount?: number;
+  rawSessionId?: string;
+  serverHistoryId?: number;
+}
 
 export default function HistoryScreen() {
   const { colors, isDark } = useThemeColors();
   const { hapticEnabled } = useSettingsStore();
-  const { addMessage } = useChatStore();
+  const { sessions, currentSessionId, switchSession, deleteSession, loadSessions } = useChatStore();
 
-  const [history, setHistory] = useState<ConversationHistoryItem[]>([]);
+  const [combinedItems, setCombinedItems] = useState<CombinedHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | number | null>(null);
 
-  const loadHistory = async (showLoadingIndicator = true) => {
-    if (showLoadingIndicator) setLoading(true);
+  const fetchAndCombineHistory = async (showIndicator = true) => {
+    if (showIndicator) setLoading(true);
+    await loadSessions();
+
+    const localList: CombinedHistoryItem[] = sessions.map((s) => {
+      const lastMsg = s.messages && s.messages.length > 0 ? s.messages[s.messages.length - 1].text : 'Belum ada pesan';
+      return {
+        id: `local_${s.id}`,
+        title: s.title || 'Obrolan Baru',
+        preview: lastMsg.slice(0, 100).replace(/\n/g, ' '),
+        source: 'session',
+        timestamp: s.updatedAt || s.createdAt || Date.now(),
+        messageCount: s.messages?.length || 0,
+        rawSessionId: s.id,
+      };
+    });
+
+    let serverList: CombinedHistoryItem[] = [];
     try {
-      const res = await getConversationHistory(100);
-      if (res.status === 'ok' && res.history) {
-        setHistory(res.history);
+      const res = await getConversationHistory(50);
+      if (res.status === 'ok' && Array.isArray(res.history)) {
+        serverList = res.history.map((h) => ({
+          id: `server_${h.id}`,
+          title: h.user_input || h.command || 'Perintah Terminal',
+          preview: (h.ai_response || h.result || 'Respon berhasil').slice(0, 100).replace(/\n/g, ' '),
+          source: 'server',
+          timestamp: typeof h.timestamp === 'number' ? h.timestamp : Date.now(),
+          serverHistoryId: typeof h.id === 'number' ? h.id : undefined,
+        }));
       }
-    } catch (e) {
-      console.warn('Failed to load history', e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    } catch (_) {}
+
+    const merged = [...localList, ...serverList].sort((a, b) => b.timestamp - a.timestamp);
+    setCombinedItems(merged);
+    setLoading(false);
+    setRefreshing(false);
   };
 
   useEffect(() => {
-    loadHistory();
-  }, []);
+    fetchAndCombineHistory();
+  }, [sessions.length]);
 
-  // Delete single history session
-  const handleDeleteItem = (item: ConversationHistoryItem) => {
+  const handleSelect = (item: CombinedHistoryItem) => {
+    if (hapticEnabled) {
+      Haptics.selectionAsync().catch(() => {});
+    }
+
+    if (item.source === 'session' && item.rawSessionId) {
+      switchSession(item.rawSessionId);
+    }
+    router.navigate('/');
+  };
+
+  const handleDeleteItem = (item: CombinedHistoryItem) => {
     if (hapticEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
 
     Alert.alert(
-      'Hapus Sesi Percakapan',
-      'Apakah Anda yakin ingin menghapus sesi percakapan ini?',
+      'Hapus Sesi',
+      `Hapus "${item.title}" dari riwayat?`,
       [
         { text: 'Batal', style: 'cancel' },
         {
           text: 'Hapus',
           style: 'destructive',
           onPress: async () => {
-            const itemId = item.id;
-            setDeletingId(itemId);
-            try {
-              if (typeof itemId === 'number' || (typeof itemId === 'string' && !isNaN(Number(itemId)))) {
-                await deleteHistoryItem(Number(itemId));
-              }
-              setHistory((prev) => prev.filter((h) => h.id !== itemId));
-              if (hapticEnabled) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-              }
-            } catch (err: any) {
-              Alert.alert('Gagal Menghapus', err.message || 'Terjadi kesalahan saat menghapus sesi');
-            } finally {
-              setDeletingId(null);
+            if (item.source === 'session' && item.rawSessionId) {
+              await deleteSession(item.rawSessionId);
+            } else if (item.source === 'server' && item.serverHistoryId) {
+              try {
+                await deleteHistoryItem(item.serverHistoryId);
+              } catch (_) {}
+            }
+            setCombinedItems((prev) => prev.filter((i) => i.id !== item.id));
+            if (hapticEnabled) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
             }
           },
         },
@@ -136,15 +128,14 @@ export default function HistoryScreen() {
     );
   };
 
-  // Clear all history sessions
   const handleClearAll = () => {
     if (hapticEnabled) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     }
 
     Alert.alert(
-      'Hapus Seluruh Histori',
-      'Tindakan ini akan menghapus semua riwayat sesi percakapan Delta di server. Lanjutkan?',
+      'Hapus Semua Riwayat',
+      'Apakah Anda yakin ingin mengosongkan seluruh riwayat percakapan?',
       [
         { text: 'Batal', style: 'cancel' },
         {
@@ -153,12 +144,10 @@ export default function HistoryScreen() {
           onPress: async () => {
             try {
               await clearConversationHistory();
-              setHistory([]);
-              if (hapticEnabled) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-              }
-            } catch (err: any) {
-              Alert.alert('Error', err.message);
+            } catch (_) {}
+            setCombinedItems([]);
+            if (hapticEnabled) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
             }
           },
         },
@@ -166,189 +155,167 @@ export default function HistoryScreen() {
     );
   };
 
-  const handleSelect = (item: ConversationHistoryItem) => {
-    if (hapticEnabled) {
-      Haptics.selectionAsync().catch(() => {});
-    }
-    const rawPrompt = item.user_input || item.command || '';
-    const rawResponse = item.ai_response || item.result || '';
-
-    if (rawPrompt) {
-      addMessage({
-        sender: 'user',
-        text: rawPrompt,
-        timestamp: typeof item.timestamp === 'number' ? item.timestamp : Date.now(),
-      });
-    }
-    if (rawResponse) {
-      addMessage({
-        sender: 'delta',
-        text: rawResponse,
-        timestamp: typeof item.timestamp === 'number' ? item.timestamp : Date.now(),
-      });
-    }
-    router.navigate('/');
-  };
-
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
-      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
-        <Header title="DELTA" subtitle="Conversation History" />
+      <PageTransition style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <Header
+          title="History"
+          countBadge={combinedItems.length}
+          subtitle="Riwayat Sesi Percakapan"
+        />
 
-        {/* TOP BAR ACTION STRIP */}
-        <View style={[styles.actionStrip, { borderBottomColor: colors.cardBorder }]}>
-          <View style={styles.stripLeft}>
-            <Ionicons name="time-outline" size={15} color={colors.accentGreen} />
-            <Text style={[styles.stripTitle, { color: colors.textPrimary }]}>
-              {loading ? 'MEMUAT SESI...' : `${history.length} SESI TERSIMPAN`}
-            </Text>
-          </View>
+        {/* Section Header Action Strip */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+            DAFTAR SESI OBROLAN
+          </Text>
 
-          {history.length > 0 && !loading ? (
+          {combinedItems.length > 0 && (
             <TouchableOpacity
               onPress={handleClearAll}
               style={[
                 styles.clearAllBtn,
                 {
-                  backgroundColor: colors.accentRedSubtle,
-                  borderColor: colors.accentRed,
+                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(220, 38, 38, 0.08)',
+                  borderColor: colors.border,
                 },
               ]}
               activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Hapus semua sesi"
             >
-              <Feather name="trash-2" size={12} color={colors.accentRed} />
-              <Text style={[styles.clearAllText, { color: colors.accentRed }]}>
+              <Feather name="trash-2" size={11} color={colors.error} />
+              <Text style={[styles.clearAllText, { color: colors.error }]}>
                 Hapus Semua
               </Text>
             </TouchableOpacity>
-          ) : null}
+          )}
         </View>
 
-        {/* LIST OR SKELETON */}
-        {loading && !refreshing ? (
-          <View style={styles.list}>
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </View>
-        ) : (
-          <FlatList
-            data={history}
-            keyExtractor={(item, index) => item.id?.toString() || index.toString()}
-            onRefresh={() => {
-              setRefreshing(true);
-              loadHistory(false);
-            }}
-            refreshing={refreshing}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.list}
-            ListEmptyComponent={
-              <LiquidGlassCard style={styles.emptyCard}>
-                <View
-                  style={[
-                    styles.emptyIconCircle,
-                    {
-                      backgroundColor: colors.bgSecondary,
-                      borderColor: colors.cardBorder,
-                    },
-                  ]}
-                >
-                  <Feather name="message-square" size={26} color={colors.textMuted} />
-                </View>
-                <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
-                  Belum Ada Riwayat Sesi
-                </Text>
-                <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                  Setiap percakapan dan perintah yang dijalankan akan tercatat di sini secara otomatis.
-                </Text>
-              </LiquidGlassCard>
-            }
-            renderItem={({ item }) => {
-              const promptText = item.user_input || item.command || 'Perintah tanpa teks';
-              const responseText = item.ai_response || item.result || '';
-              const isDeleting = deletingId === item.id;
+        {/* Unified iOS Grouped Inset Table List */}
+        <FlatList
+          data={combinedItems}
+          keyExtractor={(item) => item.id}
+          onRefresh={() => {
+            setRefreshing(true);
+            fetchAndCombineHistory(false);
+          }}
+          refreshing={refreshing}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View
+                style={[
+                  styles.emptyIconCircle,
+                  {
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Ionicons name="chatbubbles-outline" size={24} color={colors.textMuted} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                Belum Ada Riwayat Sesi
+              </Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+                Setiap obrolan dan sesi perintah Delta akan tersimpan di sini.
+              </Text>
+            </View>
+          }
+          renderItem={({ item, index }) => {
+            const isCurrent = item.rawSessionId === currentSessionId;
+            const isLast = index === combinedItems.length - 1;
 
-              return (
-                <LiquidGlassCard
-                  style={isDeleting ? [styles.card, { opacity: 0.5 }] : styles.card}
+            return (
+              <View
+                style={[
+                  styles.groupedItemWrapper,
+                  index === 0 && styles.firstItem,
+                  isLast && styles.lastItem,
+                  {
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <TouchableOpacity
                   onPress={() => handleSelect(item)}
+                  style={styles.tableRow}
+                  activeOpacity={0.7}
                 >
-                  {/* Card Header Row */}
-                  <View style={styles.cardHeader}>
-                    <View style={styles.metaRow}>
-                      <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
-                      <Text style={[styles.cardDate, { color: colors.textMuted }]}>
-                        {formatDate(item.timestamp)} · {formatTimestamp(item.timestamp)}
-                      </Text>
-                    </View>
-
-                    <View style={styles.cardHeaderRight}>
-                      {item.target ? (
-                        <View
-                          style={[
-                            styles.targetBadge,
-                            {
-                              backgroundColor: colors.accentGreenSubtle,
-                              borderColor: colors.accentGreen,
-                            },
-                          ]}
-                        >
-                          <Text style={[styles.targetText, { color: colors.accentGreen }]}>
-                            {item.target}
-                          </Text>
-                        </View>
-                      ) : null}
-
-                      {/* Single Item Delete Button */}
-                      <TouchableOpacity
-                        style={[
-                          styles.deleteItemBtn,
-                          {
-                            backgroundColor: colors.bgSurface,
-                            borderColor: colors.cardBorder,
-                          },
-                        ]}
-                        onPress={() => handleDeleteItem(item)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        accessibilityRole="button"
-                        accessibilityLabel="Hapus sesi ini"
-                      >
-                        <Feather name="trash" size={12} color={colors.textMuted} />
-                      </TouchableOpacity>
-                    </View>
+                  {/* Left Icon Box */}
+                  <View
+                    style={[
+                      styles.iconBox,
+                      {
+                        backgroundColor: isCurrent
+                          ? (isDark ? '#333333' : '#E0E0E0')
+                          : (isDark ? '#262626' : '#EAEAEA'),
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={item.source === 'session' ? 'chatbubble-ellipses-outline' : 'terminal-outline'}
+                      size={15}
+                      color={isCurrent ? colors.textPrimary : colors.textSecondary}
+                    />
                   </View>
 
-                  {/* Prompt Preview */}
-                  <View style={styles.promptRow}>
-                    <View style={[styles.userBadgeDot, { backgroundColor: colors.accentGreen }]} />
-                    <Text
-                      style={[styles.userPrompt, { color: colors.textPrimary }]}
-                      numberOfLines={2}
-                    >
-                      {truncateText(promptText, 130)}
+                  {/* Center Text Info */}
+                  <View style={styles.bodyWrapper}>
+                    <View style={styles.topTitleRow}>
+                      <Text
+                        style={[
+                          styles.sessionTitle,
+                          {
+                            color: colors.textPrimary,
+                            fontWeight: isCurrent ? '700' : '600',
+                          },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {item.title}
+                      </Text>
+                      {isCurrent && (
+                        <View style={[styles.currentBadge, { backgroundColor: isDark ? '#333333' : '#E0E0E0' }]}>
+                          <Text style={[styles.currentBadgeText, { color: colors.textPrimary }]}>AKTIF</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {item.preview ? (
+                      <Text
+                        style={[styles.previewText, { color: colors.textSecondary }]}
+                        numberOfLines={1}
+                      >
+                        {item.preview}
+                      </Text>
+                    ) : null}
+
+                    <Text style={[styles.metaTime, { color: colors.textMuted }]}>
+                      {formatTimestamp(item.timestamp)}
+                      {item.messageCount !== undefined ? ` • ${item.messageCount} pesan` : ''}
                     </Text>
                   </View>
 
-                  {/* AI Response Preview */}
-                  {responseText ? (
-                    <View style={[styles.responseBox, { backgroundColor: colors.bgSurface, borderColor: colors.cardBorder }]}>
-                      <Text
-                        style={[styles.aiSnippet, { color: colors.textSecondary }]}
-                        numberOfLines={2}
-                      >
-                        {truncateText(responseText, 160)}
-                      </Text>
-                    </View>
-                  ) : null}
-                </LiquidGlassCard>
-              );
-            }}
-          />
-        )}
-      </View>
+                  {/* Delete Button */}
+                  <TouchableOpacity
+                    onPress={() => handleDeleteItem(item)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={styles.deleteBtn}
+                  >
+                    <Ionicons name="trash-outline" size={14} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </TouchableOpacity>
+
+                {!isLast && (
+                  <View style={[styles.tableDivider, { backgroundColor: colors.border }]} />
+                )}
+              </View>
+            );
+          }}
+        />
+      </PageTransition>
     </SafeAreaView>
   );
 }
@@ -360,144 +327,129 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  actionStrip: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 6,
   },
-  stripLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  stripTitle: {
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    fontFamily: 'monospace',
+  sectionTitle: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   clearAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
+    gap: 4,
   },
   clearAllText: {
     fontSize: 10.5,
-    fontWeight: '800',
-    fontFamily: 'monospace',
-  },
-  list: {
-    padding: 16,
-    paddingBottom: 110,
-    gap: 12,
-  },
-  skeletonBlock: {
-    borderRadius: 4,
-  },
-  card: {
-    padding: 14,
-    borderRadius: 18,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  cardDate: {
-    fontSize: 11,
     fontWeight: '600',
-    fontFamily: 'monospace',
   },
-  cardHeaderRight: {
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 90,
+  },
+  groupedItemWrapper: {
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    overflow: 'hidden',
+  },
+  firstItem: {
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    borderTopWidth: 1,
+  },
+  lastItem: {
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+    borderBottomWidth: 1,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  iconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  bodyWrapper: {
+    flex: 1,
+    marginRight: 8,
+  },
+  topTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  targetBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
+  sessionTitle: {
+    fontSize: 14,
+    letterSpacing: -0.2,
+    flex: 1,
   },
-  targetText: {
-    fontSize: 9.5,
+  currentBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  currentBadgeText: {
+    fontSize: 9,
     fontWeight: '800',
-    fontFamily: 'monospace',
+    letterSpacing: 0.4,
   },
-  deleteItemBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 1,
+  previewText: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  metaTime: {
+    fontSize: 10.5,
+    marginTop: 2,
+  },
+  deleteBtn: {
+    padding: 4,
+  },
+  tableDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 58,
+  },
+  emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  promptRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginBottom: 6,
-  },
-  userBadgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginTop: 6,
-  },
-  userPrompt: {
-    flex: 1,
-    fontSize: 13.5,
-    fontWeight: '700',
-    lineHeight: 19,
-  },
-  responseBox: {
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginTop: 4,
-  },
-  aiSnippet: {
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  emptyCard: {
-    padding: 36,
-    borderRadius: 20,
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 20,
+    paddingTop: 80,
+    paddingHorizontal: 32,
   },
   emptyIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 12,
   },
   emptyTitle: {
     fontSize: 16,
-    fontWeight: '800',
-    fontFamily: 'monospace',
+    fontWeight: '700',
+    marginBottom: 4,
+    letterSpacing: -0.2,
   },
   emptySubtitle: {
     fontSize: 12.5,
     textAlign: 'center',
     lineHeight: 18,
-    maxWidth: 280,
   },
 });

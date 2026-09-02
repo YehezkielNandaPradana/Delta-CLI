@@ -2,21 +2,22 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   Modal,
+  StyleSheet,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   TouchableWithoutFeedback,
   Platform,
 } from 'react-native';
-import { Feather, Ionicons } from '@expo/vector-icons';
-import { useThemeColors } from '../../theme/theme';
+import { Ionicons, Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { AIModel } from '../../types/system';
 import { getModels, selectModel } from '../../services/api/systemApi';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { useThemeColors } from '../../theme/theme';
+import { BlurBackdrop } from '../common/BlurBackdrop';
 
-// Fallback curated 9Router presets when server is starting up or returning empty
 const DEFAULT_9ROUTER_PRESETS: AIModel[] = [
   {
     name: 'ag/gemini-3.7-flash-high',
@@ -43,12 +44,6 @@ const DEFAULT_9ROUTER_PRESETS: AIModel[] = [
     is_current: false,
   },
   {
-    name: 'deepseek/deepseek-v4-pro',
-    description: 'DeepSeek V4 Pro - reasoning & code',
-    provider: '9router',
-    is_current: false,
-  },
-  {
     name: 'anthropic/claude-sonnet-4-20250514',
     description: 'Claude Sonnet 4 via 9Router Gateway',
     provider: '9router',
@@ -61,32 +56,8 @@ const DEFAULT_9ROUTER_PRESETS: AIModel[] = [
     is_current: false,
   },
   {
-    name: 'openai/gpt-4o',
-    description: 'OpenAI GPT-4o via 9Router',
-    provider: '9router',
-    is_current: false,
-  },
-  {
-    name: 'xai/grok-4',
-    description: 'xAI Grok 4 via 9Router Gateway',
-    provider: '9router',
-    is_current: false,
-  },
-  {
-    name: 'qwen/qwen3-coder-plus',
-    description: 'Qwen3 Coder Plus via 9Router',
-    provider: '9router',
-    is_current: false,
-  },
-  {
     name: 'AntigravityCombo',
     description: 'Antigravity Multi-provider Hybrid Combo',
-    provider: '9router',
-    is_current: false,
-  },
-  {
-    name: 'KiloCombo',
-    description: 'KiloCombo High-speed Coding Router',
     provider: '9router',
     is_current: false,
   },
@@ -99,7 +70,7 @@ interface ModelPickerSheetProps {
 
 export const ModelPickerSheet: React.FC<ModelPickerSheetProps> = ({ visible, onClose }) => {
   const { colors, isDark } = useThemeColors();
-  const { activeModel, setActiveModel, connectionMode, cloudModel, setCloudModel } = useSettingsStore();
+  const { activeModel, setActiveModel, connectionMode, cloudModel, setCloudModel, hapticEnabled } = useSettingsStore();
 
   const [models, setModels] = useState<AIModel[]>(DEFAULT_9ROUTER_PRESETS);
   const [loading, setLoading] = useState(false);
@@ -129,6 +100,9 @@ export const ModelPickerSheet: React.FC<ModelPickerSheetProps> = ({ visible, onC
   };
 
   const handleSelect = async (modelName: string) => {
+    if (hapticEnabled) {
+      Haptics.selectionAsync().catch(() => {});
+    }
     setSwitching(modelName);
     try {
       if (connectionMode === 'cloud') {
@@ -147,7 +121,6 @@ export const ModelPickerSheet: React.FC<ModelPickerSheetProps> = ({ visible, onC
         onClose();
       }
     } catch (err: any) {
-      // Offline fallback: update locally
       if (connectionMode === 'cloud') {
         await setCloudModel(modelName);
       } else {
@@ -168,80 +141,114 @@ export const ModelPickerSheet: React.FC<ModelPickerSheetProps> = ({ visible, onC
       m.name.toLowerCase().includes('deepseek')
   );
   const displayedModels = tab === '9router' ? routerModels : models;
+  const currentModelName = connectionMode === 'cloud' ? cloudModel : activeModel;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.backdrop}>
+          <BlurBackdrop intensity={45} />
           <TouchableWithoutFeedback>
             <View
               style={[
                 styles.sheetContainer,
                 {
                   backgroundColor: colors.bgSecondary,
-                  borderColor: colors.cardBorder,
-                  borderTopColor: colors.cardSpecular,
-                  shadowColor: isDark ? '#000000' : '#1e3a8a',
+                  borderColor: colors.border,
                 },
               ]}
             >
-              {/* Top Drag Indicator */}
+              {/* iOS Grabber */}
               <View style={styles.header}>
-                <View style={[styles.dragBar, { backgroundColor: colors.cardBorder }]} />
+                <View
+                  style={[
+                    styles.dragBar,
+                    { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' },
+                  ]}
+                />
                 <View style={styles.titleRow}>
                   <View style={styles.titleWithIcon}>
-                    <Ionicons name="sparkles" size={16} color={colors.accentGreen} />
+                    <Ionicons name="sparkles" size={16} color={colors.textPrimary} />
                     <Text style={[styles.title, { color: colors.textPrimary }]}>
                       Switch AI Model
                     </Text>
                   </View>
                   <TouchableOpacity
                     onPress={onClose}
-                    style={[styles.closeBtn, { backgroundColor: colors.bgSurface }]}
+                    style={[
+                      styles.closeBtn,
+                      {
+                        backgroundColor: colors.bgSurface,
+                        borderColor: colors.border,
+                      },
+                    ]}
                     accessibilityLabel="Close Model Picker"
                   >
-                    <Feather name="x" size={16} color={colors.textMuted} />
+                    <Feather name="x" size={15} color={colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
 
-                {/* Tabs */}
-                <View style={styles.tabsRow}>
+                {/* iOS Style Segmented Filter Control */}
+                <View
+                  style={[
+                    styles.segmentedControl,
+                    {
+                      backgroundColor: isDark ? '#141414' : '#EFEFF0',
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
                   <TouchableOpacity
                     style={[
-                      styles.tabBtn,
-                      tab === '9router' && {
-                        backgroundColor: colors.accentGreenSubtle,
-                        borderColor: colors.accentGreen,
-                      },
+                      styles.segmentTab,
+                      tab === '9router' && [
+                        styles.segmentTabActive,
+                        { backgroundColor: isDark ? '#262626' : '#FFFFFF' },
+                      ],
                     ]}
-                    onPress={() => setTab('9router')}
+                    onPress={() => {
+                      if (hapticEnabled) Haptics.selectionAsync().catch(() => {});
+                      setTab('9router');
+                    }}
+                    activeOpacity={0.8}
                   >
                     <Text
                       style={[
-                        styles.tabBtnText,
-                        { color: tab === '9router' ? colors.accentGreen : colors.textMuted },
+                        styles.segmentLabel,
+                        {
+                          color: tab === '9router' ? colors.textPrimary : colors.textMuted,
+                          fontWeight: tab === '9router' ? '700' : '500',
+                        },
                       ]}
                     >
                       9Router ({routerModels.length})
                     </Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={[
-                      styles.tabBtn,
-                      tab === 'all' && {
-                        backgroundColor: colors.accentGreenSubtle,
-                        borderColor: colors.accentGreen,
-                      },
+                      styles.segmentTab,
+                      tab === 'all' && [
+                        styles.segmentTabActive,
+                        { backgroundColor: isDark ? '#262626' : '#FFFFFF' },
+                      ],
                     ]}
-                    onPress={() => setTab('all')}
+                    onPress={() => {
+                      if (hapticEnabled) Haptics.selectionAsync().catch(() => {});
+                      setTab('all');
+                    }}
+                    activeOpacity={0.8}
                   >
                     <Text
                       style={[
-                        styles.tabBtnText,
-                        { color: tab === 'all' ? colors.accentGreen : colors.textMuted },
+                        styles.segmentLabel,
+                        {
+                          color: tab === 'all' ? colors.textPrimary : colors.textMuted,
+                          fontWeight: tab === 'all' ? '700' : '500',
+                        },
                       ]}
                     >
-                      All Models ({models.length})
+                      Semua Model ({models.length})
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -250,9 +257,9 @@ export const ModelPickerSheet: React.FC<ModelPickerSheetProps> = ({ visible, onC
               {/* Models List */}
               {loading && models.length === 0 ? (
                 <View style={styles.loadingBox}>
-                  <ActivityIndicator size="small" color={colors.accentGreen} />
+                  <ActivityIndicator size="small" color={colors.textPrimary} />
                   <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-                    Fetching available models...
+                    Memuat daftar model...
                   </Text>
                 </View>
               ) : (
@@ -261,92 +268,90 @@ export const ModelPickerSheet: React.FC<ModelPickerSheetProps> = ({ visible, onC
                   contentContainerStyle={styles.modelListContent}
                   showsVerticalScrollIndicator={false}
                 >
-                  {displayedModels.map((m) => {
-                    const isSelected =
-                      m.name === activeModel ||
-                      m.name.toLowerCase() === activeModel.toLowerCase() ||
-                      m.is_current;
-                    const isBusy = switching === m.name;
+                  {/* iOS Grouped Table Inset */}
+                  <View
+                    style={[
+                      styles.groupedTable,
+                      {
+                        backgroundColor: colors.bgSurface,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    {displayedModels.map((m, idx) => {
+                      const isSelected =
+                        m.name === currentModelName ||
+                        m.name.toLowerCase() === currentModelName.toLowerCase() ||
+                        m.is_current;
+                      const isBusy = switching === m.name;
+                      const isLast = idx === displayedModels.length - 1;
 
-                    return (
-                      <TouchableOpacity
-                        key={m.name}
-                        style={[
-                          styles.modelCard,
-                          {
-                            backgroundColor: isSelected
-                              ? colors.accentGreenSubtle
-                              : colors.cardBg,
-                            borderColor: isSelected
-                              ? colors.accentGreen
-                              : colors.cardBorder,
-                          },
-                        ]}
-                        onPress={() => handleSelect(m.name)}
-                        activeOpacity={0.7}
-                        disabled={isBusy}
-                      >
-                        <View style={styles.modelCardLeft}>
-                          <View style={styles.modelNameRow}>
-                            <Text
-                              style={[
-                                styles.modelNameText,
-                                {
-                                  color: isSelected
-                                    ? colors.accentGreen
-                                    : colors.textPrimary,
-                                  fontWeight: isSelected ? '700' : '600',
-                                },
-                              ]}
-                              numberOfLines={1}
-                            >
-                              {m.name}
-                            </Text>
-                            {m.provider === '9router' && (
-                              <View
-                                style={[
-                                  styles.providerBadge,
-                                  { backgroundColor: colors.accentCyanSubtle },
-                                ]}
-                              >
+                      return (
+                        <View key={m.name}>
+                          <TouchableOpacity
+                            style={[
+                              styles.tableRow,
+                              isSelected && {
+                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                              },
+                            ]}
+                            onPress={() => handleSelect(m.name)}
+                            activeOpacity={0.65}
+                          >
+                            <View style={styles.modelCardLeft}>
+                              <View style={styles.modelNameRow}>
                                 <Text
                                   style={[
-                                    styles.providerBadgeText,
-                                    { color: colors.accentCyan },
+                                    styles.modelNameText,
+                                    {
+                                      color: colors.textPrimary,
+                                      fontWeight: isSelected ? '700' : '500',
+                                    },
                                   ]}
+                                  numberOfLines={1}
                                 >
-                                  9ROUTER
+                                  {m.name}
                                 </Text>
+                                {m.provider && (
+                                  <View
+                                    style={[
+                                      styles.providerBadge,
+                                      {
+                                        backgroundColor: isDark ? '#262626' : '#E5E5E5',
+                                      },
+                                    ]}
+                                  >
+                                    <Text style={[styles.providerBadgeText, { color: colors.textPrimary }]}>
+                                      {m.provider.toUpperCase()}
+                                    </Text>
+                                  </View>
+                                )}
                               </View>
-                            )}
-                          </View>
-                          <Text
-                            style={[styles.modelDescText, { color: colors.textMuted }]}
-                            numberOfLines={1}
-                          >
-                            {m.description || `Provider: ${m.provider}`}
-                          </Text>
-                        </View>
+                              <Text
+                                style={[styles.modelDescText, { color: colors.textMuted }]}
+                                numberOfLines={1}
+                              >
+                                {m.description || 'General Purpose Model'}
+                              </Text>
+                            </View>
 
-                        {isBusy ? (
-                          <ActivityIndicator size="small" color={colors.accentGreen} />
-                        ) : isSelected ? (
-                          <View
-                            style={[
-                              styles.checkBadge,
-                              { backgroundColor: colors.accentGreen },
-                            ]}
-                          >
-                            <Feather
-                              name="check"
-                              size={12}
-                              color={isDark ? '#000000' : '#ffffff'}
-                            />
-                          </View>
-                        ) : null}
-                      </TouchableOpacity>
-                    );
-                  })}
+                            {/* Selection Status Checkmark */}
+                            <View style={styles.checkmarkWrapper}>
+                              {isBusy ? (
+                                <ActivityIndicator size="small" color={colors.textPrimary} />
+                              ) : isSelected ? (
+                                <Ionicons name="checkmark-sharp" size={18} color={colors.textPrimary} />
+                              ) : null}
+                            </View>
+                          </TouchableOpacity>
+
+                          {!isLast && (
+                            <View style={[styles.tableDivider, { backgroundColor: colors.border }]} />
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
                 </ScrollView>
               )}
             </View>
@@ -364,34 +369,31 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderWidth: 1,
-    borderTopWidth: 1.5,
-    maxHeight: '65%',
-    minHeight: 380,
-    paddingBottom: 28,
+    borderBottomWidth: 0,
+    maxHeight: '80%',
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
     ...Platform.select({
       ios: {
-        shadowOffset: { width: 0, height: -6 },
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.25,
         shadowRadius: 16,
       },
       android: {
         elevation: 12,
       },
-      web: {
-        boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.24)',
-      } as any,
     }),
   },
   header: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 12,
+    paddingBottom: 10,
   },
   dragBar: {
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
     alignSelf: 'center',
@@ -409,31 +411,47 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: -0.3,
   },
   closeBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabsRow: {
+  segmentedControl: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  tabBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'transparent',
+    padding: 3,
   },
-  tabBtnText: {
+  segmentTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    borderRadius: 7,
+  },
+  segmentTabActive: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.12,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  segmentLabel: {
     fontSize: 12,
-    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   loadingBox: {
     paddingVertical: 50,
@@ -448,18 +466,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modelListContent: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
+    paddingTop: 4,
     paddingBottom: 16,
-    gap: 8,
   },
-  modelCard: {
+  groupedTable: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
   },
   modelCardLeft: {
     flex: 1,
@@ -468,15 +489,17 @@ const styles = StyleSheet.create({
   modelNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   modelNameText: {
     fontSize: 13.5,
+    letterSpacing: -0.2,
+    flexShrink: 1,
   },
   providerBadge: {
     paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
   },
   providerBadgeText: {
     fontSize: 9,
@@ -485,13 +508,16 @@ const styles = StyleSheet.create({
   },
   modelDescText: {
     fontSize: 11.5,
-    marginTop: 3,
+    marginTop: 2,
+    lineHeight: 16,
   },
-  checkBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  checkmarkWrapper: {
+    width: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tableDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 14,
   },
 });

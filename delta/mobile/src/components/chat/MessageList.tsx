@@ -8,7 +8,11 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   LayoutChangeEvent,
+  TouchableOpacity,
+  Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { ChatMessage } from '../../types/chat';
 import { MessageBubble } from './MessageBubble';
 import { ThinkingIndicator } from './ThinkingIndicator';
@@ -23,6 +27,7 @@ interface MessageListProps {
   isGenerating?: boolean;
   activeStatusText?: string;
   onCopyText?: (text: string) => void;
+  onLongPressMessage?: (msg: ChatMessage) => void;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -31,6 +36,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   isGenerating = false,
   activeStatusText = 'Working',
   onCopyText,
+  onLongPressMessage,
 }) => {
   const { colors, isDark } = useThemeColors();
   const flatListRef = useRef<FlatList>(null);
@@ -38,19 +44,39 @@ export const MessageList: React.FC<MessageListProps> = ({
   const scrollY = useRef(new Animated.Value(0)).current;
   const [contentHeight, setContentHeight] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+
+  const scrollBtnAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 && !showScrollBottom) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
   }, [messages.length, messages[messages.length - 1]?.text, isGenerating]);
 
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: false }
-  );
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+
+    // Show button when user scrolls up by > 180px
+    const shouldShow = distanceFromBottom > 180;
+    if (shouldShow !== showScrollBottom) {
+      setShowScrollBottom(shouldShow);
+      Animated.spring(scrollBtnAnim, {
+        toValue: shouldShow ? 1 : 0,
+        damping: 18,
+        stiffness: 240,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+
+  const scrollToBottom = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    flatListRef.current?.scrollToEnd({ animated: true });
+  };
 
   const handleLayout = (e: LayoutChangeEvent) => {
     setContainerHeight(e.nativeEvent.layout.height);
@@ -58,6 +84,9 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   const handleContentSizeChange = (_: number, h: number) => {
     setContentHeight(h);
+    if (!showScrollBottom && (isGenerating || messages.length > 0)) {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }
   };
 
   const renderEmptyState = () => (
@@ -92,7 +121,13 @@ export const MessageList: React.FC<MessageListProps> = ({
         ref={flatListRef}
         data={messages}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <MessageBubble message={item} onCopyText={onCopyText} />}
+        renderItem={({ item }) => (
+          <MessageBubble
+            message={item}
+            onCopyText={onCopyText}
+            onLongPressMessage={onLongPressMessage}
+          />
+        )}
         contentContainerStyle={[styles.listContent, messages.length === 0 ? styles.emptyList : null]}
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
@@ -102,16 +137,10 @@ export const MessageList: React.FC<MessageListProps> = ({
         ListFooterComponent={
           isGenerating ? (
             <View style={styles.footerContainer}>
-              <ThinkingIndicator statusText={activeStatusText || 'Delta is thinking...'} />
-              {activeSteps.length > 0 && (
-                <View style={styles.footerActivity}>
-                  <AgentActivity
-                    steps={activeSteps}
-                    isRunning={isGenerating}
-                    activeStatusText={activeStatusText}
-                  />
-                </View>
-              )}
+              <ThinkingIndicator
+                statusText={activeStatusText || 'Delta is thinking...'}
+                steps={activeSteps}
+              />
             </View>
           ) : null
         }
@@ -123,6 +152,47 @@ export const MessageList: React.FC<MessageListProps> = ({
         containerHeight={containerHeight}
         scrollY={scrollY}
       />
+
+      {/* iOS Style Floating Scroll-To-Bottom Button */}
+      {showScrollBottom && (
+        <Animated.View
+          style={[
+            styles.scrollBottomWrapper,
+            {
+              opacity: scrollBtnAnim,
+              transform: [
+                {
+                  scale: scrollBtnAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.6, 1],
+                  }),
+                },
+                {
+                  translateY: scrollBtnAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [20, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={scrollToBottom}
+            style={[
+              styles.scrollBottomBtn,
+              {
+                backgroundColor: isDark ? 'rgba(30, 30, 30, 0.90)' : 'rgba(255, 255, 255, 0.92)',
+                borderColor: colors.border,
+              },
+            ]}
+            activeOpacity={0.8}
+            accessibilityLabel="Scroll ke paling bawah"
+          >
+            <Ionicons name="chevron-down" size={18} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 };
@@ -187,5 +257,30 @@ const styles = StyleSheet.create({
   footerActivity: {
     paddingHorizontal: 16,
     marginTop: 4,
+  },
+  scrollBottomWrapper: {
+    position: 'absolute',
+    bottom: 12,
+    alignSelf: 'center',
+    zIndex: 10,
+  },
+  scrollBottomBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.18,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
 });

@@ -6,14 +6,15 @@ import { AntigravityAccount, ConnectionMode } from '../types/cloud';
 const STORAGE_KEY = '@delta_settings';
 
 // Sensible defaults based on execution platform
-const DEFAULT_HOST = Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
-const DEFAULT_ANTIGRAVITY_BASE_URL = 'https://api.antigravity.ai/v1';
-const DEFAULT_CLOUD_MODEL = 'ag/gemini-3.7-flash-high';
+const DEFAULT_HOST = Platform.OS === 'android' ? 'http://192.168.1.6:8080' : 'http://localhost:8080';
+const DEFAULT_CLOUD_MODEL = 'gemini-1.5-pro';
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 
 export interface SettingsState {
   serverUrl: string;
+  tunnelUrl: string;
+  routerHostUrl: string;
   activeModel: string;
   hapticEnabled: boolean;
   theme: ThemeMode;
@@ -27,6 +28,8 @@ export interface SettingsState {
 
   // Actions
   setServerUrl: (url: string) => Promise<void>;
+  setTunnelUrl: (url: string) => Promise<void>;
+  setRouterHostUrl: (url: string) => Promise<void>;
   setActiveModel: (model: string) => Promise<void>;
   setHapticEnabled: (enabled: boolean) => Promise<void>;
   setTheme: (theme: ThemeMode) => Promise<void>;
@@ -35,23 +38,18 @@ export interface SettingsState {
   addAccount: (account: Omit<AntigravityAccount, 'id'>) => Promise<string>;
   updateAccount: (id: string, updates: Partial<AntigravityAccount>) => Promise<void>;
   deleteAccount: (id: string) => Promise<void>;
+  clearAccountKey: (id: string) => Promise<void>;
   setActiveAccount: (id: string) => Promise<void>;
   getActiveAccount: () => AntigravityAccount | undefined;
   loadSettings: () => Promise<void>;
 }
 
-const DEFAULT_ACCOUNT: AntigravityAccount = {
-  id: 'default_acc',
-  name: 'Antigravity Default',
-  apiKey: '',
-  baseUrl: DEFAULT_ANTIGRAVITY_BASE_URL,
-  defaultModel: DEFAULT_CLOUD_MODEL,
-};
-
 const persistState = async (state: SettingsState) => {
   try {
     const payload = {
       serverUrl: state.serverUrl,
+      tunnelUrl: state.tunnelUrl,
+      routerHostUrl: state.routerHostUrl,
       activeModel: state.activeModel,
       hapticEnabled: state.hapticEnabled,
       theme: state.theme,
@@ -68,19 +66,33 @@ const persistState = async (state: SettingsState) => {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   serverUrl: DEFAULT_HOST,
+  tunnelUrl: '',
+  routerHostUrl: '',
   activeModel: 'Antigravity',
   hapticEnabled: true,
   theme: 'dark',
   isLoaded: false,
 
   connectionMode: 'cloud',
-  accounts: [DEFAULT_ACCOUNT],
-  activeAccountId: 'default_acc',
+  accounts: [],
+  activeAccountId: '',
   cloudModel: DEFAULT_CLOUD_MODEL,
 
   setServerUrl: async (url: string) => {
     const cleanUrl = url.trim().replace(/\/+$/, '');
     set({ serverUrl: cleanUrl });
+    await persistState(get());
+  },
+
+  setTunnelUrl: async (url: string) => {
+    const cleanUrl = url.trim().replace(/\/+$/, '');
+    set({ tunnelUrl: cleanUrl });
+    await persistState(get());
+  },
+
+  setRouterHostUrl: async (url: string) => {
+    const cleanUrl = url.trim().replace(/\/+$/, '');
+    set({ routerHostUrl: cleanUrl });
     await persistState(get());
   },
 
@@ -129,13 +141,22 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   deleteAccount: async (id: string) => {
     const filtered = get().accounts.filter((a) => a.id !== id);
-    const newAccounts = filtered.length > 0 ? filtered : [DEFAULT_ACCOUNT];
     const newActiveId =
-      get().activeAccountId === id ? newAccounts[0].id : get().activeAccountId;
+      get().activeAccountId === id
+        ? (filtered.length > 0 ? filtered[0].id : '')
+        : get().activeAccountId;
     set({
-      accounts: newAccounts,
+      accounts: filtered,
       activeAccountId: newActiveId,
     });
+    await persistState(get());
+  },
+
+  clearAccountKey: async (id: string) => {
+    const updated = get().accounts.map((a) =>
+      a.id === id ? { ...a, apiKey: '', tier: undefined } : a
+    );
+    set({ accounts: updated });
     await persistState(get());
   },
 
@@ -155,18 +176,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       if (raw) {
         const parsed = JSON.parse(raw);
         const savedAccounts: AntigravityAccount[] =
-          Array.isArray(parsed.accounts) && parsed.accounts.length > 0
-            ? parsed.accounts
-            : [DEFAULT_ACCOUNT];
+          Array.isArray(parsed.accounts) ? parsed.accounts : [];
 
         set({
           serverUrl: parsed.serverUrl || DEFAULT_HOST,
+          tunnelUrl: parsed.tunnelUrl || '',
+          routerHostUrl: parsed.routerHostUrl || '',
           activeModel: parsed.activeModel || 'Antigravity',
           hapticEnabled: parsed.hapticEnabled !== undefined ? parsed.hapticEnabled : true,
           theme: parsed.theme || 'dark',
           connectionMode: parsed.connectionMode || 'cloud',
           accounts: savedAccounts,
-          activeAccountId: parsed.activeAccountId || savedAccounts[0].id,
+          activeAccountId: parsed.activeAccountId || (savedAccounts[0]?.id || ''),
           cloudModel: parsed.cloudModel || DEFAULT_CLOUD_MODEL,
           isLoaded: true,
         });

@@ -314,6 +314,29 @@ class EngineBridge:
                 "message": f"Error starting 9Router: {str(exc)}"
             }
 
+    def get_tunnel_status(self) -> Dict[str, Any]:
+        from delta.utils.tunnel_manager import get_tunnel_status, get_tunnel_logs
+        st = get_tunnel_status()
+        st["recent_logs"] = get_tunnel_logs(limit=25)
+        return st
+
+    def get_tunnel_logs(self, limit: int = 100) -> Dict[str, Any]:
+        from delta.utils.tunnel_manager import get_tunnel_logs, get_tunnel_status
+        return {
+            "status": "ok",
+            "tunnel": get_tunnel_status(),
+            "logs": get_tunnel_logs(limit=limit)
+        }
+
+    def start_tunnel(self, port: int = 8080) -> Dict[str, Any]:
+        from delta.utils.tunnel_manager import start_cloudflare_tunnel
+        return start_cloudflare_tunnel(port=port)
+
+    def stop_tunnel(self) -> Dict[str, Any]:
+        from delta.utils.tunnel_manager import stop_cloudflare_tunnel
+        stopped = stop_cloudflare_tunnel()
+        return {"status": "ok", "stopped": stopped}
+
     def get_evidence(self) -> Dict[str, Any]:
         evidence_items = []
         if self.engine and hasattr(self.engine, "pentest") and self.engine.pentest:

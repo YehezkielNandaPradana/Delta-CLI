@@ -13,6 +13,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/theme';
 import { startRouter, getRouterStatus } from '../../services/api/systemApi';
 import { useConnectionStore } from '../../store/useConnectionStore';
+import { BlurBackdrop } from '../common/BlurBackdrop';
 
 interface RouterAlertModalProps {
   visible: boolean;
@@ -77,13 +78,14 @@ export const RouterAlertModal: React.FC<RouterAlertModalProps> = ({
     >
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.backdrop}>
+          <BlurBackdrop intensity={50} />
           <TouchableWithoutFeedback>
             <View
               style={[
                 styles.card,
                 {
                   backgroundColor: colors.bgSecondary,
-                  borderColor: colors.accentYellow,
+                  borderColor: colors.border,
                 },
               ]}
             >
@@ -150,7 +152,7 @@ export const RouterAlertModal: React.FC<RouterAlertModalProps> = ({
                 <TouchableOpacity
                   style={[
                     styles.primaryBtn,
-                    { backgroundColor: colors.accentYellow },
+                    { backgroundColor: colors.textPrimary },
                     starting && { opacity: 0.7 },
                   ]}
                   onPress={handleStartRouter}
@@ -159,11 +161,11 @@ export const RouterAlertModal: React.FC<RouterAlertModalProps> = ({
                   accessibilityLabel="Start 9Router Gateway"
                 >
                   {starting ? (
-                    <ActivityIndicator size="small" color="#000" />
+                    <ActivityIndicator size="small" color={colors.bgPrimary} />
                   ) : (
                     <>
-                      <Ionicons name="flash" size={16} color="#000" />
-                      <Text style={styles.primaryBtnText}>Start 9Router Gateway</Text>
+                      <Ionicons name="flash" size={16} color={colors.bgPrimary} />
+                      <Text style={[styles.primaryBtnText, { color: colors.bgPrimary }]}>Start 9Router Gateway</Text>
                     </>
                   )}
                 </TouchableOpacity>

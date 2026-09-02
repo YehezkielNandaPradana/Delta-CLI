@@ -34,7 +34,7 @@ export interface RouterStatusResponse {
 }
 
 export async function getRouterStatus(): Promise<RouterStatusResponse> {
-  const { connectionMode } = useSettingsStore.getState();
+  const { connectionMode, routerHostUrl, serverUrl } = useSettingsStore.getState();
 
   // If running in pure Cloud mode, report 9Router as active directly
   if (connectionMode === 'cloud') {
@@ -48,26 +48,36 @@ export async function getRouterStatus(): Promise<RouterStatusResponse> {
     };
   }
 
-  // Check Termux / local port 20128 directly
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch('http://127.0.0.1:20128/v1/models', {
-      method: 'GET',
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    if (res.ok) {
-      return {
-        status: 'ok',
-        running: true,
-        provider: '9router-local',
-        base_url: 'http://127.0.0.1:20128/v1',
-        port: 20128,
-        latency_ms: 5,
-      };
-    }
-  } catch (_) {}
+  // Check Termux / PRoot / local candidates port 20128
+  const candidateUrls = [
+    routerHostUrl ? routerHostUrl.replace(/\/+$/, '') : '',
+    'http://127.0.0.1:20128',
+    'http://localhost:20128',
+    'http://192.168.1.6:20128',
+  ].filter(Boolean);
+
+  for (const host of candidateUrls) {
+    try {
+      const cleanHost = host.replace(/\/v1\/?$/, '');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1200);
+      const res = await fetch(`${cleanHost}/v1/models`, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        return {
+          status: 'ok',
+          running: true,
+          provider: '9router-local',
+          base_url: `${cleanHost}/v1`,
+          port: 20128,
+          latency_ms: 5,
+        };
+      }
+    } catch (_) {}
+  }
 
   return apiRequest<RouterStatusResponse>('/api/router', {
     method: 'GET',
@@ -75,9 +85,123 @@ export async function getRouterStatus(): Promise<RouterStatusResponse> {
   });
 }
 
+export async function test9RouterPing(targetUrl?: string): Promise<{
+  success: boolean;
+  latencyMs: number;
+  modelsCount: number;
+  url: string;
+  error?: string;
+}> {
+  const { routerHostUrl, serverUrl } = useSettingsStore.getState();
+
+  let urlToTest = (targetUrl || routerHostUrl || '').trim();
+  if (!urlToTest) {
+    try {
+      if (serverUrl && !serverUrl.includes('localhost') && !serverUrl.includes('127.0.0.1')) {
+        const u = new URL(serverUrl);
+        urlToTest = `http://${u.hostname}:20128`;
+      }
+    } catch (_) {}
+  }
+  if (!urlToTest) {
+    urlToTest = 'http://127.0.0.1:20128';
+  }
+
+  const cleanUrl = urlToTest.replace(/\/+$/, '').replace(/\/v1\/?$/, '');
+  const endpoint = `${cleanUrl}/v1/models`;
+
+  const startT = Date.now();
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(endpoint, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const latencyMs = Date.now() - startT;
+
+    if (res.ok) {
+      const json = await res.json();
+      const count = Array.isArray(json?.data) ? json.data.length : 0;
+      return {
+        success: true,
+        latencyMs,
+        modelsCount: count,
+        url: cleanUrl,
+      };
+    }
+    return {
+      success: false,
+      latencyMs,
+      modelsCount: 0,
+      url: cleanUrl,
+      error: `HTTP ${res.status}`,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      latencyMs: Date.now() - startT,
+      modelsCount: 0,
+      url: cleanUrl,
+      error: err.name === 'AbortError' ? 'Connection timed out (4s)' : err.message || 'Unreachable',
+    };
+  }
+}
+
 export async function startRouter(): Promise<RouterStatusResponse> {
   return apiRequest<RouterStatusResponse>('/api/router/start', {
     method: 'POST',
     timeoutMs: 20000,
+  });
+}
+
+export interface TunnelStatusResponse {
+  status: string;
+  running: boolean;
+  url: string | null;
+  available: boolean;
+  message?: string;
+}
+
+export async function getTunnelStatus(): Promise<TunnelStatusResponse> {
+  return apiRequest<TunnelStatusResponse>('/api/tunnel', {
+    method: 'GET',
+    timeoutMs: 5000,
+  });
+}
+
+export async function startTunnel(port: number = 8080): Promise<TunnelStatusResponse> {
+  return apiRequest<TunnelStatusResponse>('/api/tunnel/start', {
+    method: 'POST',
+    body: JSON.stringify({ port }),
+    timeoutMs: 30000,
+  });
+}
+
+export async function stopTunnel(): Promise<{ status: string; stopped: boolean }> {
+  return apiRequest<{ status: string; stopped: boolean }>('/api/tunnel/stop', {
+    method: 'POST',
+    timeoutMs: 10000,
+  });
+}
+
+export interface TunnelLogEntry {
+  timestamp: string;
+  time: number;
+  level: string;
+  message: string;
+}
+
+export interface TunnelLogsResponse {
+  status: string;
+  tunnel: TunnelStatusResponse;
+  logs: TunnelLogEntry[];
+}
+
+export async function getTunnelLogs(limit: number = 100): Promise<TunnelLogsResponse> {
+  return apiRequest<TunnelLogsResponse>(`/api/tunnel/logs?limit=${limit}`, {
+    method: 'GET',
+    timeoutMs: 5000,
   });
 }

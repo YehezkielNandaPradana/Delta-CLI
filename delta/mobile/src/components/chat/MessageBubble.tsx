@@ -1,20 +1,84 @@
-import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Platform,
+  TouchableOpacity,
+  Alert,
+  Animated,
+  Easing,
+} from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/theme';
 import { ChatMessage } from '../../types/chat';
 import { CodeBlock } from './CodeBlock';
 import { AgentActivity } from '../agent/AgentActivity';
 import { formatTimestamp, cleanAnsiCodes } from '../../utils/formatters';
+import { useNotesStore } from '../../store/useNotesStore';
 
 interface MessageBubbleProps {
   message: ChatMessage;
   onCopyText?: (text: string) => void;
+  onLongPressMessage?: (msg: ChatMessage) => void;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopyText }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({
+  message,
+  onCopyText,
+  onLongPressMessage,
+}) => {
   const { colors, isDark } = useThemeColors();
+  const { createNote } = useNotesStore();
+  const [savedAsNote, setSavedAsNote] = useState(false);
+
   const isUser = message.sender === 'user';
   const cleanText = cleanAnsiCodes(message.text || '');
+
+  // Subtle clean entrance transition
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(8)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handleLongPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    if (onLongPressMessage) {
+      onLongPressMessage(message);
+    }
+  };
+
+  const handleSaveAsNote = async () => {
+    if (!cleanText.trim()) return;
+
+    const firstLine = cleanText.split('\n')[0].replace(/[#*`_]/g, '').trim();
+    const title = firstLine.length > 40 ? `${firstLine.slice(0, 37)}...` : firstLine || 'Saved Note';
+
+    await createNote({
+      title,
+      content: cleanText,
+      tags: [isUser ? 'user-prompt' : 'delta-response'],
+    });
+
+    setSavedAsNote(true);
+    Alert.alert('Saved to Notes', `"${title}"`);
+  };
 
   const renderContent = (content: string) => {
     const parts = content.split(/(```[\s\S]*?```)/g);
@@ -38,7 +102,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopyTex
           key={index}
           style={[
             styles.messageText,
-            { color: isUser ? '#ffffff' : colors.textPrimary },
+            {
+              color: isUser ? '#FFFFFF' : colors.textPrimary,
+            },
           ]}
         >
           {part}
@@ -47,67 +113,87 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onCopyTex
     });
   };
 
+  // Clean solid monochrome palette
+  const userBg = isDark ? '#333842' : '#262930';
+  const deltaBg = isDark ? '#14171C' : '#F4F5F7';
+  const deltaBorder = isDark ? '#23272F' : '#E2E5EA';
+
   return (
-    <View style={[styles.wrapper, isUser ? styles.userWrapper : styles.deltaWrapper]}>
+    <Animated.View
+      style={[
+        styles.wrapper,
+        isUser ? styles.userWrapper : styles.deltaWrapper,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
       {!isUser && message.steps && message.steps.length > 0 && (
         <View style={styles.activityContainer}>
           <AgentActivity steps={message.steps} isRunning={message.isStreaming} />
         </View>
       )}
 
-      <View
+      <TouchableOpacity
+        onLongPress={handleLongPress}
+        delayLongPress={280}
+        activeOpacity={0.88}
         style={[
           styles.bubble,
           isUser
-            ? [
-                styles.userBubble,
-                {
-                  backgroundColor: colors.accentGreen,
-                  borderColor: isDark ? 'rgba(0, 245, 155, 0.4)' : 'rgba(5, 150, 105, 0.4)',
-                },
-              ]
+            ? [styles.userBubble, { backgroundColor: userBg }]
             : [
                 styles.deltaBubble,
                 {
-                  backgroundColor: colors.cardBg,
-                  borderColor: colors.cardBorder,
-                  borderTopColor: colors.cardSpecular,
-                  borderTopWidth: 1.5,
-                  shadowColor: isDark ? '#000000' : '#64748b',
+                  backgroundColor: deltaBg,
+                  borderColor: deltaBorder,
                 },
               ],
         ]}
       >
-        <View style={styles.headerRow}>
-          <View style={styles.senderBadge}>
-            <Text
-              style={[
-                styles.senderLabel,
-                { color: isUser ? '#ffffff' : colors.accentGreen },
-              ]}
-            >
-              {isUser ? 'USER' : 'DELTA'}
-            </Text>
-          </View>
+        {/* Clean Message Body */}
+        <View style={styles.body}>{renderContent(cleanText)}</View>
+
+        {/* Minimal Meta Row (Time & Note Action) */}
+        <View style={styles.metaRow}>
           <Text
             style={[
               styles.timestamp,
-              { color: isUser ? 'rgba(255, 255, 255, 0.8)' : colors.textMuted },
+              { color: isUser ? 'rgba(255, 255, 255, 0.65)' : colors.textMuted },
             ]}
           >
             {formatTimestamp(message.timestamp)}
           </Text>
-        </View>
 
-        <View style={styles.body}>{renderContent(cleanText)}</View>
-      </View>
-    </View>
+          <TouchableOpacity
+            onPress={handleSaveAsNote}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.actionIcon}
+            activeOpacity={0.6}
+            accessibilityLabel="Save as note"
+          >
+            <Ionicons
+              name={savedAsNote ? 'bookmark' : 'bookmark-outline'}
+              size={13}
+              color={
+                isUser
+                  ? 'rgba(255, 255, 255, 0.8)'
+                  : savedAsNote
+                  ? colors.accent
+                  : colors.textMuted
+              }
+            />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginVertical: 6,
+    marginVertical: 4,
     paddingHorizontal: 16,
     width: '100%',
   },
@@ -120,56 +206,52 @@ const styles = StyleSheet.create({
   activityContainer: {
     width: '100%',
     maxWidth: '92%',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   bubble: {
-    borderRadius: 18,
-    padding: 14,
-    maxWidth: '88%',
-    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 8,
+    maxWidth: '86%',
+    borderRadius: 16,
     ...Platform.select({
       ios: {
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
       },
       android: {
-        elevation: 2,
+        elevation: 1,
       },
     }),
   },
   userBubble: {
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 3,
   },
   deltaBubble: {
-    borderBottomLeftRadius: 4,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  senderBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  senderLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  timestamp: {
-    fontSize: 10,
-    marginLeft: 8,
-    fontWeight: '500',
+    borderWidth: 1,
+    borderBottomLeftRadius: 3,
   },
   body: {
-    marginTop: 2,
+    marginBottom: 2,
   },
   messageText: {
     fontSize: 14.5,
-    lineHeight: 22,
-    letterSpacing: 0.2,
+    lineHeight: 21,
+    letterSpacing: 0.1,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 4,
+  },
+  timestamp: {
+    fontSize: 10,
+    fontWeight: '400',
+  },
+  actionIcon: {
+    padding: 2,
   },
 });

@@ -5,8 +5,9 @@ export interface RequestOptions extends RequestInit {
 }
 
 export async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { serverUrl } = useSettingsStore.getState();
-  const base = serverUrl.replace(/\/+$/, '');
+  const { serverUrl, connectionMode, tunnelUrl } = useSettingsStore.getState();
+  const rawBase = (connectionMode === 'tunnel' && tunnelUrl) ? tunnelUrl : serverUrl;
+  const base = rawBase.replace(/\/+$/, '');
   const url = `${base}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
   const { timeoutMs = 20000, ...customConfig } = options;

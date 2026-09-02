@@ -1,9 +1,20 @@
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { useSkillsStore } from '../../store/useSkillsStore';
 import { ChatResponse } from './chatApi';
 
 export const DELTA_SYSTEM_PROMPT = `Delta is an AI-powered Cyber Security Assessment CLI & Mobile Assistant.
 You specialize in network security analysis, vulnerability evaluation, scanning workflows, web exploitation mitigation, reconnaissance, and offensive/defensive cybersecurity guidance.
-Respond concisely, cleanly, with clear actionable technical advice and cybersecurity insights.`;
+Respond concisely, cleanly, with clear actionable technical advice and cybersecurity insights.
+
+NOTE CREATION CAPABILITY:
+When the user asks or commands to take a note, write a note, save findings, or summarize something into notes (e.g., "buatkan catatan...", "catat bahwa...", "simpan ini ke catatan", "make a note about..."), you MUST output a special JSON action tag at the beginning or end of your response in this exact format:
+[DELTA_CREATE_NOTE: {"title": "Short Descriptive Title", "content": "Full detailed note markdown content here", "tags": ["tag1", "tag2"]}]
+Always provide a friendly explanation in plain text along with the tag confirming that the note has been saved.
+
+REMINDER / NOTIFICATION CAPABILITY:
+When the user asks to remind them or set an alarm/reminder (e.g., "ingatkan saya 5 menit lagi untuk...", "buatkan pengingat...", "remind me in 10 minutes to..."), you MUST output a special JSON action tag in this exact format:
+[DELTA_CREATE_REMINDER: {"title": "Short Reminder Title", "delayMinutes": 5, "note": "Detailed context or description"}]
+Always confirm in conversational text that the reminder has been set.`;
 
 export interface ChatMessagePayload {
   role: 'system' | 'user' | 'assistant';
@@ -23,10 +34,13 @@ export function formatDirectChatPayload(
   model: string,
   history: ChatMessagePayload[] = []
 ): DirectChatCompletionPayload {
+  const dynamicSkillContext = useSkillsStore.getState().getActiveSkillPrompts(message);
+  const fullSystemPrompt = `${DELTA_SYSTEM_PROMPT}${dynamicSkillContext}`;
+
   return {
     model: model || 'gemini-1.5-flash',
     messages: [
-      { role: 'system', content: DELTA_SYSTEM_PROMPT },
+      { role: 'system', content: fullSystemPrompt },
       ...history,
       { role: 'user', content: message },
     ],
@@ -35,16 +49,91 @@ export function formatDirectChatPayload(
   };
 }
 
-const FALLBACK_GEMINI_MODELS = [
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-latest',
+export const KNOWN_GOOGLE_MODELS = [
   'gemini-1.5-pro',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
   'gemini-1.5-pro-latest',
-  'gemini-3.6-flash',
+  'gemini-1.5-flash-latest',
 ];
 
 /**
- * Handle direct Google Gemini REST API with automatic high-demand fallback
+ * Fetch available Google Gemini models directly via API Key
+ */
+export async function testAndFetchGoogleModels(apiKey: string): Promise<{
+  success: boolean;
+  models: string[];
+  tier: 'pro' | 'flash' | 'standard';
+  bestModel: string;
+  error?: string;
+}> {
+  const cleanKey = apiKey.trim();
+  if (!cleanKey) {
+    return {
+      success: false,
+      models: [],
+      tier: 'standard',
+      bestModel: 'gemini-1.5-flash',
+      error: 'API Key kosong',
+    };
+  }
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      let errMsg = `Status ${res.status}`;
+      try {
+        const json = await res.json();
+        if (json.error?.message) errMsg = json.error.message;
+      } catch (_) {}
+      return {
+        success: false,
+        models: [],
+        tier: 'standard',
+        bestModel: 'gemini-1.5-flash',
+        error: errMsg,
+      };
+    }
+
+    const data = await res.json();
+    const rawList: any[] = data.models || [];
+    const modelNames = rawList
+      .map((m) => m.name?.replace(/^models\//, ''))
+      .filter((n) => typeof n === 'string' && n.includes('gemini'));
+
+    const hasPro = modelNames.some((n) => n.includes('pro'));
+    const tier = hasPro ? 'pro' : 'flash';
+
+    // Pick best default model
+    let bestModel = 'gemini-1.5-flash';
+    if (modelNames.includes('gemini-1.5-pro')) {
+      bestModel = 'gemini-1.5-pro';
+    } else if (modelNames.includes('gemini-2.0-flash')) {
+      bestModel = 'gemini-2.0-flash';
+    } else if (modelNames.length > 0) {
+      bestModel = modelNames[0];
+    }
+
+    return {
+      success: true,
+      models: modelNames.length > 0 ? modelNames : KNOWN_GOOGLE_MODELS,
+      tier,
+      bestModel,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      models: [],
+      tier: 'standard',
+      bestModel: 'gemini-1.5-flash',
+      error: err.message || 'Koneksi ke Google AI Studio gagal',
+    };
+  }
+}
+
+/**
+ * Handle direct Google Gemini REST API with fallback
  */
 async function callGoogleGeminiApi(
   apiKey: string,
@@ -56,10 +145,9 @@ async function callGoogleGeminiApi(
     cleanModel = 'gemini-1.5-flash';
   }
 
-  // Model chain: requested model first, then standard fallbacks
   const candidateModels = [
     cleanModel,
-    ...FALLBACK_GEMINI_MODELS.filter((m) => m !== cleanModel),
+    ...KNOWN_GOOGLE_MODELS.filter((m) => m !== cleanModel),
   ];
 
   let lastError = '';
@@ -109,7 +197,6 @@ async function callGoogleGeminiApi(
 
         lastError = errMsg;
 
-        // If 503 / high demand / model not found, try next candidate model
         if (
           res.status === 503 ||
           res.status === 404 ||
@@ -223,13 +310,13 @@ export async function sendDirectCloudMessage(
   const activeAccount = store.getActiveAccount();
 
   if (!activeAccount) {
-    throw new Error('Tidak ada akun yang aktif. Buka Settings dan tambahkan akun.');
+    throw new Error('Tidak ada akun yang aktif. Buka Settings dan sambungkan akun Google AI atau Antigravity.');
   }
 
   const rawKey = (activeAccount.apiKey || '').trim();
   if (!rawKey) {
     throw new Error(
-      `Akun "${activeAccount.name}" belum memiliki API Key. Buka menu Settings dan masukkan API Key.`
+      `Akun "${activeAccount.name}" belum memiliki API Key. Buka menu Settings dan hubungkan akun Google AI.`
     );
   }
 
@@ -237,8 +324,8 @@ export async function sendDirectCloudMessage(
     store.cloudModel || activeAccount.defaultModel || 'gemini-1.5-flash';
   const customUrl = (activeAccount.baseUrl || '').trim();
 
-  // Jika Base URL kosong ATAU API Key diawali AIzaSy ATAU URL mengarah ke googleapis
   const isGoogle =
+    activeAccount.accountType === 'google' ||
     !customUrl ||
     rawKey.startsWith('AIzaSy') ||
     customUrl.toLowerCase().includes('googleapis.com');

@@ -9,9 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { LiquidGlassCard } from '../common/LiquidGlassCard';
+import { BlurBackdrop } from '../common/BlurBackdrop';
 import { AntigravityAccount } from '../../types/cloud';
 import { useThemeColors } from '../../theme/theme';
 
@@ -31,37 +34,72 @@ export function AccountManagerModal({
   const { colors, isDark } = useThemeColors();
   const [name, setName] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [baseUrl, setBaseUrl] = useState('');
-  const [defaultModel, setDefaultModel] = useState('gemini-1.5-flash');
+  const [baseUrl, setBaseUrl] = useState('https://api.antigravity.ai/v1');
+  const [defaultModel, setDefaultModel] = useState('ag/gemini-3.7-flash-high');
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const [callbackUrl, setCallbackUrl] = useState('');
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
 
   useEffect(() => {
     if (editingAccount) {
       setName(editingAccount.name);
       setApiKey(editingAccount.apiKey);
-      setBaseUrl(editingAccount.baseUrl || '');
-      setDefaultModel(editingAccount.defaultModel || 'gemini-2.0-flash');
+      setBaseUrl(editingAccount.baseUrl || 'http://127.0.0.1:20128/v1');
+      setDefaultModel(editingAccount.defaultModel || 'ag/gemini-3.7-flash-high');
     } else {
-      setName('');
+      setName('Antigravity 9Router (Google OAuth)');
       setApiKey('');
-      setBaseUrl('');
-      setDefaultModel('gemini-2.0-flash');
+      setBaseUrl('http://127.0.0.1:20128/v1');
+      setDefaultModel('ag/gemini-3.7-flash-high');
     }
+    setCallbackUrl('');
+    setIsAuthorizing(false);
     setShowKey(false);
   }, [editingAccount, visible]);
 
-  const handleSave = async () => {
-    const trimmedName = name.trim();
-    const trimmedKey = apiKey.trim();
-    const trimmedUrl = baseUrl.trim().replace(/\/+$/, '');
+  const GOOGLE_AUTH_URL =
+    'https://accounts.google.com/o/oauth2/v2/auth?client_id=1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A20128%2Fcallback&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcclog+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fexperimentsandconfigs&state=1ro-udT0wYGCFinjsQah_yZ5mrk8ZkMQ6OuHTLa9sGk&access_type=offline&prompt=consent';
 
-    if (!trimmedName) {
-      Alert.alert('Validation', 'Silakan masukkan nama akun.');
-      return;
+  const handleOpenAntigravityOAuth = async () => {
+    setIsAuthorizing(true);
+    try {
+      await Linking.openURL(GOOGLE_AUTH_URL);
+    } catch (_) {
+      Alert.alert('Browser Error', 'Salin link manual dan buka di browser.');
     }
+  };
+
+  const handleParseCallbackUrl = (url: string) => {
+    setCallbackUrl(url);
+    const trimmed = url.trim();
+    if (!trimmed) return;
+
+    try {
+      if (trimmed.includes('code=')) {
+        const codeMatch = trimmed.match(/code=([^&]+)/);
+        if (codeMatch && codeMatch[1]) {
+          const extractedCode = decodeURIComponent(codeMatch[1]);
+          setApiKey(extractedCode);
+          setIsAuthorizing(false);
+          return;
+        }
+      }
+      if (!trimmed.startsWith('http') && trimmed.length > 20) {
+        setApiKey(trimmed);
+        setIsAuthorizing(false);
+      }
+    } catch (_) {}
+  };
+
+  const handleSave = async () => {
+    const trimmedName = name.trim() || 'Antigravity Cloud';
+    const trimmedKey = apiKey.trim();
+    const trimmedUrl = baseUrl.trim().replace(/\/+$/, '') || 'https://api.antigravity.ai/v1';
+
     if (!trimmedKey) {
-      Alert.alert('Validation', 'Silakan masukkan API Key.');
+      Alert.alert('Validation', 'Silakan masukkan Antigravity API Key / Token.');
       return;
     }
 
@@ -71,8 +109,10 @@ export function AccountManagerModal({
         {
           name: trimmedName,
           apiKey: trimmedKey,
-          baseUrl: trimmedUrl, // Boleh string kosong untuk direct Google Gemini API
-          defaultModel: defaultModel.trim() || 'gemini-2.0-flash',
+          baseUrl: trimmedUrl,
+          defaultModel: defaultModel.trim() || 'ag/gemini-3.7-flash-high',
+          accountType: 'antigravity',
+          tier: 'pro',
         },
         editingAccount?.id
       );
@@ -96,12 +136,14 @@ export function AccountManagerModal({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.modalBackdrop}>
+          <BlurBackdrop intensity={50} />
           <LiquidGlassCard style={styles.card}>
+            {/* Modal Header */}
             <View style={styles.headerRow}>
               <View style={styles.titleWithIcon}>
-                <Ionicons name="key-outline" size={20} color={colors.accentGreen} />
+                <Ionicons name="sparkles" size={18} color={colors.accent} />
                 <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-                  {editingAccount ? 'Edit Akun Antigravity' : 'Tambah Akun Antigravity'}
+                  {editingAccount ? 'Edit Akun Antigravity' : 'Connect Antigravity Cloud'}
                 </Text>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -109,19 +151,82 @@ export function AccountManagerModal({
               </TouchableOpacity>
             </View>
 
-            {/* Nama Akun */}
+            {/* Antigravity OAuth Banner */}
+            <View style={[styles.oauthBanner, { backgroundColor: colors.surfaceHover, borderColor: colors.border }]}>
+              <View style={styles.oauthHeaderRow}>
+                <Ionicons name="logo-google" size={16} color={colors.accent} />
+                <Text style={[styles.oauthTitle, { color: colors.textPrimary }]}>
+                  Google OAuth (9Router Antigravity)
+                </Text>
+              </View>
+
+              {/* Step 1 */}
+              <View style={styles.stepContainer}>
+                <Text style={[styles.stepTitle, { color: colors.accent }]}>
+                  Step 1: Open this URL in your browser
+                </Text>
+                <TouchableOpacity
+                  style={[styles.oauthBtn, { backgroundColor: colors.textPrimary }]}
+                  onPress={handleOpenAntigravityOAuth}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="open-outline" size={15} color={colors.bgPrimary} />
+                  <Text style={[styles.oauthBtnText, { color: colors.bgPrimary }]}>
+                    {isAuthorizing ? 'Waiting for popup authorization…' : 'Open Google Authorization'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Step 2 */}
+              <View style={styles.stepContainer}>
+                <Text style={[styles.stepTitle, { color: colors.accent }]}>
+                  Step 2: Paste the callback URL here
+                </Text>
+                <Text style={[styles.stepDesc, { color: colors.textSecondary }]}>
+                  After authorization, copy the full URL from your browser.
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.bgSurface,
+                      borderColor: colors.border,
+                      color: colors.textPrimary,
+                      marginTop: 4,
+                    },
+                  ]}
+                  placeholder="http://localhost:20128/callback?code=..."
+                  placeholderTextColor={colors.textMuted}
+                  value={callbackUrl}
+                  onChangeText={handleParseCallbackUrl}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {isAuthorizing && (
+                <View style={styles.authorizingStatusRow}>
+                  <ActivityIndicator size="small" color={colors.accent} />
+                  <Text style={[styles.authorizingStatusText, { color: colors.textSecondary }]}>
+                    Waiting for popup authorization… or paste callback URL manually
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Label Akun */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Nama Akun / Label</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Label Akun</Text>
               <TextInput
                 style={[
                   styles.input,
                   {
-                    backgroundColor: colors.codeBg,
-                    borderColor: colors.codeBorder,
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.border,
                     color: colors.textPrimary,
                   },
                 ]}
-                placeholder="Contoh: Akun Utama / Cloud Pro"
+                placeholder="Contoh: Antigravity Pro (Unlimited)"
                 placeholderTextColor={colors.textMuted}
                 value={name}
                 onChangeText={setName}
@@ -129,12 +234,14 @@ export function AccountManagerModal({
               />
             </View>
 
-            {/* API Key */}
+            {/* API Key / Token */}
             <View style={styles.fieldGroup}>
               <View style={styles.labelRow}>
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Antigravity API Key</Text>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                  Antigravity Token / API Key
+                </Text>
                 <TouchableOpacity onPress={() => setShowKey(!showKey)}>
-                  <Text style={[styles.toggleKeyText, { color: colors.accentCyan }]}>
+                  <Text style={[styles.toggleKeyText, { color: colors.accent }]}>
                     {showKey ? 'Sembunyikan' : 'Tampilkan'}
                   </Text>
                 </TouchableOpacity>
@@ -143,12 +250,12 @@ export function AccountManagerModal({
                 style={[
                   styles.input,
                   {
-                    backgroundColor: colors.codeBg,
-                    borderColor: colors.codeBorder,
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.border,
                     color: colors.textPrimary,
                   },
                 ]}
-                placeholder="Masukkan API Key Antigravity..."
+                placeholder="Tempel token/key Antigravity..."
                 placeholderTextColor={colors.textMuted}
                 value={apiKey}
                 onChangeText={setApiKey}
@@ -158,24 +265,19 @@ export function AccountManagerModal({
               />
             </View>
 
-            {/* Base URL */}
+            {/* Endpoint Base URL */}
             <View style={styles.fieldGroup}>
-              <View style={styles.labelRow}>
-                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Endpoint Base URL</Text>
-                <Text style={[styles.toggleKeyText, { color: colors.textMuted }]}>
-                  Opsional (Kosong = Google AI)
-                </Text>
-              </View>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Gateway Endpoint URL</Text>
               <TextInput
                 style={[
                   styles.input,
                   {
-                    backgroundColor: colors.codeBg,
-                    borderColor: colors.codeBorder,
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.border,
                     color: colors.textPrimary,
                   },
                 ]}
-                placeholder="Kosongkan jika menggunakan Gemini AI Studio"
+                placeholder="https://api.antigravity.ai/v1"
                 placeholderTextColor={colors.textMuted}
                 value={baseUrl}
                 onChangeText={setBaseUrl}
@@ -184,15 +286,15 @@ export function AccountManagerModal({
               />
             </View>
 
-            {/* Default Model */}
+            {/* Target Model */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Model Target</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Default AI Model</Text>
               <TextInput
                 style={[
                   styles.input,
                   {
-                    backgroundColor: colors.codeBg,
-                    borderColor: colors.codeBorder,
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.border,
                     color: colors.textPrimary,
                   },
                 ]}
@@ -208,21 +310,25 @@ export function AccountManagerModal({
             {/* Action Buttons */}
             <View style={styles.btnRow}>
               <TouchableOpacity
-                style={[styles.cancelBtn, { borderColor: colors.cardBorder }]}
+                style={[styles.cancelBtn, { borderColor: colors.border }]}
                 onPress={onClose}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.cancelBtnText, { color: colors.textMuted }]}>Batal</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveBtn, { backgroundColor: colors.accentGreen }]}
+                style={[styles.saveBtn, { backgroundColor: colors.textPrimary }]}
                 onPress={handleSave}
                 disabled={saving}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.saveBtnText, { color: isDark ? '#000000' : '#ffffff' }]}>
-                  {saving ? 'Menyimpan...' : 'Simpan Akun'}
-                </Text>
+                {saving ? (
+                  <ActivityIndicator size="small" color={colors.bgPrimary} />
+                ) : (
+                  <Text style={[styles.saveBtnText, { color: colors.bgPrimary }]}>
+                    {editingAccount ? 'Perbarui Akun' : 'Hubungkan Antigravity'}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </LiquidGlassCard>
@@ -241,19 +347,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   card: {
     width: '100%',
-    maxWidth: 420,
-    padding: 20,
+    maxWidth: 440,
+    padding: 18,
     borderRadius: 20,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   titleWithIcon: {
     flexDirection: 'row',
@@ -262,35 +368,93 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   closeBtn: {
     padding: 4,
   },
+  oauthBanner: {
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  oauthHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  oauthTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+  },
+  oauthDesc: {
+    fontSize: 11,
+    lineHeight: 15,
+    marginBottom: 10,
+  },
+  stepContainer: {
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  stepTitle: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  stepDesc: {
+    fontSize: 10.5,
+    marginBottom: 4,
+  },
+  authorizingStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    padding: 6,
+  },
+  authorizingStatusText: {
+    fontSize: 10.5,
+    flex: 1,
+  },
+  oauthBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 36,
+    borderRadius: 10,
+    gap: 6,
+  },
+  oauthBtnText: {
+    color: '#090A0C',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   fieldGroup: {
-    marginBottom: 14,
+    marginBottom: 10,
   },
   labelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   fieldLabel: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '700',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   toggleKeyText: {
     fontSize: 11,
     fontWeight: '600',
   },
   input: {
-    height: 42,
+    height: 40,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
-    fontSize: 13,
+    fontSize: 12.5,
   },
   btnRow: {
     flexDirection: 'row',
@@ -299,25 +463,26 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 12,
+    height: 42,
+    borderRadius: 14,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   cancelBtnText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
   },
   saveBtn: {
     flex: 1.5,
-    height: 44,
-    borderRadius: 12,
+    height: 42,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
   saveBtnText: {
-    fontSize: 13,
+    color: '#090A0C',
+    fontSize: 12.5,
     fontWeight: '800',
   },
 });

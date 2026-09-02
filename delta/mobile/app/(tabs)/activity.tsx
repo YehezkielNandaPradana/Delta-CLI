@@ -5,18 +5,28 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Switch,
   Alert,
+  ActivityIndicator,
+  Clipboard,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Header } from '../../src/components/common/Header';
-import { LiquidGlassCard } from '../../src/components/common/LiquidGlassCard';
-import { TelemetryLineChart, DataPoint } from '../../src/components/activity/TelemetryLineChart';
+import { PageTransition } from '../../src/components/common/PageTransition';
 import { useThemeColors } from '../../src/theme/theme';
 import { useSettingsStore } from '../../src/store/useSettingsStore';
 import { useConnectionStore } from '../../src/store/useConnectionStore';
+import {
+  getTunnelStatus,
+  getTunnelLogs,
+  startTunnel,
+  stopTunnel,
+  test9RouterPing,
+  TunnelLogEntry,
+} from '../../src/services/api/systemApi';
 
 interface ModelRouteConfig {
   id: string;
@@ -26,7 +36,7 @@ interface ModelRouteConfig {
   active: boolean;
   priority: number;
   tokensUsed: number;
-  costEstimate: string;
+  icon: keyof typeof Ionicons.glyphMap;
 }
 
 const INITIAL_ROUTES: ModelRouteConfig[] = [
@@ -38,7 +48,7 @@ const INITIAL_ROUTES: ModelRouteConfig[] = [
     active: true,
     priority: 1,
     tokensUsed: 14250,
-    costEstimate: '$0.00 (Free)',
+    icon: 'git-network-outline',
   },
   {
     id: 'r2',
@@ -48,7 +58,7 @@ const INITIAL_ROUTES: ModelRouteConfig[] = [
     active: true,
     priority: 2,
     tokensUsed: 48910,
-    costEstimate: '$0.00 (Free)',
+    icon: 'sparkles-outline',
   },
   {
     id: 'r3',
@@ -58,7 +68,7 @@ const INITIAL_ROUTES: ModelRouteConfig[] = [
     active: true,
     priority: 3,
     tokensUsed: 8200,
-    costEstimate: '$0.00 (Free)',
+    icon: 'logo-google',
   },
   {
     id: 'r4',
@@ -68,267 +78,484 @@ const INITIAL_ROUTES: ModelRouteConfig[] = [
     active: false,
     priority: 4,
     tokensUsed: 0,
-    costEstimate: '$0.00 (Free)',
+    icon: 'code-slash-outline',
   },
-];
-
-const TOKEN_TELEMETRY: DataPoint[] = [
-  { label: '09:00', value: 120 },
-  { label: '12:00', value: 450 },
-  { label: '15:00', value: 890 },
-  { label: '18:00', value: 1420 },
-  { label: '21:00', value: 2100 },
-  { label: 'NOW', value: 3400 },
 ];
 
 export default function RouterDashboardScreen() {
   const { colors, isDark } = useThemeColors();
-  const { cloudModel, getActiveAccount, accounts } = useSettingsStore();
-  const { isRouterRunning } = useConnectionStore();
+  const { setTunnelUrl, hapticEnabled } = useSettingsStore();
 
+  const [activeTab, setActiveTab] = useState<'router' | 'tunnel'>('router');
   const [routes, setRoutes] = useState<ModelRouteConfig[]>(INITIAL_ROUTES);
-  const [proxyPort, setProxyPort] = useState('20128');
-  const [autoFallback, setAutoFallback] = useState(true);
-  const [streamEnabled, setStreamEnabled] = useState(true);
-  const [maxContextTokens, setMaxContextTokens] = useState('8192');
+  const [pingData, setPingData] = useState<{
+    latencyMs: number;
+    modelsCount: number;
+    isChecking: boolean;
+    error?: string;
+  }>({
+    latencyMs: 12,
+    modelsCount: 43,
+    isChecking: false,
+  });
 
-  const totalTokens = routes.reduce((sum, r) => sum + r.tokensUsed, 0);
-  const activeAccount = getActiveAccount();
+  const [tunnelStatus, setTunnelStatus] = useState<{
+    running: boolean;
+    url?: string;
+    loading: boolean;
+  }>({
+    running: false,
+    loading: false,
+  });
+  const [tunnelLogs, setTunnelLogs] = useState<TunnelLogEntry[]>([]);
 
-  const toggleRouteActive = (id: string) => {
+  useEffect(() => {
+    checkPing();
+    refreshTunnel();
+  }, []);
+
+  const checkPing = async () => {
+    setPingData((prev) => ({ ...prev, isChecking: true }));
+    try {
+      const res = await test9RouterPing();
+      setPingData({
+        latencyMs: res.latencyMs || 0,
+        modelsCount: res.modelsCount || 0,
+        isChecking: false,
+        error: res.success ? undefined : res.error,
+      });
+    } catch (_) {
+      setPingData((prev) => ({ ...prev, isChecking: false }));
+    }
+  };
+
+  const refreshTunnel = async () => {
+    try {
+      const status = await getTunnelStatus();
+      setTunnelStatus({
+        running: status.running,
+        url: status.url || undefined,
+        loading: false,
+      });
+      if (status.url) {
+        setTunnelUrl(status.url);
+      }
+      const logsRes = await getTunnelLogs();
+      if (logsRes.logs) {
+        setTunnelLogs(logsRes.logs);
+      }
+    } catch (_) {}
+  };
+
+  const handleToggleRoute = (id: string) => {
+    if (hapticEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
     setRoutes((prev) =>
       prev.map((r) => (r.id === id ? { ...r, active: !r.active } : r))
     );
   };
 
-  const handleApplyConfig = () => {
-    Alert.alert('9Router Updated', `Local gateway configuration applied on port ${proxyPort}.`);
+  const handleToggleTunnel = async (value: boolean) => {
+    if (hapticEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
+    setTunnelStatus((prev) => ({ ...prev, loading: true }));
+    try {
+      if (value) {
+        const res = await startTunnel();
+        if (res.running && res.url) {
+          await refreshTunnel();
+          Alert.alert('Tunnel Aktif', `URL: ${res.url}`);
+        } else {
+          Alert.alert('Gagal Memulai Tunnel', res.message || 'Error');
+        }
+      } else {
+        await stopTunnel();
+        setTunnelStatus({ running: false, loading: false });
+      }
+    } catch (e: any) {
+      Alert.alert('Error Tunnel', e.message);
+    } finally {
+      setTunnelStatus((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleCopyUrl = (url?: string) => {
+    if (!url) return;
+    Clipboard.setString(url);
+    if (hapticEnabled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+    Alert.alert('Disalin', 'URL Tunnel berhasil disalin ke clipboard.');
   };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
-      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
-        <Header title="DELTA" subtitle="9Router Dashboard & Telemetry" />
+      <PageTransition style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <Header title="Router" subtitle="9Router & Gateway Telemetry" />
+
+        {/* iOS Segmented Control Tab */}
+        <View style={styles.segmentWrapper}>
+          <View
+            style={[
+              styles.segmentedControl,
+              {
+                backgroundColor: isDark ? '#141414' : '#EFEFF0',
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => {
+                if (hapticEnabled) Haptics.selectionAsync().catch(() => {});
+                setActiveTab('router');
+              }}
+              style={[
+                styles.segmentTab,
+                activeTab === 'router' && [
+                  styles.segmentTabActive,
+                  { backgroundColor: isDark ? '#262626' : '#FFFFFF' },
+                ],
+              ]}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="git-network-outline"
+                size={14}
+                color={activeTab === 'router' ? colors.textPrimary : colors.textMuted}
+                style={{ marginRight: 5 }}
+              />
+              <Text
+                style={[
+                  styles.segmentLabel,
+                  {
+                    color: activeTab === 'router' ? colors.textPrimary : colors.textMuted,
+                    fontWeight: activeTab === 'router' ? '700' : '500',
+                  },
+                ]}
+              >
+                9Router Gateway
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                if (hapticEnabled) Haptics.selectionAsync().catch(() => {});
+                setActiveTab('tunnel');
+              }}
+              style={[
+                styles.segmentTab,
+                activeTab === 'tunnel' && [
+                  styles.segmentTabActive,
+                  { backgroundColor: isDark ? '#262626' : '#FFFFFF' },
+                ],
+              ]}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="globe-outline"
+                size={14}
+                color={activeTab === 'tunnel' ? colors.textPrimary : colors.textMuted}
+                style={{ marginRight: 5 }}
+              />
+              <Text
+                style={[
+                  styles.segmentLabel,
+                  {
+                    color: activeTab === 'tunnel' ? colors.textPrimary : colors.textMuted,
+                    fontWeight: activeTab === 'tunnel' ? '700' : '500',
+                  },
+                ]}
+              >
+                Cloudflare Tunnel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
         >
-          {/* TOP 3-METRIC HUD CARDS */}
-          <View style={styles.metricsRow}>
-            {/* Router Core Status */}
-            <View style={styles.metricCol}>
-              <LiquidGlassCard style={styles.metricCard}>
-                <View style={styles.metricIconRow}>
-                  <Ionicons name="git-network-outline" size={16} color={colors.accentGreen} />
-                  <View
-                    style={[
-                      styles.dotBadge,
-                      { backgroundColor: isRouterRunning ? colors.accentGreen : colors.accentYellow },
-                    ]}
-                  />
-                </View>
-                <Text style={[styles.metricVal, { color: colors.textPrimary }]}>
-                  {isRouterRunning ? 'Online' : 'Embedded'}
-                </Text>
-                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>9ROUTER PORT {proxyPort}</Text>
-              </LiquidGlassCard>
-            </View>
-
-            {/* Total Tokens Processed */}
-            <View style={styles.metricCol}>
-              <LiquidGlassCard style={styles.metricCard}>
-                <View style={styles.metricIconRow}>
-                  <Ionicons name="hardware-chip-outline" size={16} color={colors.accentCyan} />
-                  <Text style={[styles.subValue, { color: colors.accentCyan }]}>Total</Text>
-                </View>
-                <Text style={[styles.metricVal, { color: colors.textPrimary }]}>
-                  {(totalTokens / 1000).toFixed(1)}k
-                </Text>
-                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>TOKENS MONITORED</Text>
-              </LiquidGlassCard>
-            </View>
-
-            {/* Total Cost Estimate */}
-            <View style={styles.metricCol}>
-              <LiquidGlassCard style={styles.metricCard}>
-                <View style={styles.metricIconRow}>
-                  <Ionicons name="wallet-outline" size={16} color={colors.accentGreen} />
-                  <Text style={[styles.subValue, { color: colors.accentGreen }]}>100%</Text>
-                </View>
-                <Text style={[styles.metricVal, { color: colors.textPrimary }]}>
-                  $0.00
-                </Text>
-                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>ESTIMATED COST</Text>
-              </LiquidGlassCard>
-            </View>
-          </View>
-
-          {/* TOKEN VELOCITY TELEMETRY CHART */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                TOKEN CONSUMPTION TELEMETRY
-              </Text>
-              <View style={[styles.badge, { backgroundColor: colors.accentGreenSubtle }]}>
-                <Text style={[styles.badgeText, { color: colors.accentGreen }]}>REALTIME</Text>
-              </View>
-            </View>
-
-            <LiquidGlassCard style={styles.chartWrapperCard}>
-              <TelemetryLineChart
-                title="CUMULATIVE TOKEN VELOCITY"
-                subtitle="Aggregated tokens routed across active Antigravity / Gemini models"
-                data={TOKEN_TELEMETRY}
-                unit="tok"
-                color={colors.accentGreen}
-                height={140}
-              />
-            </LiquidGlassCard>
-          </View>
-
-          {/* ROUTE / MODEL ORCHESTRATION MANAGEMENT */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                MODEL ROUTE MATRIX ({routes.length})
-              </Text>
-              <Text style={[styles.subText, { color: colors.textMuted }]}>
-                Active: {cloudModel || 'AntigravityCombo'}
-              </Text>
-            </View>
-
-            <LiquidGlassCard style={styles.glassCard}>
-              {routes.map((r, idx) => (
-                <View
-                  key={r.id}
-                  style={[
-                    styles.routeCard,
-                    {
-                      backgroundColor: r.active ? colors.accentGreenSubtle : colors.bgSecondary,
-                      borderColor: r.active ? colors.accentGreen : colors.cardBorder,
-                    },
-                  ]}
-                >
-                  <View style={styles.routeLeft}>
-                    <View style={styles.routeHeaderRow}>
-                      <Text
-                        style={[
-                          styles.routeName,
-                          { color: r.active ? colors.accentGreen : colors.textPrimary },
-                        ]}
-                      >
-                        {r.name}
-                      </Text>
-                      <View style={[styles.priorityBadge, { backgroundColor: colors.bgSurface }]}>
-                        <Text style={[styles.priorityText, { color: colors.textMuted }]}>
-                          P{r.priority}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Text style={[styles.routeMeta, { color: colors.textMuted }]}>
-                      Provider: {r.provider} · {r.tokensUsed.toLocaleString()} tokens
+          {activeTab === 'router' ? (
+            /* 9ROUTER GATEWAY VIEW */
+            <>
+              {/* Status HUD Inset */}
+              <View
+                style={[
+                  styles.hudCard,
+                  {
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.hudTopRow}>
+                  <View>
+                    <Text style={[styles.hudTitle, { color: colors.textPrimary }]}>
+                      Local AI Gateway
                     </Text>
-                    <Text style={[styles.routeUrl, { color: colors.textDim }]} numberOfLines={1}>
-                      {r.targetEndpoint}
+                    <Text style={[styles.hudSubtitle, { color: colors.textSecondary }]}>
+                      Port 20128 • PRoot / Termux / Laptop
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={checkPing}
+                    style={[
+                      styles.pingRefreshBtn,
+                      {
+                        backgroundColor: isDark ? '#262626' : '#EFEFF0',
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    {pingData.isChecking ? (
+                      <ActivityIndicator size="small" color={colors.textPrimary} />
+                    ) : (
+                      <>
+                        <Ionicons name="refresh" size={13} color={colors.textPrimary} />
+                        <Text style={[styles.pingBtnText, { color: colors.textPrimary }]}>
+                          Test Ping
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {/* Metrics 3-Col Bar */}
+                <View style={[styles.metricGrid, { borderTopColor: colors.border }]}>
+                  <View style={styles.metricItem}>
+                    <Text style={[styles.metricVal, { color: colors.textPrimary }]}>
+                      {pingData.latencyMs} ms
+                    </Text>
+                    <Text style={[styles.metricLabel, { color: colors.textMuted }]}>
+                      Latency
+                    </Text>
+                  </View>
+
+                  <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
+
+                  <View style={styles.metricItem}>
+                    <Text style={[styles.metricVal, { color: colors.textPrimary }]}>
+                      {pingData.modelsCount}
+                    </Text>
+                    <Text style={[styles.metricLabel, { color: colors.textMuted }]}>
+                      Available Models
+                    </Text>
+                  </View>
+
+                  <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
+
+                  <View style={styles.metricItem}>
+                    <View style={styles.statusPillSmall}>
+                      <View
+                        style={[
+                          styles.dot,
+                          { backgroundColor: pingData.error ? colors.error : colors.textPrimary },
+                        ]}
+                      />
+                      <Text style={[styles.metricValSmall, { color: colors.textPrimary }]}>
+                        {pingData.error ? 'Offline' : 'Online'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.metricLabel, { color: colors.textMuted }]}>
+                      Status
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Section Header */}
+              <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+                  RUTE MODEL AKTIF
+                </Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+                  {routes.filter((r) => r.active).length} AKTIF
+                </Text>
+              </View>
+
+              {/* iOS Grouped Table Inset (Unified Routes Table) */}
+              <View
+                style={[
+                  styles.groupedTable,
+                  {
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                {routes.map((item, index) => {
+                  const isLast = index === routes.length - 1;
+
+                  return (
+                    <View key={item.id}>
+                      <View style={styles.tableRow}>
+                        {/* Provider Icon Box */}
+                        <View
+                          style={[
+                            styles.routeIconBox,
+                            {
+                              backgroundColor: isDark ? '#262626' : '#E5E5E5',
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name={item.icon}
+                            size={16}
+                            color={item.active ? colors.textPrimary : colors.textMuted}
+                          />
+                        </View>
+
+                        {/* Route Info Body */}
+                        <View style={styles.routeBody}>
+                          <View style={styles.routeNameRow}>
+                            <Text
+                              style={[
+                                styles.routeName,
+                                {
+                                  color: colors.textPrimary,
+                                  fontWeight: item.active ? '700' : '500',
+                                },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {item.name}
+                            </Text>
+                          </View>
+
+                          <Text
+                            style={[styles.routeEndpoint, { color: colors.textMuted }]}
+                            numberOfLines={1}
+                          >
+                            {item.provider} • {item.targetEndpoint.replace('https://', '')}
+                          </Text>
+
+                          <Text style={[styles.tokenCount, { color: colors.textSecondary }]}>
+                            {item.tokensUsed.toLocaleString()} tokens
+                          </Text>
+                        </View>
+
+                        {/* Switch Native */}
+                        <Switch
+                          value={item.active}
+                          onValueChange={() => handleToggleRoute(item.id)}
+                          trackColor={{ false: isDark ? '#262626' : '#E5E5E5', true: colors.textPrimary }}
+                          thumbColor={isDark ? '#000000' : '#FFFFFF'}
+                        />
+                      </View>
+
+                      {!isLast && (
+                        <View
+                          style={[
+                            styles.tableDivider,
+                            { backgroundColor: colors.border },
+                          ]}
+                        />
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          ) : (
+            /* CLOUDFLARE TUNNEL VIEW */
+            <>
+              {/* Tunnel HUD */}
+              <View
+                style={[
+                  styles.hudCard,
+                  {
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.hudTopRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.hudTitle, { color: colors.textPrimary }]}>
+                      Cloudflare Tunnel
+                    </Text>
+                    <Text style={[styles.hudSubtitle, { color: colors.textSecondary }]}>
+                      Ekspos Delta CLI ke Public HTTPS
                     </Text>
                   </View>
 
                   <Switch
-                    value={r.active}
-                    onValueChange={() => toggleRouteActive(r.id)}
-                    trackColor={{
-                      false: colors.bgSecondary,
-                      true: colors.accentGreenSubtle,
-                    }}
-                    thumbColor={r.active ? colors.accentGreen : colors.textMuted}
+                    value={tunnelStatus.running}
+                    onValueChange={handleToggleTunnel}
+                    disabled={tunnelStatus.loading}
+                    trackColor={{ false: isDark ? '#262626' : '#E5E5E5', true: colors.textPrimary }}
+                    thumbColor={isDark ? '#000000' : '#FFFFFF'}
                   />
                 </View>
-              ))}
-            </LiquidGlassCard>
-          </View>
 
-          {/* LOCAL GATEWAY TUNING & SETTINGS */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              9ROUTER PARAMETER TUNING
-            </Text>
-
-            <LiquidGlassCard style={styles.glassCard}>
-              <View style={styles.settingRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                    Automatic High-Demand Failover
-                  </Text>
-                  <Text style={[styles.settingDesc, { color: colors.textMuted }]}>
-                    Auto-switch to backup model if Google AI / Antigravity returns 503
-                  </Text>
-                </View>
-                <Switch
-                  value={autoFallback}
-                  onValueChange={setAutoFallback}
-                  trackColor={{ false: colors.bgSecondary, true: colors.accentGreenSubtle }}
-                  thumbColor={autoFallback ? colors.accentGreen : colors.textMuted}
-                />
+                {tunnelStatus.url ? (
+                  <View style={[styles.urlBox, { backgroundColor: isDark ? '#0A0A0A' : '#FAFAFA', borderColor: colors.border }]}>
+                    <Text style={[styles.urlText, { color: colors.textPrimary }]} numberOfLines={1}>
+                      {tunnelStatus.url}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleCopyUrl(tunnelStatus.url)}
+                      style={[styles.copyIconBtn, { backgroundColor: colors.bgSurface }]}
+                    >
+                      <Feather name="copy" size={13} color={colors.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
               </View>
 
-              <View style={[styles.settingRow, { borderTopColor: colors.cardBorder, borderTopWidth: 1 }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                    Streaming Token Generation
-                  </Text>
-                  <Text style={[styles.settingDesc, { color: colors.textMuted }]}>
-                    Stream token-by-token for ultra low latency
-                  </Text>
-                </View>
-                <Switch
-                  value={streamEnabled}
-                  onValueChange={setStreamEnabled}
-                  trackColor={{ false: colors.bgSecondary, true: colors.accentGreenSubtle }}
-                  thumbColor={streamEnabled ? colors.accentGreen : colors.textMuted}
-                />
-              </View>
-
-              <View style={[styles.settingRow, { borderTopColor: colors.cardBorder, borderTopWidth: 1 }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                    Max Context Window (Tokens)
-                  </Text>
-                  <Text style={[styles.settingDesc, { color: colors.textMuted }]}>
-                    Limits context size sent per request
-                  </Text>
-                </View>
-                <TextInput
-                  style={[
-                    styles.smallInput,
-                    {
-                      backgroundColor: colors.codeBg,
-                      borderColor: colors.codeBorder,
-                      color: colors.textPrimary,
-                    },
-                  ]}
-                  value={maxContextTokens}
-                  onChangeText={setMaxContextTokens}
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.applyBtn, { backgroundColor: colors.accentGreen }]}
-                onPress={handleApplyConfig}
-                activeOpacity={0.8}
-              >
-                <Feather name="check" size={15} color={isDark ? '#000000' : '#ffffff'} />
-                <Text style={[styles.applyBtnText, { color: isDark ? '#000000' : '#ffffff' }]}>
-                  Save & Apply 9Router Settings
+              {/* Tunnel Logs */}
+              <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+                  LOG AKTIVITAS TUNNEL
                 </Text>
-              </TouchableOpacity>
-            </LiquidGlassCard>
-          </View>
+                <TouchableOpacity onPress={refreshTunnel}>
+                  <Ionicons name="reload-outline" size={15} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              <View
+                style={[
+                  styles.logsTerminalCard,
+                  {
+                    backgroundColor: colors.codeBg,
+                    borderColor: colors.codeBorder,
+                  },
+                ]}
+              >
+                {tunnelLogs.length === 0 ? (
+                  <Text style={[styles.emptyLogs, { color: colors.textMuted }]}>
+                    Tidak ada log tunnel saat ini.
+                  </Text>
+                ) : (
+                  tunnelLogs.slice(-10).map((log, index) => (
+                    <View key={index} style={styles.logRow}>
+                      <Text style={[styles.logTime, { color: colors.textMuted }]}>
+                        {log.timestamp}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.logMessage,
+                          {
+                            color: log.level === 'error' ? colors.error : colors.textPrimary,
+                          },
+                        ]}
+                      >
+                        {log.message}
+                      </Text>
+                    </View>
+                  ))
+                )}
+              </View>
+            </>
+          )}
         </ScrollView>
-      </View>
+      </PageTransition>
     </SafeAreaView>
   );
 }
@@ -340,164 +567,228 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  segmentWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 3,
+  },
+  segmentTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 7,
+    borderRadius: 9,
+  },
+  segmentTabActive: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.12,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  segmentLabel: {
+    fontSize: 12.5,
+    letterSpacing: -0.2,
+  },
   scrollView: {
     flex: 1,
   },
   contentContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 90,
+  },
+  hudCard: {
+    borderRadius: 14,
+    borderWidth: 1,
     padding: 16,
-    paddingBottom: 110,
+    marginBottom: 16,
   },
-  metricsRow: {
+  hudTopRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  metricCol: {
-    flex: 1,
-  },
-  metricCard: {
-    padding: 12,
-    borderRadius: 16,
-    alignItems: 'flex-start',
-  },
-  metricIconRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    width: '100%',
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    marginBottom: 14,
   },
-  dotBadge: {
+  hudTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  hudSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  pingRefreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 4,
+  },
+  pingBtnText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  metricGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  metricItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  metricDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 24,
+  },
+  metricVal: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  metricValSmall: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  metricLabel: {
+    fontSize: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statusPillSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  subValue: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  metricVal: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  metricLabel: {
-    fontSize: 8.5,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    marginTop: 2,
-  },
-  section: {
-    marginBottom: 20,
-  },
   sectionHeaderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    marginTop: 4,
     paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.1,
-  },
-  subText: {
-    fontSize: 10.5,
-    fontWeight: '600',
-  },
-  badge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  badgeText: {
-    fontSize: 8.5,
-    fontWeight: '800',
+    fontSize: 11.5,
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
-  chartWrapperCard: {
-    padding: 14,
-    borderRadius: 18,
+  sectionSubtitle: {
+    fontSize: 11,
+    fontWeight: '600',
   },
-  glassCard: {
-    padding: 14,
-    borderRadius: 18,
+  groupedTable: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: 16,
   },
-  routeCard: {
+  tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  routeLeft: {
+  routeIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  routeBody: {
     flex: 1,
     marginRight: 10,
   },
-  routeHeaderRow: {
+  routeNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   routeName: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    letterSpacing: -0.2,
   },
-  priorityBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
+  routeEndpoint: {
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginTop: 2,
   },
-  priorityText: {
-    fontSize: 8.5,
-    fontWeight: '800',
-  },
-  routeMeta: {
+  tokenCount: {
     fontSize: 10.5,
     marginTop: 2,
   },
-  routeUrl: {
-    fontSize: 9.5,
-    marginTop: 1,
+  tableDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 60,
   },
-  settingRow: {
+  urlBox: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  settingLabel: {
-    fontSize: 12.5,
-    fontWeight: '700',
-  },
-  settingDesc: {
-    fontSize: 10.5,
-    marginTop: 2,
-  },
-  smallInput: {
-    width: 80,
-    height: 36,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderRadius: 8,
-    textAlign: 'center',
+    marginTop: 6,
+  },
+  urlText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    flex: 1,
+    marginRight: 8,
   },
-  applyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    height: 42,
+  copyIconBtn: {
+    padding: 5,
+    borderRadius: 6,
+  },
+  logsTerminalCard: {
     borderRadius: 12,
-    marginTop: 12,
+    borderWidth: 1,
+    padding: 12,
+    minHeight: 180,
   },
-  applyBtnText: {
-    fontSize: 12.5,
-    fontWeight: '800',
+  emptyLogs: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 30,
+  },
+  logRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  logTime: {
+    fontSize: 10.5,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginRight: 8,
+  },
+  logMessage: {
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    flex: 1,
   },
 });

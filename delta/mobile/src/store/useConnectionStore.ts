@@ -4,6 +4,7 @@ export type ConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'er
 
 interface ConnectionState {
   status: ConnectionStatus;
+  isConnected: boolean;
   isEngineRunning: boolean;
   isRouterRunning: boolean;
   activeTarget: string;
@@ -20,6 +21,7 @@ interface ConnectionState {
 
 export const useConnectionStore = create<ConnectionState>((set) => ({
   status: 'disconnected',
+  isConnected: false,
   isEngineRunning: false,
   isRouterRunning: true,
   activeTarget: '',
@@ -27,7 +29,12 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
   lastPing: null,
   errorMessage: null,
 
-  setStatus: (status: ConnectionStatus) => set({ status, errorMessage: status === 'connected' ? null : undefined }),
+  setStatus: (status: ConnectionStatus) =>
+    set({
+      status,
+      isConnected: status === 'connected',
+      errorMessage: status === 'connected' ? null : undefined,
+    }),
   setEngineRunning: (running: boolean) => set({ isEngineRunning: running }),
   setIsRouterRunning: (running: boolean) => set({ isRouterRunning: running }),
   setSystemInfo: (info) =>

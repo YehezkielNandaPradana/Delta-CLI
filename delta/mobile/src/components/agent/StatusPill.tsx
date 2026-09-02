@@ -1,163 +1,107 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../theme/theme';
-import { ConnectionStatus } from '../../store/useConnectionStore';
+import { useConnectionStore } from '../../store/useConnectionStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
 
 interface StatusPillProps {
-  status: ConnectionStatus;
-  isWorking?: boolean;
-  modelName?: string;
-  onPress?: () => void;
+  showModel?: boolean;
 }
 
-export const StatusPill: React.FC<StatusPillProps> = ({
-  status,
-  isWorking = false,
-  modelName,
-}) => {
+export const StatusPill: React.FC<StatusPillProps> = ({ showModel = true }) => {
   const { colors } = useThemeColors();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const { isConnected } = useConnectionStore();
+  const { activeModel, connectionMode } = useSettingsStore();
 
-  useEffect(() => {
-    if (isWorking || status === 'connecting') {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 0.3,
-            duration: 700,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 700,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [isWorking, status]);
+  let dotColor = colors.textDisabled;
+  let statusLabel = 'OFFLINE';
 
-  let dotColor = colors.textDim;
-  let statusText = 'Offline';
-  let badgeBorder = colors.cardBorder;
-  let badgeBg = colors.cardBg;
-
-  if (status === 'connected') {
-    if (isWorking) {
-      dotColor = colors.accentCyan;
-      statusText = 'Busy';
-      badgeBorder = colors.accentCyan;
-      badgeBg = colors.accentCyanSubtle;
-    } else {
-      dotColor = '#10b981'; // vibrant emerald
-      statusText = 'Ready';
-      badgeBorder = 'rgba(16, 185, 129, 0.28)';
-      badgeBg = 'rgba(16, 185, 129, 0.12)';
-    }
-  } else if (status === 'connecting') {
-    dotColor = colors.accentYellow;
-    statusText = 'Sync';
-    badgeBorder = colors.accentYellow;
-    badgeBg = colors.accentYellowSubtle;
-  } else if (status === 'error') {
-    dotColor = colors.accentRed;
-    statusText = 'Err';
-    badgeBorder = colors.accentRed;
-    badgeBg = colors.accentRedSubtle;
+  if (connectionMode === 'cloud') {
+    dotColor = colors.success;
+    statusLabel = 'CLOUD READY';
+  } else if (isConnected) {
+    dotColor = colors.success;
+    statusLabel = 'ONLINE';
   }
 
-  // Format model label for high-density header display
-  let cleanModel = modelName || '';
-  if (cleanModel.includes('/')) {
-    cleanModel = cleanModel.split('/').pop() || cleanModel;
-  }
-  if (cleanModel.length > 15) {
-    cleanModel = cleanModel.substring(0, 14) + '…';
-  }
+  const cleanModelName = (name: string) => {
+    if (!name) return 'Ollama';
+    const parts = name.split('/');
+    const clean = parts[parts.length - 1];
+    return clean.length > 16 ? `${clean.slice(0, 15)}…` : clean;
+  };
 
   return (
     <View
       style={[
-        styles.container,
+        styles.pillContainer,
         {
-          backgroundColor: badgeBg,
-          borderColor: badgeBorder,
+          backgroundColor: colors.bgSecondary,
+          borderColor: colors.border,
         },
       ]}
     >
-      <View style={styles.statusIndicator}>
-        <Animated.View
-          style={[
-            styles.dot,
-            {
-              backgroundColor: dotColor,
-              opacity: pulseAnim,
-            },
-          ]}
-        />
-        <Text style={[styles.statusText, { color: colors.textPrimary }]}>
-          {statusText}
+      <View style={styles.statusSection}>
+        <View style={[styles.dot, { backgroundColor: dotColor }]} />
+        <Text style={[styles.statusText, { color: colors.textSecondary }]}>
+          {statusLabel}
         </Text>
       </View>
 
-      {cleanModel ? (
-        <View
-          style={[
-            styles.modelBadge,
-            {
-              backgroundColor: colors.bgSurface,
-              borderColor: colors.cardBorder,
-            },
-          ]}
-        >
-          <Text style={[styles.modelText, { color: colors.accentNavyLight || colors.accentGreen }]}>
-            {cleanModel}
-          </Text>
-        </View>
-      ) : null}
+      {showModel && (
+        <>
+          <View style={[styles.separator, { backgroundColor: colors.border }]} />
+          <View style={styles.modelSection}>
+            <Ionicons name="hardware-chip-outline" size={11} color={colors.accent} />
+            <Text style={[styles.modelText, { color: colors.textPrimary }]} numberOfLines={1}>
+              {cleanModelName(activeModel)}
+            </Text>
+          </View>
+        </>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  pillContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 3.5,
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
     borderWidth: 1,
-    gap: 6,
+    gap: 8,
   },
-  statusIndicator: {
+  statusSection: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
   },
   dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 1,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusText: {
-    fontSize: 9.5,
-    fontWeight: '800',
+    fontSize: 10.5,
+    fontWeight: '700',
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    fontFamily: 'monospace',
   },
-  modelBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 3,
-    borderWidth: 1,
+  separator: {
+    width: 1,
+    height: 12,
+  },
+  modelSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: 140,
   },
   modelText: {
-    fontSize: 9,
-    fontFamily: 'monospace',
-    fontWeight: '700',
-    letterSpacing: 0.1,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: -0.1,
   },
 });
