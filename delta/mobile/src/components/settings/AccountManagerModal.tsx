@@ -31,8 +31,8 @@ export function AccountManagerModal({
   const { colors, isDark } = useThemeColors();
   const [name, setName] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [baseUrl, setBaseUrl] = useState('https://api.antigravity.ai/v1');
-  const [defaultModel, setDefaultModel] = useState('ag/gemini-3.7-flash-high');
+  const [baseUrl, setBaseUrl] = useState('');
+  const [defaultModel, setDefaultModel] = useState('gemini-1.5-flash');
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
 
