@@ -574,6 +574,19 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 self._safe_write(resp_bytes)
                 return
 
+            if clean_path == "/api/plan/generate":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                res = self.bridge.generate_project_plan(data) if self.bridge else {"status": "error", "message": "Bridge offline"}
+                resp_bytes = json.dumps(res).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp_bytes)))
+                self.end_headers()
+                self._safe_write(resp_bytes)
+                return
+
             if clean_path in ("/api/execute", "/api/chat"):
                 content_length = int(self.headers.get("Content-Length", 0))
                 body_bytes = self.rfile.read(content_length) if content_length > 0 else b""

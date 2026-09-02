@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useThemeColors } from '../../theme/theme';
 import { useChatStore } from '../../store/useChatStore';
 import { BlurBackdrop } from '../common/BlurBackdrop';
@@ -34,13 +35,20 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({
   } = useChatStore();
 
   const handleNewChat = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     createSession();
     onClose();
   };
 
   const handleSelectSession = (sessionId: string) => {
+    Haptics.selectionAsync().catch(() => {});
     switchSession(sessionId);
     onClose();
+  };
+
+  const handleDeleteSession = (sessionId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    deleteSession(sessionId);
   };
 
   return (
@@ -80,7 +88,7 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({
                     Sesi Obrolan
                   </Text>
                   <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-                    Riwayat percakapan Delta
+                    Riwayat percakapan Delta ({sessions.length} sesi)
                   </Text>
                 </View>
 
@@ -99,74 +107,113 @@ export const ChatSessionSidebar: React.FC<ChatSessionSidebarProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* Sessions List */}
+              {/* iOS Grouped Inset Sessions Table */}
               <ScrollView
                 style={styles.sessionsList}
                 contentContainerStyle={styles.sessionsContent}
                 showsVerticalScrollIndicator={false}
               >
-                {sessions.map((session) => {
-                  const isActive = session.id === currentSessionId;
-                  const messageCount = session.messages?.length || 0;
+                <View
+                  style={[
+                    styles.groupedTable,
+                    {
+                      backgroundColor: colors.bgSurface,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  {sessions.map((session, index) => {
+                    const isActive = session.id === currentSessionId;
+                    const messageCount = session.messages?.length || 0;
+                    const isLast = index === sessions.length - 1;
 
-                  return (
-                    <TouchableOpacity
-                      key={session.id}
-                      onPress={() => handleSelectSession(session.id)}
-                      style={[
-                        styles.sessionCard,
-                        {
-                          backgroundColor: isActive
-                            ? (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)')
-                            : colors.bgSurface,
-                          borderColor: isActive ? colors.accent : colors.border,
-                          borderLeftWidth: isActive ? 3 : 1,
-                          borderLeftColor: isActive ? colors.accent : colors.border,
-                        },
-                      ]}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.sessionCardContent}>
-                        <View style={styles.sessionTitleRow}>
-                          <Ionicons
-                            name={isActive ? 'chatbubble-ellipses' : 'chatbubble-outline'}
-                            size={14}
-                            color={isActive ? colors.accent : colors.textSecondary}
-                            style={{ marginRight: 6, marginTop: 2 }}
-                          />
-                          <Text
+                    return (
+                      <View key={session.id}>
+                        <TouchableOpacity
+                          onPress={() => handleSelectSession(session.id)}
+                          style={[
+                            styles.sessionRow,
+                            isActive && {
+                              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                            },
+                          ]}
+                          activeOpacity={0.65}
+                        >
+                          {/* Left Icon Box */}
+                          <View
                             style={[
-                              styles.sessionTitle,
+                              styles.iconBox,
                               {
-                                color: colors.textPrimary,
-                                fontWeight: isActive ? '700' : '500',
+                                backgroundColor: isActive
+                                  ? (isDark ? '#333333' : '#E0E0E0')
+                                  : (isDark ? '#262626' : '#EAEAEA'),
                               },
                             ]}
-                            numberOfLines={1}
                           >
-                            {session.title || 'Obrolan Baru'}
-                          </Text>
-                        </View>
+                            <Ionicons
+                              name={isActive ? 'chatbubble-ellipses' : 'chatbubble-outline'}
+                              size={15}
+                              color={isActive ? colors.textPrimary : colors.textSecondary}
+                            />
+                          </View>
 
-                        <View style={styles.sessionMetaRow}>
-                          <Text style={[styles.metaText, { color: colors.textMuted }]}>
-                            {formatTimestamp(session.updatedAt)} • {messageCount} pesan
-                          </Text>
-                        </View>
-                      </View>
+                          {/* Center Text Info */}
+                          <View style={styles.sessionCardContent}>
+                            <View style={styles.sessionTitleRow}>
+                              <Text
+                                style={[
+                                  styles.sessionTitle,
+                                  {
+                                    color: colors.textPrimary,
+                                    fontWeight: isActive ? '700' : '500',
+                                  },
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {session.title || 'Obrolan Baru'}
+                              </Text>
+                            </View>
 
-                      {sessions.length > 1 && (
-                        <TouchableOpacity
-                          onPress={() => deleteSession(session.id)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          style={styles.deleteBtn}
-                        >
-                          <Ionicons name="trash-outline" size={14} color={colors.textMuted} />
+                            <Text style={[styles.metaText, { color: colors.textMuted }]}>
+                              {formatTimestamp(session.updatedAt)} • {messageCount} pesan
+                            </Text>
+                          </View>
+
+                          {/* Right Controls: Delete & Active Indicator */}
+                          <View style={styles.rightControls}>
+                            {isActive && (
+                              <Ionicons
+                                name="checkmark-sharp"
+                                size={17}
+                                color={colors.textPrimary}
+                                style={{ marginRight: 6 }}
+                              />
+                            )}
+
+                            {sessions.length > 1 && (
+                              <TouchableOpacity
+                                onPress={() => handleDeleteSession(session.id)}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                style={styles.deleteBtn}
+                              >
+                                <Ionicons name="trash-outline" size={14} color={colors.textMuted} />
+                              </TouchableOpacity>
+                            )}
+                          </View>
                         </TouchableOpacity>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
+
+                        {!isLast && (
+                          <View
+                            style={[
+                              styles.tableDivider,
+                              { backgroundColor: colors.border },
+                            ]}
+                          />
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
               </ScrollView>
             </View>
           </TouchableWithoutFeedback>
@@ -236,26 +283,34 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   newChatBtnText: {
-    color: '#090A0C',
     fontSize: 12.5,
     fontWeight: '700',
   },
   sessionsList: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
   },
   sessionsContent: {
     paddingTop: 4,
     paddingBottom: 12,
-    gap: 8,
   },
-  sessionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  groupedTable: {
     borderRadius: 14,
     borderWidth: 1,
+    overflow: 'hidden',
+  },
+  sessionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  iconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   sessionCardContent: {
     flex: 1,
@@ -263,20 +318,25 @@ const styles = StyleSheet.create({
   },
   sessionTitleRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   sessionTitle: {
-    fontSize: 14,
-    flex: 1,
-  },
-  sessionMetaRow: {
-    marginTop: 4,
-    marginLeft: 20,
+    fontSize: 13.5,
+    letterSpacing: -0.2,
   },
   metaText: {
-    fontSize: 11,
+    fontSize: 10.5,
+    marginTop: 2,
+  },
+  rightControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   deleteBtn: {
-    padding: 4,
+    padding: 3,
+  },
+  tableDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 58,
   },
 });

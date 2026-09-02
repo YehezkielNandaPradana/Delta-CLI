@@ -4,6 +4,7 @@ import json
 import os
 import re
 import sys
+import time
 import threading
 from datetime import datetime
 from typing import Any, Dict, Optional, Set, List, Tuple
@@ -414,6 +415,57 @@ class EngineBridge:
                 file_path=md_path
             )
             return {"status": "ok", "message": f"Report generated for {target_host}", "report_id": report_id, "paths": saved_paths}
+        except Exception as exc:
+            return {"status": "error", "message": str(exc)}
+
+    def generate_project_plan(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate full AI project blueprint, architecture, database schema, endpoints, and task list."""
+        project_name = data.get("projectName", "New AI Project")
+        description = data.get("description", "")
+        tech_stack = data.get("techStack", "FastAPI, React, Tailwind, SQLite")
+        target_audience = data.get("targetAudience", "Developers & General Users")
+        security_level = data.get("securityLevel", "High (OWASP Top 10)")
+
+        prompt = f"""You are an elite Lead Software Architect and Security Engineer. Generate a comprehensive, production-ready Project Blueprint for:
+
+PROJECT NAME: {project_name}
+PROJECT GOAL / DESCRIPTION: {description}
+TECH STACK: {tech_stack}
+TARGET AUDIENCE: {target_audience}
+SECURITY / ROE LEVEL: {security_level}
+
+Provide a structured, deep, highly technical plan formatted with clear Markdown sections:
+
+# 📋 1. SYSTEM ARCHITECTURE & PROJECT STRUCTURE
+- High-level architecture overview (Components, data flow, responsibilities)
+- Recommended folder and file structure tree
+- Key design patterns (Clean Architecture, Atomic State, Event-Driven)
+
+# 🗄️ 2. DATABASE SCHEMA & DATA MODELS
+- Complete table definitions with field names, data types, primary/foreign keys
+- Model relationships and indexing strategy
+
+# 🌐 3. API CONTRACT & ENDPOINTS
+- List of REST/WebSocket endpoints with HTTP Methods, URLs, request payloads, and response JSON formats
+- Authentication & Authorization flow (JWT/OAuth2)
+
+# 🛡️ 4. SECURITY & VALIDATION POLICIES
+- Input sanitization (XSS, SQL Injection prevention)
+- Rate limiting, CSRF protection, and environment secret management
+
+# 🚀 5. STEP-BY-STEP IMPLEMENTATION TASKS
+- Ordered checklist of concrete, actionable tasks from Task 1 (Scaffolding) to Task N (Deployment)
+- Each task should include specific files touched and validation criteria
+"""
+        try:
+            res = self.execute_command(prompt)
+            plan_content = res.get("response") or res.get("output") or "Blueprint generation failed."
+            return {
+                "status": "ok",
+                "projectName": project_name,
+                "planMarkdown": plan_content,
+                "generatedAt": time.strftime("%Y-%m-%d %H:%M:%S")
+            }
         except Exception as exc:
             return {"status": "error", "message": str(exc)}
 

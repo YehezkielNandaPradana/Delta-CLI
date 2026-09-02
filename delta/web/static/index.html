@@ -148,6 +148,15 @@
             </div>
             <div class="flex-1 overflow-y-auto p-3 space-y-4 text-xs font-mono">
                 <div class="space-y-1">
+                    <div class="text-[10px] text-zinc-500 uppercase px-2 mb-1">Architecture & Planning</div>
+                    <button onclick="navigate('#/planner')" class="w-full text-left flex items-center justify-between px-2.5 py-1.5 rounded text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 font-medium">
+                        <div class="flex items-center gap-2">
+                            <span>⚡</span> Project Planner (AI)
+                        </div>
+                        <span class="text-[9px] bg-sky-500/20 text-sky-300 px-1.5 py-0.5 rounded font-mono">PRO</span>
+                    </button>
+                </div>
+                <div class="space-y-1">
                     <div class="text-[10px] text-zinc-500 uppercase px-2 mb-1">Assessment Tools</div>
                     <button onclick="navigate('#/operations/recon')" class="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04]">
                         <span class="text-sky-400">→</span> Port Scan & Recon
@@ -419,6 +428,83 @@
                     </div>
                 </div>
 
+                <!-- 11. AI PROJECT PLANNER VIEW (NgodingPakeAi Style) -->
+                <div id="view-planner" class="view-panel hidden flex-1 overflow-y-auto p-4 sm:p-6 max-w-5xl mx-auto w-full space-y-5">
+                    <div class="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sky-400 font-mono text-base font-bold">⚡</span>
+                            <div>
+                                <h2 class="text-sm font-semibold text-zinc-100 font-mono">Delta AI Project Planner</h2>
+                                <p class="text-[11px] text-zinc-500">Autonomous Architecture Blueprint, ERD Database, API Contracts & Implementation Plan</p>
+                            </div>
+                        </div>
+                        <button onclick="navigate('#/execution')" class="text-xs text-zinc-400 hover:text-zinc-200 font-mono">← Back to Chat</button>
+                    </div>
+
+                    <!-- Input Form Container -->
+                    <div class="p-4 sm:p-5 rounded-xl bg-[#111115] border border-white/[0.08] space-y-4 font-sans text-xs">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-zinc-300 font-mono text-[11px] mb-1">Nama Proyek / Aplikasi</label>
+                                <input type="text" id="plan-project-name" placeholder="cth: Kasir Pintar SaaS / Secure Vault API" class="w-full bg-[#16161c] border border-white/10 rounded-lg px-3 py-2 text-zinc-100 text-xs font-mono focus:outline-none focus:border-sky-500">
+                            </div>
+                            <div>
+                                <label class="block text-zinc-300 font-mono text-[11px] mb-1">Tech Stack Pilihan</label>
+                                <input type="text" id="plan-tech-stack" value="FastAPI, React, Tailwind CSS, SQLite, Docker" class="w-full bg-[#16161c] border border-white/10 rounded-lg px-3 py-2 text-zinc-100 text-xs font-mono focus:outline-none focus:border-sky-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-zinc-300 font-mono text-[11px] mb-1">Tujuan & Fitur Utama Proyek</label>
+                            <textarea id="plan-description" rows="3" placeholder="Jelaskan kebutuhan aplikasi, user flow, fitur-fitur yang diinginkan, dan peran pengguna..." class="w-full bg-[#16161c] border border-white/10 rounded-lg px-3 py-2 text-zinc-100 text-xs font-mono focus:outline-none focus:border-sky-500"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-zinc-300 font-mono text-[11px] mb-1">Target Pengguna</label>
+                                <input type="text" id="plan-target-audience" value="Developers, Enterprise & UMKM" class="w-full bg-[#16161c] border border-white/10 rounded-lg px-3 py-2 text-zinc-100 text-xs font-mono focus:outline-none focus:border-sky-500">
+                            </div>
+                            <div>
+                                <label class="block text-zinc-300 font-mono text-[11px] mb-1">Standar Keamanan / RoE</label>
+                                <select id="plan-security-level" class="w-full bg-[#16161c] border border-white/10 rounded-lg px-3 py-2 text-zinc-100 text-xs font-mono focus:outline-none focus:border-sky-500">
+                                    <option value="High (OWASP Top 10, JWT, CSRF, Rate Limiting)">High (OWASP Top 10, JWT, CSRF, Rate Limiting)</option>
+                                    <option value="Enterprise Hardened (RBAC, Audit Trail, AES-256)">Enterprise Hardened (RBAC, Audit Trail, AES-256)</option>
+                                    <option value="Standard MVP (Clean, Simple Auth)">Standard MVP (Clean, Simple Auth)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+                            <span class="text-[11px] text-zinc-500 font-mono">Ditenagai oleh Delta Lead Software Architect AI</span>
+                            <button type="button" id="btn-generate-plan" onclick="generateProjectBlueprint()" class="flex items-center gap-2 bg-sky-500 hover:bg-sky-400 text-black font-semibold font-mono text-xs px-4 py-2 rounded-lg transition-all shadow-lg">
+                                <span id="plan-spin-icon" class="material-symbols-outlined text-[15px] hidden spin-icon">progress_activity</span>
+                                <span>Generate Full Project Blueprint</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Output Blueprint Container -->
+                    <div id="planner-output-wrapper" class="hidden space-y-4">
+                        <div class="flex items-center justify-between bg-[#111115] border border-white/[0.08] p-3 rounded-xl font-mono text-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="text-emerald-400 font-bold">✓ Blueprint Siap</span>
+                                <span id="blueprint-timestamp" class="text-zinc-500 text-[10px]"></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="copyBlueprintMarkdown()" class="px-3 py-1.5 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-zinc-200 text-xs flex items-center gap-1.5 transition-all">
+                                    <span class="material-symbols-outlined text-[13px]">content_copy</span> Copy Markdown
+                                </button>
+                                <button onclick="sendBlueprintToChat()" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs flex items-center gap-1.5 transition-all">
+                                    <span class="material-symbols-outlined text-[13px]">play_arrow</span> Eksekusi di Delta Chat
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Markdown Content Display -->
+                        <div class="p-6 rounded-xl bg-[#111115] border border-white/[0.08] text-zinc-200 font-mono text-xs leading-relaxed overflow-x-auto whitespace-pre-wrap" id="blueprint-content-area"></div>
+                    </div>
+                </div>
+
                 <!-- 10. VTUBER VIEW -->
                 <div id="view-vtuber" class="view-panel hidden flex-1 overflow-hidden flex flex-col p-4 max-w-4xl mx-auto w-full space-y-3">
                     <div class="flex items-center justify-between border-b border-white/[0.06] pb-2 shrink-0">
@@ -528,6 +614,7 @@
         // Router
         const routes = {
             '#/execution': { id: 'view-execution', onEnter: null },
+            '#/planner': { id: 'view-planner', onEnter: null },
             '#/operations/recon': { id: 'view-recon', onEnter: loadReconView },
             '#/operations/web': { id: 'view-web', onEnter: loadWebView },
             '#/operations/network': { id: 'view-network', onEnter: loadNetworkView },
@@ -927,6 +1014,85 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ host })
             }).then(() => { document.getElementById('new-target-host').value = ''; loadTargetsData(); });
+        }
+
+        // AI Project Planner logic
+        let currentGeneratedBlueprint = '';
+
+        function generateProjectBlueprint() {
+            const projectName = document.getElementById('plan-project-name').value.trim() || 'AI App Architecture';
+            const techStack = document.getElementById('plan-tech-stack').value.trim();
+            const description = document.getElementById('plan-description').value.trim();
+            const targetAudience = document.getElementById('plan-target-audience').value.trim();
+            const securityLevel = document.getElementById('plan-security-level').value;
+
+            if (!description) {
+                return alert('Silakan masukkan tujuan dan fitur utama proyek Anda.');
+            }
+
+            const spinIcon = document.getElementById('plan-spin-icon');
+            const btn = document.getElementById('btn-generate-plan');
+            const outputWrapper = document.getElementById('planner-output-wrapper');
+            const contentArea = document.getElementById('blueprint-content-area');
+            const tsLabel = document.getElementById('blueprint-timestamp');
+
+            spinIcon.classList.remove('hidden');
+            btn.disabled = true;
+            btn.classList.add('opacity-70');
+
+            fetch('/api/plan/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    projectName,
+                    techStack,
+                    description,
+                    targetAudience,
+                    securityLevel
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                spinIcon.classList.add('hidden');
+                btn.disabled = false;
+                btn.classList.remove('opacity-70');
+
+                if (data.status === 'ok' && data.planMarkdown) {
+                    currentGeneratedBlueprint = data.planMarkdown;
+                    contentArea.innerText = data.planMarkdown;
+                    tsLabel.innerText = 'Generated at: ' + (data.generatedAt || new Date().toLocaleTimeString());
+                    outputWrapper.classList.remove('hidden');
+                    outputWrapper.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('Gagal membuat blueprint: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(err => {
+                spinIcon.classList.add('hidden');
+                btn.disabled = false;
+                btn.classList.remove('opacity-70');
+                alert('Error generating plan: ' + err.message);
+            });
+        }
+
+        function copyBlueprintMarkdown() {
+            if (!currentGeneratedBlueprint) return;
+            navigator.clipboard.writeText(currentGeneratedBlueprint).then(() => {
+                alert('Blueprint Markdown berhasil disalin ke clipboard!');
+            });
+        }
+
+        function sendBlueprintToChat() {
+            if (!currentGeneratedBlueprint) return;
+            const promptText = `Berikut adalah Project Blueprint yang baru saja dibuat:\n\n${currentGeneratedBlueprint}\n\nMari kita mulai eksekusi Task 1 sekarang.`;
+            navigate('#/execution');
+            setTimeout(() => {
+                const input = document.getElementById('user-input');
+                if (input) {
+                    input.value = promptText;
+                    input.focus();
+                }
+            }, 200);
         }
 
         function loadModelsData() {
