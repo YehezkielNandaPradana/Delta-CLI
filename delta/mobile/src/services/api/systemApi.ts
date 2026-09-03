@@ -85,14 +85,16 @@ export async function getRouterStatus(): Promise<RouterStatusResponse> {
   });
 }
 
-export async function test9RouterPing(targetUrl?: string): Promise<{
+export async function test9RouterPing(targetUrl?: string, customApiKey?: string): Promise<{
   success: boolean;
   latencyMs: number;
   modelsCount: number;
   url: string;
   error?: string;
 }> {
-  const { routerHostUrl, serverUrl } = useSettingsStore.getState();
+  const { routerHostUrl, serverUrl, getActiveAccount } = useSettingsStore.getState();
+  const activeAccount = getActiveAccount();
+  const apiKey = customApiKey || activeAccount?.apiKey || '';
 
   let urlToTest = (targetUrl || routerHostUrl || '').trim();
   if (!urlToTest) {
@@ -104,7 +106,7 @@ export async function test9RouterPing(targetUrl?: string): Promise<{
     } catch (_) {}
   }
   if (!urlToTest) {
-    urlToTest = 'http://127.0.0.1:20128';
+    urlToTest = 'https://rurpq7a.abc-tunnel.us/v1';
   }
 
   const cleanUrl = urlToTest.replace(/\/+$/, '').replace(/\/v1\/?$/, '');
@@ -113,9 +115,14 @@ export async function test9RouterPing(targetUrl?: string): Promise<{
   const startT = Date.now();
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const headers: Record<string, string> = {};
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
     const res = await fetch(endpoint, {
       method: 'GET',
+      headers,
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
@@ -144,7 +151,7 @@ export async function test9RouterPing(targetUrl?: string): Promise<{
       latencyMs: Date.now() - startT,
       modelsCount: 0,
       url: cleanUrl,
-      error: err.name === 'AbortError' ? 'Connection timed out (4s)' : err.message || 'Unreachable',
+      error: err.name === 'AbortError' ? 'Connection timed out (8s)' : err.message || 'Unreachable',
     };
   }
 }

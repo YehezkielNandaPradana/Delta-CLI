@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
+  ScrollView,
   FlatList,
   StyleSheet,
   SafeAreaView,
@@ -14,7 +16,7 @@ import { useThemeColors } from '../../src/theme/theme';
 import { useNotesStore } from '../../src/store/useNotesStore';
 import { useChatStore } from '../../src/store/useChatStore';
 import { PageTransition } from '../../src/components/common/PageTransition';
-import { NotesHeader } from '../../src/components/notes/NotesHeader';
+import { Header } from '../../src/components/common/Header';
 import { NoteCard } from '../../src/components/notes/NoteCard';
 import { NoteEditorModal } from '../../src/components/notes/NoteEditorModal';
 import { NoteActionSheet } from '../../src/components/notes/NoteActionSheet';
@@ -28,6 +30,12 @@ export default function NotesScreen() {
   const router = useRouter();
   const { colors, isDark } = useThemeColors();
   const {
+    notes,
+    folders,
+    selectedFolderId,
+    setSelectedFolder,
+    searchQuery,
+    setSearchQuery,
     loadNotes,
     getFilteredNotes,
     createNote,
@@ -37,7 +45,7 @@ export default function NotesScreen() {
     updateNote,
   } = useNotesStore();
 
-  const { addMessage, startExecution, appendStreamingText, finishExecution } = useChatStore();
+  const { addMessage } = useChatStore();
 
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
@@ -51,6 +59,9 @@ export default function NotesScreen() {
   }, []);
 
   const filteredNotes = getFilteredNotes();
+  const totalCount = selectedFolderId
+    ? notes.filter((n) => n.folderId === selectedFolderId).length
+    : notes.length;
 
   const handleOpenNote = (noteId: string) => {
     setSelectedNoteId(noteId);
@@ -65,7 +76,6 @@ export default function NotesScreen() {
 
   const handleAIAction = async (action: NoteAIAction, note: Note) => {
     if (action === 'ask') {
-      // Ingest note context into chat & navigate to chat
       addMessage({
         sender: 'user',
         text: `[Context from Note: "${note.title}"]\n${note.content}\n\nCan you explain and advise on this note?`,
@@ -74,7 +84,6 @@ export default function NotesScreen() {
       return;
     }
 
-    // Direct AI transformations on note
     let prompt = '';
     if (action === 'summarize') {
       prompt = `Summarize the following note clearly with key points and insights:\n\nTitle: ${note.title}\nContent:\n${note.content}`;
@@ -113,11 +122,158 @@ export default function NotesScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <PageTransition style={styles.container}>
-        {/* Header with Search & Folder pills */}
-        <NotesHeader
-          onNewPress={() => setNewItemSheetVisible(true)}
-          onManageFoldersPress={() => setFolderManagerVisible(true)}
+        {/* Standard Unified Header */}
+        <Header
+          title="Notes"
+          countBadge={totalCount}
+          subtitle="Catatan & Dokumentasi Teknis"
+          rightAction={
+            <View style={styles.headerRightButtons}>
+              <TouchableOpacity
+                onPress={() => setFolderManagerVisible(true)}
+                style={[
+                  styles.iconButton,
+                  {
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.border,
+                  },
+                ]}
+                activeOpacity={0.7}
+                accessibilityLabel="Manage folders"
+              >
+                <Ionicons name="folder-outline" size={15} color={colors.textSecondary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setNewItemSheetVisible(true)}
+                style={[
+                  styles.primaryButton,
+                  {
+                    backgroundColor: colors.textPrimary,
+                  },
+                ]}
+                activeOpacity={0.8}
+                accessibilityLabel="Create note or folder"
+              >
+                <Ionicons name="add" size={16} color={colors.bgPrimary} />
+                <Text style={[styles.primaryButtonText, { color: colors.bgPrimary }]}>Tulis</Text>
+              </TouchableOpacity>
+            </View>
+          }
         />
+
+        {/* Search & Folder Strip */}
+        <View style={styles.searchStrip}>
+          <View
+            style={[
+              styles.searchBox,
+              {
+                backgroundColor: colors.bgSecondary,
+                borderColor: searchQuery.length > 0 ? colors.accent : colors.border,
+              },
+            ]}
+          >
+            <Ionicons name="search-outline" size={15} color={colors.textMuted} style={styles.searchIcon} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Cari catatan atau tag..."
+              placeholderTextColor={colors.textMuted}
+              style={[styles.searchInput, { color: colors.textPrimary }]}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close-circle-sharp" size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Folder Chips */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.folderPillsContainer}
+          >
+            <TouchableOpacity
+              onPress={() => setSelectedFolder(null)}
+              style={[
+                styles.folderChip,
+                {
+                  backgroundColor:
+                    selectedFolderId === null
+                      ? (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)')
+                      : 'transparent',
+                  borderColor:
+                    selectedFolderId === null
+                      ? colors.borderStrong
+                      : 'transparent',
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="layers-outline"
+                size={12}
+                color={selectedFolderId === null ? colors.textPrimary : colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.folderChipText,
+                  {
+                    color: selectedFolderId === null ? colors.textPrimary : colors.textSecondary,
+                    fontWeight: selectedFolderId === null ? '600' : '400',
+                  },
+                ]}
+              >
+                Semua
+              </Text>
+            </TouchableOpacity>
+
+            {folders.map((folder) => {
+              const isSelected = selectedFolderId === folder.id;
+              return (
+                <TouchableOpacity
+                  key={folder.id}
+                  onPress={() => setSelectedFolder(folder.id)}
+                  style={[
+                    styles.folderChip,
+                    {
+                      backgroundColor: isSelected
+                        ? (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)')
+                        : 'transparent',
+                      borderColor: isSelected
+                        ? colors.borderStrong
+                        : 'transparent',
+                    },
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="folder-outline"
+                    size={12}
+                    color={isSelected ? colors.textPrimary : colors.textMuted}
+                  />
+                  <Text
+                    style={[
+                      styles.folderChipText,
+                      {
+                        color: isSelected ? colors.textPrimary : colors.textSecondary,
+                        fontWeight: isSelected ? '600' : '400',
+                      },
+                    ]}
+                  >
+                    {folder.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
 
         {/* Notes List */}
         <FlatList
@@ -221,6 +377,74 @@ export default function NotesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerRightButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  iconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    height: 32,
+    borderRadius: 9,
+    gap: 3,
+  },
+  primaryButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  searchStrip: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+  },
+  searchIcon: {
+    marginRight: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    paddingVertical: 0,
+  },
+  folderPillsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingRight: 16,
+    paddingBottom: 2,
+  },
+  folderChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 5,
+  },
+  folderChipText: {
+    fontSize: 12,
+    letterSpacing: -0.2,
   },
   listContent: {
     paddingHorizontal: 16,

@@ -24,8 +24,9 @@ export interface EmbeddedRouterStatus {
 
 const startTime = Date.now();
 
-// Candidate host addresses for 9Router local daemon
+// Candidate host addresses for 9Router local daemon / tunnel
 const LOCAL_ROUTER_HOSTS = [
+  'https://rurpq7a.abc-tunnel.us/v1',
   'http://192.168.1.6:20128',
   'http://127.0.0.1:20128',
   'http://localhost:20128',
@@ -71,8 +72,8 @@ export class Embedded9Router {
     const rawKey = account?.apiKey?.trim() || '';
     const customBaseUrl = (account?.baseUrl || '').trim();
 
-    // 1. Check & Route to Local 9Router (Port 20128) if live or specified
-    const activeLocalHost = await this.findLivePort20128(customBaseUrl);
+    // 1. Check & Route to Local 9Router (Port 20128 / Tunnel) if live or specified
+    const activeLocalHost = await this.findLivePort20128(customBaseUrl, rawKey);
     if (activeLocalHost) {
       try {
         return await this.executeGatewayRoute(message, modelName, `${activeLocalHost}/v1`, rawKey);
@@ -114,7 +115,7 @@ export class Embedded9Router {
     );
   }
 
-  private async findLivePort20128(customUrl?: string): Promise<string | null> {
+  private async findLivePort20128(customUrl?: string, apiKey?: string): Promise<string | null> {
     const { routerHostUrl, serverUrl } = useSettingsStore.getState();
 
     // Extract hostname / IP from serverUrl if configured
@@ -137,9 +138,14 @@ export class Embedded9Router {
       const cleanHost = host.replace(/\/v1\/?$/, '').replace(/\/+$/, '');
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1200);
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const headers: Record<string, string> = {};
+        if (apiKey) {
+          headers['Authorization'] = `Bearer ${apiKey}`;
+        }
         const res = await fetch(`${cleanHost}/v1/models`, {
           method: 'GET',
+          headers,
           signal: controller.signal,
         });
         clearTimeout(timeoutId);

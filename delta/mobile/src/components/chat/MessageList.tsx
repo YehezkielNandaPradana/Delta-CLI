@@ -4,6 +4,7 @@ import {
   StyleSheet,
   View,
   Text,
+  Image,
   Animated,
   NativeSyntheticEvent,
   NativeScrollEvent,
@@ -95,22 +96,23 @@ export const MessageList: React.FC<MessageListProps> = ({
         style={[
           styles.emptyIconBadge,
           {
-            backgroundColor: colors.accentGreenSubtle,
-            borderColor: colors.accentGreenGlow,
-            borderTopColor: colors.cardSpecular,
-            borderTopWidth: 1.5,
-            shadowColor: isDark ? '#000000' : '#475569',
+            backgroundColor: isDark ? '#141414' : '#F5F5F5',
+            borderColor: colors.border,
           },
         ]}
       >
-        <Text style={[styles.emptyLogo, { color: colors.accentGreen }]}>Δ</Text>
+        <Image
+          source={require('../../../assets/LogoDelta.png')}
+          style={styles.emptyLogoImage}
+          resizeMode="contain"
+        />
       </View>
-      <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>DELTA AI</Text>
-      <Text style={[styles.emptyRole, { color: colors.accentCyan }]}>
+      <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Delta AI</Text>
+      <Text style={[styles.emptyRole, { color: colors.textSecondary }]}>
         Autonomous Security & Intelligence
       </Text>
       <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-        Chat, inspect runtime telemetry, and orchestrate security operations with Delta agent.
+        Tanyakan analisis kode, audit keamanan, scanning, atau minta Delta membuatkan catatan & pengingat secara otomatis.
       </Text>
     </View>
   );
@@ -225,25 +227,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  emptyLogo: {
-    fontSize: 32,
-    fontWeight: '900',
-    fontFamily: 'monospace',
+  emptyLogoImage: {
+    width: 38,
+    height: 38,
   },
   emptyTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 2,
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.4,
     marginBottom: 4,
-    fontFamily: 'monospace',
   },
   emptyRole: {
     fontSize: 12,
-    fontWeight: '800',
-    marginBottom: 10,
-    letterSpacing: 0.8,
-    fontFamily: 'monospace',
-    textTransform: 'uppercase',
+    fontWeight: '600',
+    marginBottom: 8,
+    letterSpacing: 0.2,
   },
   emptySubtitle: {
     fontSize: 13,

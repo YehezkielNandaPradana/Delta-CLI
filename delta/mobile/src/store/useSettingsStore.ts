@@ -7,7 +7,19 @@ const STORAGE_KEY = '@delta_settings';
 
 // Sensible defaults based on execution platform
 const DEFAULT_HOST = Platform.OS === 'android' ? 'http://192.168.1.6:8080' : 'http://localhost:8080';
-const DEFAULT_CLOUD_MODEL = 'gemini-1.5-pro';
+const DEFAULT_ROUTER_HOST = 'https://rurpq7a.abc-tunnel.us/v1';
+const DEFAULT_9ROUTER_KEY = 'sk-13295da0418e0160-d4rojh-3ca28d24';
+const DEFAULT_CLOUD_MODEL = 'ag/gemini-3.7-flash-high';
+
+const DEFAULT_9ROUTER_ACCOUNT: AntigravityAccount = {
+  id: 'acc_9router_default',
+  name: '9Router Tunnel Gateway',
+  apiKey: DEFAULT_9ROUTER_KEY,
+  baseUrl: DEFAULT_ROUTER_HOST,
+  defaultModel: DEFAULT_CLOUD_MODEL,
+  accountType: 'antigravity',
+  tier: 'pro',
+};
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 
@@ -66,16 +78,16 @@ const persistState = async (state: SettingsState) => {
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   serverUrl: DEFAULT_HOST,
-  tunnelUrl: '',
-  routerHostUrl: '',
-  activeModel: 'Antigravity',
+  tunnelUrl: DEFAULT_ROUTER_HOST,
+  routerHostUrl: DEFAULT_ROUTER_HOST,
+  activeModel: 'ag/gemini-3.7-flash-high',
   hapticEnabled: true,
   theme: 'dark',
   isLoaded: false,
 
   connectionMode: 'cloud',
-  accounts: [],
-  activeAccountId: '',
+  accounts: [DEFAULT_9ROUTER_ACCOUNT],
+  activeAccountId: DEFAULT_9ROUTER_ACCOUNT.id,
   cloudModel: DEFAULT_CLOUD_MODEL,
 
   setServerUrl: async (url: string) => {
@@ -180,14 +192,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
         set({
           serverUrl: parsed.serverUrl || DEFAULT_HOST,
-          tunnelUrl: parsed.tunnelUrl || '',
-          routerHostUrl: parsed.routerHostUrl || '',
-          activeModel: parsed.activeModel || 'Antigravity',
+          tunnelUrl: parsed.tunnelUrl || DEFAULT_ROUTER_HOST,
+          routerHostUrl: parsed.routerHostUrl || DEFAULT_ROUTER_HOST,
+          activeModel: parsed.activeModel || 'ag/gemini-3.7-flash-high',
           hapticEnabled: parsed.hapticEnabled !== undefined ? parsed.hapticEnabled : true,
           theme: parsed.theme || 'dark',
           connectionMode: parsed.connectionMode || 'cloud',
-          accounts: savedAccounts,
-          activeAccountId: parsed.activeAccountId || (savedAccounts[0]?.id || ''),
+          accounts: savedAccounts.length > 0 ? savedAccounts : [DEFAULT_9ROUTER_ACCOUNT],
+          activeAccountId: parsed.activeAccountId || (savedAccounts[0]?.id || DEFAULT_9ROUTER_ACCOUNT.id),
           cloudModel: parsed.cloudModel || DEFAULT_CLOUD_MODEL,
           isLoaded: true,
         });

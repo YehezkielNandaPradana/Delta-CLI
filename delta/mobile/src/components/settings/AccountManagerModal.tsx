@@ -46,12 +46,12 @@ export function AccountManagerModal({
     if (editingAccount) {
       setName(editingAccount.name);
       setApiKey(editingAccount.apiKey);
-      setBaseUrl(editingAccount.baseUrl || 'http://127.0.0.1:20128/v1');
+      setBaseUrl(editingAccount.baseUrl || 'https://rurpq7a.abc-tunnel.us/v1');
       setDefaultModel(editingAccount.defaultModel || 'ag/gemini-3.7-flash-high');
     } else {
-      setName('Antigravity 9Router (Google OAuth)');
-      setApiKey('');
-      setBaseUrl('http://127.0.0.1:20128/v1');
+      setName('9Router Cloud Tunnel');
+      setApiKey('sk-13295da0418e0160-d4rojh-3ca28d24');
+      setBaseUrl('https://rurpq7a.abc-tunnel.us/v1');
       setDefaultModel('ag/gemini-3.7-flash-high');
     }
     setCallbackUrl('');
