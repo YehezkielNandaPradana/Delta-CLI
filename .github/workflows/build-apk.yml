@@ -8,6 +8,8 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository
@@ -51,6 +53,16 @@ jobs:
           mkdir -p apk_output
           find delta/mobile/android/app/build/outputs/ -type f -name "*.apk" -exec cp -v {} apk_output/ \;
           ls -lh apk_output/
+
+      - name: Upload APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || success()
+        with:
+          tag_name: mobile-v1.0.0-${{ github.run_number }}
+          name: Delta Agent Mobile APK Build #${{ github.run_number }}
+          files: apk_output/*.apk
+          draft: false
+          prerelease: false
 
       - name: Rename & Upload APK Artifact
         uses: actions/upload-artifact@v4
