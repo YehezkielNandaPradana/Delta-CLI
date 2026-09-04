@@ -187,8 +187,25 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                     browser_audio_player.unregister_client(audio_queue)
                 return
 
+            if clean_path == "/api/camera/session/signal":
+                query = parse_qs(parsed_url.query)
+                session_id = query.get("sessionId", [""])[0]
+                role = query.get("role", ["viewer"])[0]
+                from delta.web.camera_signaling import camera_signaling
+                signals = camera_signaling.poll_signals(session_id, role=role)
+                self._send_json_response(signals)
+                return
+
             if clean_path == "/api/camera/status":
-                res = self.bridge.get_camera_status() if self.bridge else {"is_live": False, "device": None}
+                res = self.bridge.get_camera_status() if self.bridge else {"is_live": False, "has_frame": False, "status": "OFFLINE"}
+                self._send_json_response(res)
+                return
+
+            if clean_path == "/api/camera/session/status":
+                query = parse_qs(parsed_url.query)
+                session_id = query.get("sessionId", [None])[0]
+                from delta.web.camera_signaling import camera_signaling
+                res = camera_signaling.get_session_status(session_id)
                 self._send_json_response(res)
                 return
 
@@ -574,6 +591,42 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
         try:
             parsed_url = urlparse(self.path)
             clean_path = parsed_url.path
+
+            if clean_path == "/api/camera/session/init":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                from delta.web.camera_signaling import camera_signaling
+                res = camera_signaling.init_session(
+                    device_id=data.get("deviceId", "Delta-Android-Terminal"),
+                    platform=data.get("platform", "android"),
+                    facing=data.get("facing", "back")
+                )
+                self._send_json_response(res)
+                return
+
+            if clean_path == "/api/camera/session/signal":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                session_id = data.get("sessionId", "")
+                role = data.get("role", "sender")
+                sig_type = data.get("type", "")
+                sig_data = data.get("data")
+                from delta.web.camera_signaling import camera_signaling
+                res = camera_signaling.post_signal(session_id, role=role, signal_type=sig_type, data=sig_data)
+                self._send_json_response(res)
+                return
+
+            if clean_path == "/api/camera/session/stop":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                session_id = data.get("sessionId", "")
+                from delta.web.camera_signaling import camera_signaling
+                res = camera_signaling.stop_session(session_id)
+                self._send_json_response(res)
+                return
 
             if clean_path == "/api/camera/stream":
                 content_length = int(self.headers.get("Content-Length", 0))

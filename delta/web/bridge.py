@@ -1654,17 +1654,34 @@ Provide a structured, deep, highly technical plan formatted with clear Markdown 
         return {"status": "ok", "timestamp": EngineBridge._latest_camera_timestamp}
 
     def get_camera_status(self) -> Dict[str, Any]:
-        """Get live status of mobile camera feed."""
+        """Get live status of mobile camera feed and WebRTC monitoring sessions."""
+        from delta.web.camera_signaling import camera_signaling
+
+        webrtc_status = camera_signaling.get_session_status()
+        if webrtc_status.get("is_live"):
+            return webrtc_status
+
         now = time.time()
         is_mobile_live = (now - EngineBridge._latest_camera_timestamp) < 5.0 and EngineBridge._latest_camera_frame is not None
-        device = EngineBridge._camera_device_info.get("device") or ("iPhone 17 Pro Max" if is_mobile_live else "Delta Mobile (Auto Stream)")
+        if is_mobile_live:
+            device = EngineBridge._camera_device_info.get("device") or "Delta Mobile"
+            return {
+                "is_live": True,
+                "status": "MONITORING",
+                "is_mobile_connected": True,
+                "mode": "mobile",
+                "last_frame_age_sec": round(now - EngineBridge._latest_camera_timestamp, 2),
+                "device": device,
+                "has_frame": True
+            }
+
         return {
-            "is_live": True,
-            "is_mobile_connected": is_mobile_live,
-            "mode": "mobile" if is_mobile_live else "auto",
-            "last_frame_age_sec": round(now - EngineBridge._latest_camera_timestamp, 2) if EngineBridge._latest_camera_timestamp > 0 else None,
-            "device": device,
-            "has_frame": True
+            "is_live": False,
+            "status": "OFFLINE",
+            "is_mobile_connected": False,
+            "mode": "none",
+            "device": None,
+            "has_frame": False
         }
 
     def get_latest_camera_frame(self) -> Optional[str]:

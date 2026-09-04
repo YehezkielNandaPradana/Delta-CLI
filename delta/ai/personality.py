@@ -186,7 +186,7 @@ class PersonalitySessionMemory:
         if clean_prompt and clean_prompt == self.last_user_prompt.strip().lower():
             self.consecutive_nag_count += 1
         else:
-            self.consecutive_nag_count = 1
+            self.consecutive_nag_count = 0
 
         self.last_user_prompt = clean_prompt
         self.history_prompts.append(clean_prompt)
@@ -304,7 +304,7 @@ class PersonalitySelector:
         # 2. TASK_CONTEXT Check (Tier 2 Priority)
         active_mode = task_context.get("active_mode") or context.get("execution_mode") or ""
         is_tool_running = task_context.get("tool_running") or task_context.get("is_executing")
-        coding_keywords = r"\b(?:benerin|fix|patch|refactor|coding|implementasi|debug|analisis\s+code|run\s+test|unit\s+test)\b"
+        coding_keywords = r"\b(?:benerin|fix|patch|refactor|coding|implementasi|debug|bug|error|analisis\s+code|run\s+test|unit\s+test)\b"
 
         if active_mode in ("coding", "debugging", "security_audit", "pentest", "exploit") or is_tool_running:
             signals.append(PersonalitySignal("TASK_CONTEXT", "active_execution", 0.9, {"mode": active_mode}))
@@ -312,7 +312,7 @@ class PersonalitySelector:
             signals.append(PersonalitySignal("TASK_CONTEXT", "coding_intent", 0.85))
 
         # 3. SUCCESS / FAILURE_CONTEXT Check (Tier 3 Priority)
-        if task_context.get("all_tests_passed") or "semua test lolos" in text or "all tests passed" in text or "udah beres" in text:
+        if task_context.get("all_tests_passed") or "semua test lolos" in text or "semua test udah lolos" in text or "all tests passed" in text or "udah beres" in text:
             signals.append(PersonalitySignal("SUCCESS_CONTEXT", "tests_passed", 0.9))
         elif task_context.get("task_success") or "berhasil" in text and ("test" in text or "fix" in text):
             signals.append(PersonalitySignal("SUCCESS_CONTEXT", "task_success", 0.85))
@@ -321,10 +321,12 @@ class PersonalitySelector:
 
         # 4. REPETITION & NAGGING Check (Tier 4 Priority)
         is_nag = False
-        if text and (text == self.memory.last_user_prompt or any(re.search(pat, text) for pat in self.SASSY_DEMANDING_PATTERNS)):
-            if self.memory.consecutive_nag_count >= 2 or (self.memory.consecutive_nag_count >= 1 and any(re.search(p, text) for p in self.SASSY_DEMANDING_PATTERNS)):
-                signals.append(PersonalitySignal("REPETITION", "repeated_nagging", 0.95))
-                is_nag = True
+        clean_text = text.strip().lower() if text else ""
+        is_same_prompt = (clean_text == self.memory.last_user_prompt.strip().lower()) if clean_text else False
+        is_demanding = any(re.search(pat, text) for pat in self.SASSY_DEMANDING_PATTERNS)
+        if (is_same_prompt and clean_text) or (is_demanding and self.memory.consecutive_nag_count >= 1):
+            signals.append(PersonalitySignal("REPETITION", "repeated_nagging", 0.95))
+            is_nag = True
 
         # 5. USER_TONE Check (Tier 4 & Tier 5)
         # Check apology/recovery to clear transient pouting
@@ -444,14 +446,6 @@ class PersonalitySelector:
                 confidence=0.85,
                 duration=StateDuration.TURN,
             )
-        # Active transient state (e.g. POUTING continuation)
-        elif transient is not None and not is_apology:
-            decision = PersonalityDecision(
-                state=transient,
-                reason_codes=["transient_session_state"],
-                confidence=0.75,
-                duration=StateDuration.SHORT_SESSION,
-            )
         # Casual Greeting -> PLAYFUL
         elif any(s.name == "casual_greeting" for s in signals):
             decision = PersonalityDecision(
@@ -459,6 +453,14 @@ class PersonalitySelector:
                 reason_codes=["casual_greeting", "warm_playful"],
                 confidence=0.8,
                 duration=StateDuration.TURN,
+            )
+        # Active transient state (e.g. POUTING continuation)
+        elif transient is not None and not is_apology:
+            decision = PersonalityDecision(
+                state=transient,
+                reason_codes=["transient_session_state"],
+                confidence=0.75,
+                duration=StateDuration.SHORT_SESSION,
             )
         # Default fallback
         else:
@@ -482,9 +484,9 @@ class DeltaResponseStyleProcessor:
 
     AI_SLOP_PREFIXES = [
         r"^(?:Tentu saja|Tentu|Baiklah|Baik)(?:[!,.]\s*|\s+)",
-        r"^(?:Sebagai (?:seorang |)asisten AI|Sebagai Delta AI|Sebagai AI)(?:[!,.]\s*|\s+)",
-        r"^(?:Dengan senang hati|Saya akan membantu Anda|Mari kita)(?:[!,.]\s*|\s+)",
-        r"^(?:Berdasarkan (?:hasil |)analisis (?:yang telah dilakukan|tersebut|di atas))(?:[!,.]\s*|\s+)",
+        r"^(?:Sebagai (?:seorang\s+)?asisten AI|Sebagai Delta AI|Sebagai AI)(?:[!,.]\s*|\s+)",
+        r"^(?:Dengan senang hati|Mari kita)(?:[!,.]\s*|\s+)",
+        r"^(?:Berdasarkan (?:hasil\s+)?analisis (?:yang telah dilakukan|tersebut|di atas))(?:[!,.]\s*|\s+)",
         r"^(?:Halo|Hai)!?\s+Saya\s+(?:adalah\s+)?Delta(?:[!,.]\s*|\s+)",
         r"^(?:Tentu,?\s+saya\s+akan|Baik,?\s+saya\s+akan)(?:[!,.]\s*|\s+)",
     ]

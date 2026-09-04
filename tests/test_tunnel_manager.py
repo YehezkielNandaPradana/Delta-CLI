@@ -16,11 +16,12 @@ def test_tunnel_status_initial():
 def test_is_cloudflared_available():
     with patch("shutil.which", return_value="/usr/local/bin/cloudflared"):
         assert is_cloudflared_available() is True
-    with patch("shutil.which", return_value=None):
+    with patch("delta.utils.tunnel_manager.find_cloudflared_binary", return_value=None):
         assert is_cloudflared_available() is False
 
 def test_start_cloudflare_tunnel_missing_binary():
-    with patch("delta.utils.tunnel_manager.is_cloudflared_available", return_value=False):
+    with patch("delta.utils.tunnel_manager.find_cloudflared_binary", return_value=None), \
+         patch("delta.utils.tunnel_manager.auto_download_cloudflared", return_value=None):
         res = start_cloudflare_tunnel(port=8080)
         assert res["status"] == "error"
         assert res["running"] is False

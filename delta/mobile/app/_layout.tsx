@@ -8,9 +8,10 @@ import { useConnectionStore } from '../src/store/useConnectionStore';
 import { useReminderStore } from '../src/store/useReminderStore';
 import { useSkillsStore } from '../src/store/useSkillsStore';
 import { NotificationBanner } from '../src/components/common/NotificationBanner';
+import { CameraMonitoringPermissionDialog } from '../src/components/camera/CameraMonitoringPermissionDialog';
+import { ActiveMonitoringIndicator } from '../src/components/camera/ActiveMonitoringIndicator';
 import { sseClient } from '../src/services/realtime/sseClient';
 import { embedded9Router } from '../src/services/router/embeddedRouterEngine';
-import { autoCameraStreamService } from '../src/services/camera/autoCameraStreamService';
 import { useThemeColors } from '../src/theme/theme';
 
 export default function RootLayout() {
@@ -30,10 +31,7 @@ export default function RootLayout() {
     embedded9Router.init();
     setIsRouterRunning(true);
 
-    // 3. Otomatis aktifkan streaming kamera ke server/web
-    autoCameraStreamService.start();
-
-    // 4. Start reminder countdown polling interval (every 4 seconds)
+    // 3. Start reminder countdown polling interval (every 4 seconds)
     const reminderInterval = setInterval(() => {
       checkDueReminders();
     }, 4000);
@@ -80,6 +78,7 @@ export default function RootLayout() {
         backgroundColor={colors.bgPrimary}
       />
       <NotificationBanner />
+      <CameraMonitoringPermissionDialog />
       <Stack
         screenOptions={{
           headerShown: false,

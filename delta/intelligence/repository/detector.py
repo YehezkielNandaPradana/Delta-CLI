@@ -17,8 +17,9 @@ class DetectorResult:
     has_git: bool = False
 
 class RepositoryDetector:
-    def __init__(self, root_path: str = "."):
-        self.root = Path(root_path).resolve()
+    def __init__(self, root_path: str = ".", workspace_root: Optional[str] = None):
+        target = workspace_root if workspace_root is not None else root_path
+        self.root = Path(target).resolve()
 
     def detect(self) -> DetectorResult:
         languages: Set[str] = set()

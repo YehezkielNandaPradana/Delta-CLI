@@ -99,8 +99,8 @@ export const HermesTelegramModal: React.FC<HermesTelegramModalProps> = ({ visibl
   };
 
   const handleSendTestMessage = async () => {
-    if (!tokenInput.trim() || !chatIdInput.trim()) {
-      Alert.alert('Perhatian', 'Mohon isi Telegram Bot Token dan Chat ID.');
+    if (!tokenInput.trim()) {
+      Alert.alert('Perhatian', 'Mohon isi Telegram Bot Token terlebih dahulu.');
       return;
     }
 
@@ -108,15 +108,30 @@ export const HermesTelegramModal: React.FC<HermesTelegramModalProps> = ({ visibl
     if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 
     try {
+      let targetChatId = chatIdInput.trim();
+      if (!targetChatId) {
+        const detectRes = await hermesTelegramService.detectChatId(tokenInput.trim());
+        if (detectRes.success && detectRes.chatId) {
+          targetChatId = detectRes.chatId;
+          setChatIdInput(targetChatId);
+        } else {
+          Alert.alert(
+            'Chat ID Belum Ada',
+            'Chat ID belum terisi dan belum terdeteksi. Silakan buka bot di Telegram lalu ketik /start, lalu klik Kirim Tes lagi.'
+          );
+          return;
+        }
+      }
+
       const testMsg = `🚀 *Delta Mobile terhubung ke Hermes Bot!*\n\nTes koneksi dari aplikasi Delta Mobile berhasil. Status: Aktif.`;
       const res = await hermesTelegramService.sendMessage(testMsg, {
         token: tokenInput.trim(),
-        chatId: chatIdInput.trim(),
+        chatId: targetChatId,
         parseMode: 'Markdown',
       });
 
       if (res.success) {
-        Alert.alert('Terkirim!', 'Pesan uji coba berhasil dikirim ke Telegram Chat ID Anda.');
+        Alert.alert('Terkirim!', `Pesan uji coba berhasil dikirim ke Chat ID: ${targetChatId}`);
       } else {
         Alert.alert('Gagal Kirim Pesan', res.error || 'Gagal mengirim pesan.');
       }
@@ -220,7 +235,7 @@ export const HermesTelegramModal: React.FC<HermesTelegramModalProps> = ({ visibl
           {/* Chat ID Input */}
           <View style={styles.fieldGroup}>
             <View style={styles.chatIdLabelRow}>
-              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>CHAT ID TELEGRAM</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>CHAT ID TELEGRAM (OPSIONAL)</Text>
               <TouchableOpacity onPress={handleDetectChatId} disabled={isDetectingId}>
                 <Text style={[styles.detectBtnText, { color: '#0088cc' }]}>
                   {isDetectingId ? 'Mendeteksi...' : '🔍 Deteksi Otomatis'}
@@ -232,7 +247,7 @@ export const HermesTelegramModal: React.FC<HermesTelegramModalProps> = ({ visibl
               <TextInput
                 value={chatIdInput}
                 onChangeText={setChatIdInput}
-                placeholder="Contoh: 123456789 atau -100xxxxxxxxxx"
+                placeholder="Opsional - otomatis terdeteksi saat chat"
                 placeholderTextColor={colors.textMuted}
                 style={[styles.input, { color: colors.textPrimary }]}
                 keyboardType="numeric"
@@ -252,7 +267,7 @@ export const HermesTelegramModal: React.FC<HermesTelegramModalProps> = ({ visibl
               </TouchableOpacity>
             </View>
             <Text style={[styles.fieldHint, { color: colors.textMuted }]}>
-              Buka bot Anda di Telegram dan ketik /start. Lalu klik "Deteksi Otomatis" di atas agar Chat ID terisi otomatis.
+              Bisa dikosongkan. Sistem akan otomatis mendeteksi chat ID dari pesan /start terakhir Anda di bot.
             </Text>
           </View>
 

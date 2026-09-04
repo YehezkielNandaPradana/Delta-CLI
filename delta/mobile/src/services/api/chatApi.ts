@@ -125,8 +125,8 @@ export async function sendChatMessage(
 
   // Auto-forward to Telegram Hermes Bot if configured and enabled
   const finalOutput = result.response || result.output || '';
-  const { telegramAutoForward, telegramBotToken, telegramChatId } = useSettingsStore.getState();
-  if (telegramAutoForward && telegramBotToken && telegramChatId && finalOutput && !result.error) {
+  const { telegramAutoForward, telegramBotToken } = useSettingsStore.getState();
+  if (telegramAutoForward && telegramBotToken && finalOutput && !result.error) {
     hermesTelegramService.sendMessage(
       `🤖 *Delta AI Response*\n\n_Prompt:_ ${message.slice(0, 100)}\n\n${finalOutput}`,
       { parseMode: 'Markdown' }

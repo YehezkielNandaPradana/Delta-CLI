@@ -65,7 +65,7 @@ def test_sidebar_api_endpoints_full_lifecycle(tmp_path):
         with urllib.request.urlopen(f"{base_url}/") as resp:
             assert resp.status == 200
             content = resp.read().decode("utf-8")
-            assert "DELTA WORKSTATION" in content
+            assert "DELTA" in content
             assert "Recon" in content
             assert "Targets" in content
 

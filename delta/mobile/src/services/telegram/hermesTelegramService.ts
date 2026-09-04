@@ -85,13 +85,25 @@ class HermesTelegramService {
     }
   ): Promise<{ success: boolean; messageId?: number; error?: string }> {
     const token = (options?.token || useSettingsStore.getState().telegramBotToken).trim();
-    const chatId = (options?.chatId || useSettingsStore.getState().telegramChatId).trim();
+    let chatId = (options?.chatId || useSettingsStore.getState().telegramChatId).trim();
 
     if (!token) {
       return { success: false, error: 'Token Telegram Bot belum dikonfigurasi.' };
     }
+
+    // Auto-resolve chatId jika belum ada
     if (!chatId) {
-      return { success: false, error: 'Chat ID Telegram belum ditentukan.' };
+      const detectRes = await this.detectChatId(token);
+      if (detectRes.success && detectRes.chatId) {
+        chatId = detectRes.chatId;
+        await useSettingsStore.getState().setTelegramChatId(chatId);
+      } else {
+        return {
+          success: false,
+          error:
+            'Chat ID Telegram belum ada. Buka bot di Telegram, ketik /start atau kirim pesan sekali ke bot agar otomatis terhubung!',
+        };
+      }
     }
 
     try {
@@ -204,13 +216,25 @@ class HermesTelegramService {
    */
   async chatWithHermes(prompt: string, timeoutMs: number = 20000): Promise<{ success: boolean; response?: string; error?: string }> {
     const token = useSettingsStore.getState().telegramBotToken.trim();
-    const chatId = useSettingsStore.getState().telegramChatId.trim();
+    let chatId = useSettingsStore.getState().telegramChatId.trim();
 
     if (!token) {
       return { success: false, error: 'Telegram Bot Token belum diisi di menu Settings > Hermes Bot Telegram.' };
     }
+
+    // Auto-resolve chatId jika belum diisi user
     if (!chatId) {
-      return { success: false, error: 'Telegram Chat ID belum diisi di menu Settings > Hermes Bot Telegram.' };
+      const detectRes = await this.detectChatId(token);
+      if (detectRes.success && detectRes.chatId) {
+        chatId = detectRes.chatId;
+        await useSettingsStore.getState().setTelegramChatId(chatId);
+      } else {
+        return {
+          success: false,
+          error:
+            'Chat ID belum terdeteksi. Buka bot di Telegram, ketik /start atau pesan apa saja ke bot, lalu coba lagi!',
+        };
+      }
     }
 
     // 1. Ambil update terbaru untuk tracking update_id

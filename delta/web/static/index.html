@@ -532,23 +532,52 @@
                 </div>
 
                 <!-- 11. MOBILE LIVE CAMERA VIEW -->
+                <!-- 5. CAMERA STREAM VIEW -->
                 <div id="view-camera" class="view-panel hidden flex-1 overflow-hidden flex flex-col p-4 max-w-4xl mx-auto w-full space-y-3">
                     <div class="flex items-center justify-between border-b border-white/[0.06] pb-2 shrink-0">
                         <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" id="cam-status-dot"></span>
-                            <h2 class="text-sm font-semibold text-zinc-100 font-mono">Delta Mobile Optical Feed</h2>
-                            <span id="cam-device-label" class="text-[10px] bg-white/[0.06] px-2 py-0.5 rounded text-sky-300 font-mono">iPhone 17 Pro Max</span>
+                            <span class="w-2 h-2 rounded-full bg-zinc-600" id="cam-status-dot"></span>
+                            <h2 class="text-sm font-semibold text-zinc-100 font-mono">Camera Monitoring</h2>
+                            <span id="cam-device-label" class="text-[10px] bg-white/[0.06] px-2 py-0.5 rounded text-sky-300 font-mono">Android Phone</span>
+                            <span id="badge-camera-status" class="text-[9px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400">OFFLINE</span>
                         </div>
-                        <button onclick="navigate('#/execution')" class="text-xs text-zinc-400 hover:text-zinc-200 font-mono">← Back to Chat</button>
+                        <div class="flex items-center gap-2">
+                            <button id="btn-stop-cam" onclick="stopWebMonitoringSession()" class="hidden bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 px-2.5 py-1 rounded text-xs font-mono transition-all">
+                                Stop Monitoring
+                            </button>
+                            <button onclick="navigate('#/execution')" class="text-xs text-zinc-400 hover:text-zinc-200 font-mono">← Back to Chat</button>
+                        </div>
                     </div>
-                    <div class="flex-1 rounded-xl bg-[#111115] border border-white/[0.08] flex flex-col items-center justify-center relative overflow-hidden p-3">
-                        <img id="live-camera-feed" class="w-full h-full max-h-[500px] rounded-lg object-contain border border-white/[0.05] shadow-2xl bg-black" src="/api/camera/frame" alt="Mobile Optical Feed" onerror="handleCameraFeedError()" />
-                        <div id="cam-offline-overlay" style="display: none;" class="absolute inset-0 bg-[#0c0c10]/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3">
+
+                    <div class="flex-1 rounded-xl bg-[#111115] border border-white/[0.08] flex flex-col items-center justify-center relative overflow-hidden p-2">
+                        <!-- Native WebRTC Video Player -->
+                        <video id="webrtc-camera-video" autoplay playsinline muted class="w-full h-full max-h-[500px] rounded-lg object-contain border border-white/[0.05] shadow-2xl bg-black hidden"></video>
+
+                        <!-- Fallback Static Frame Image -->
+                        <img id="live-camera-feed" class="w-full h-full max-h-[500px] rounded-lg object-contain border border-white/[0.05] shadow-2xl bg-black" src="/api/camera/frame" alt="Camera Feed" onerror="handleCameraFeedError()" />
+
+                        <!-- Offline Overlay -->
+                        <div id="cam-offline-overlay" style="display: flex;" class="absolute inset-0 bg-[#0c0c10]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3">
                             <div class="w-12 h-12 rounded-full bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-xl">
                                 📹
                             </div>
                             <h3 class="text-sm font-semibold text-zinc-200">Menunggu Koneksi Kamera Delta Mobile...</h3>
-                            <p class="text-xs text-zinc-400 max-w-sm">Pastikan Delta Mobile terinstall & aktif di HP Anda, dan Host Server di aplikasi HP mengarah ke IP Server ini. Kamera akan terhubung dan stream otomatis.</p>
+                            <p class="text-xs text-zinc-400 max-w-sm">Buka Delta Mobile di HP Anda dan izinkan fitur <b>Camera Monitoring</b> untuk memulai transmisi video WebRTC secara aman.</p>
+                        </div>
+                    </div>
+
+                    <!-- WebRTC Telemetry Bar -->
+                    <div id="cam-telemetry-bar" class="flex justify-between items-center px-3 py-2 rounded-lg bg-[#121216] border border-white/[0.06] font-mono text-[11px] text-zinc-400">
+                        <div class="flex items-center gap-3">
+                            <span id="telemetry-res">720p</span>
+                            <span>·</span>
+                            <span id="telemetry-fps">24 FPS</span>
+                            <span>·</span>
+                            <span id="telemetry-rtt">45ms</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-zinc-500">Connection:</span>
+                            <span id="telemetry-conn" class="text-sky-400 font-bold">WebRTC / STUN</span>
                         </div>
                     </div>
                 </div>
@@ -1193,14 +1222,137 @@
             });
         }
 
-        // --- MOBILE LIVE CAMERA FEED CONTROLLER ---
-        let cameraPollInterval = null;
+        // --- WEBRTC CAMERA MONITORING CONTROLLER ---
+        let webRtcPeerConnection = null;
+        let activeMonitoringSessionId = null;
+        let cameraSignalingPollInterval = null;
 
         function loadCameraView() {
             checkCameraStatus();
-            if (!cameraPollInterval) {
-                cameraPollInterval = setInterval(refreshCameraFrame, 1000);
+            if (!cameraSignalingPollInterval) {
+                cameraSignalingPollInterval = setInterval(checkCameraStatus, 2000);
             }
+        }
+
+        async function initWebRtcViewer(sessionId, iceServers) {
+            if (webRtcPeerConnection) {
+                webRtcPeerConnection.close();
+                webRtcPeerConnection = null;
+            }
+
+            activeMonitoringSessionId = sessionId;
+            const config = {
+                iceServers: iceServers || [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ]
+            };
+
+            webRtcPeerConnection = new RTCPeerConnection(config);
+            const videoEl = document.getElementById('webrtc-camera-video');
+            const imgEl = document.getElementById('live-camera-feed');
+
+            webRtcPeerConnection.ontrack = (event) => {
+                if (event.streams && event.streams[0]) {
+                    videoEl.srcObject = event.streams[0];
+                    videoEl.classList.remove('hidden');
+                    if (imgEl) imgEl.classList.add('hidden');
+                    const overlay = document.getElementById('cam-offline-overlay');
+                    if (overlay) overlay.style.display = 'none';
+                }
+            };
+
+            webRtcPeerConnection.onicecandidate = async (event) => {
+                if (event.candidate && activeMonitoringSessionId) {
+                    try {
+                        await fetch('/api/camera/session/signal', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sessionId: activeMonitoringSessionId,
+                                role: 'viewer',
+                                type: 'candidate',
+                                data: event.candidate
+                            })
+                        });
+                    } catch (_) {}
+                }
+            };
+
+            webRtcPeerConnection.oniceconnectionstatechange = () => {
+                const connLabel = document.getElementById('telemetry-conn');
+                if (connLabel) {
+                    connLabel.innerText = 'WebRTC / ' + webRtcPeerConnection.iceConnectionState.toUpperCase();
+                }
+            };
+
+            // Poll for sender offer
+            pollViewerSignals();
+        }
+
+        async function pollViewerSignals() {
+            if (!activeMonitoringSessionId || !webRtcPeerConnection) return;
+            try {
+                const res = await fetch(`/api/camera/session/signal?sessionId=${activeMonitoringSessionId}&role=viewer`);
+                if (!res.ok) return;
+                const signals = await res.json();
+
+                for (const sig of signals) {
+                    if (sig.type === 'offer') {
+                        await webRtcPeerConnection.setRemoteDescription(new RTCSessionDescription(sig.data));
+                        const answer = await webRtcPeerConnection.createAnswer();
+                        await webRtcPeerConnection.setLocalDescription(answer);
+
+                        await fetch('/api/camera/session/signal', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sessionId: activeMonitoringSessionId,
+                                role: 'viewer',
+                                type: 'answer',
+                                data: answer
+                            })
+                        });
+                    } else if (sig.type === 'candidate' && sig.data) {
+                        await webRtcPeerConnection.addIceCandidate(new RTCIceCandidate(sig.data));
+                    } else if (sig.type === 'stop') {
+                        teardownWebRtcViewer();
+                    }
+                }
+            } catch (_) {}
+        }
+
+        function teardownWebRtcViewer() {
+            if (webRtcPeerConnection) {
+                webRtcPeerConnection.close();
+                webRtcPeerConnection = null;
+            }
+            activeMonitoringSessionId = null;
+            const videoEl = document.getElementById('webrtc-camera-video');
+            if (videoEl) {
+                videoEl.srcObject = null;
+                videoEl.classList.add('hidden');
+            }
+            const imgEl = document.getElementById('live-camera-feed');
+            if (imgEl) imgEl.classList.remove('hidden');
+            const overlay = document.getElementById('cam-offline-overlay');
+            if (overlay) overlay.style.display = 'flex';
+            const btnStop = document.getElementById('btn-stop-cam');
+            if (btnStop) btnStop.classList.add('hidden');
+        }
+
+        async function stopWebMonitoringSession() {
+            if (activeMonitoringSessionId) {
+                try {
+                    await fetch('/api/camera/session/stop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId: activeMonitoringSessionId })
+                    });
+                } catch (_) {}
+            }
+            teardownWebRtcViewer();
+            checkCameraStatus();
         }
 
         function checkCameraStatus() {
@@ -1211,36 +1363,40 @@
                     const dot = document.getElementById('cam-status-dot');
                     const devLabel = document.getElementById('cam-device-label');
                     const overlay = document.getElementById('cam-offline-overlay');
+                    const btnStop = document.getElementById('btn-stop-cam');
 
                     if (d.device && devLabel) devLabel.innerText = d.device;
 
-                    if (d.is_live || d.has_frame) {
-                        if (badge) { badge.innerText = d.is_mobile_connected ? 'LIVE' : 'AUTO LIVE'; badge.className = 'text-[9px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-400'; }
+                    if (d.is_live && d.sessionId) {
+                        if (badge) {
+                            badge.innerText = 'LIVE MONITORING';
+                            badge.className = 'text-[9px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-400';
+                        }
                         if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
-                        // Jangan sembunyikan gambar, pastikan overlay offline tertutup jika ada frame
                         if (overlay) overlay.style.display = 'none';
+                        if (btnStop) btnStop.classList.remove('hidden');
+
+                        // Start WebRTC viewer if not already running for this session
+                        if (d.sessionId !== activeMonitoringSessionId) {
+                            initWebRtcViewer(d.sessionId, d.ice_servers);
+                        } else {
+                            pollViewerSignals();
+                        }
                     } else {
-                        if (badge) { badge.innerText = 'OFFLINE'; badge.className = 'text-[9px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400'; }
+                        if (badge) {
+                            badge.innerText = 'OFFLINE';
+                            badge.className = 'text-[9px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400';
+                        }
                         if (dot) dot.className = 'w-2 h-2 rounded-full bg-zinc-600';
-                        if (overlay && !d.has_frame) overlay.style.display = 'flex';
+                        if (overlay && !webRtcPeerConnection) overlay.style.display = 'flex';
+                        if (btnStop) btnStop.classList.add('hidden');
                     }
                 }).catch(() => {});
         }
 
-        function refreshCameraFrame() {
-            checkCameraStatus();
-            const img = document.getElementById('live-camera-feed');
-            if (img) {
-                img.src = '/api/camera/frame?t=' + Date.now();
-            }
-        }
-
         function handleCameraFeedError() {
-            // Re-check status before showing overlay, don't flash offline if feed refreshed
-            fetch('/api/camera/status').then(r => r.json()).then(d => {
-                const overlay = document.getElementById('cam-offline-overlay');
-                if (overlay && !d.is_live && !d.has_frame) overlay.style.display = 'flex';
-            }).catch(() => {});
+            const overlay = document.getElementById('cam-offline-overlay');
+            if (overlay && !activeMonitoringSessionId) overlay.style.display = 'flex';
         }
 
         // Voice Controller dummy fallback

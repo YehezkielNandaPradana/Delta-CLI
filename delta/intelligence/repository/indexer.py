@@ -9,8 +9,9 @@ class IncrementalIndexer:
     IGNORED_DIRS = {".git", ".delta", "node_modules", "venv", ".venv", "__pycache__", "dist", "build", ".idea", ".vscode"}
     ALLOWED_EXTENSIONS = {".py", ".js", ".jsx", ".ts", ".tsx", ".php", ".go", ".rs"}
 
-    def __init__(self, root_path: str = "."):
-        self.root = Path(root_path).resolve()
+    def __init__(self, root_path: str = ".", workspace_root: Optional[str] = None):
+        target = workspace_root if workspace_root is not None else root_path
+        self.root = Path(target).resolve()
         self.delta_dir = self.root / ".delta"
         self.graph_file = self.delta_dir / "graph.json"
         self.parser = ASTSymbolParser()

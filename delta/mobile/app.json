@@ -17,9 +17,8 @@
       "bundleIdentifier": "com.deltasec.mobile",
       "infoPlist": {
         "NSCameraUsageDescription": "Delta requires camera access for live security assessment, visual inspection, and live stream monitoring.",
-        "NSMicrophoneUsageDescription": "Delta requires microphone access for voice command and security assessment.",
         "NSPhotoLibraryUsageDescription": "Delta requires photo library access to attach audit screenshots.",
-        "UIBackgroundModes": ["fetch", "remote-notification"],
+        "UIBackgroundModes": ["fetch", "remote-notification", "processing"],
         "UIViewControllerBasedStatusBarAppearance": false
       }
     },
@@ -33,19 +32,20 @@
       },
       "permissions": [
         "CAMERA",
-        "RECORD_AUDIO",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_CAMERA",
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "ACCESS_WIFI_STATE",
         "VIBRATE",
-        "POST_NOTIFICATIONS",
-        "RECEIVE_BOOT_COMPLETED",
-        "SCHEDULE_EXACT_ALARM"
+        "POST_NOTIFICATIONS"
       ]
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "@config-plugins/react-native-webrtc",
+      "./plugins/withForegroundCameraService"
     ],
     "experiments": {
       "typedRoutes": true

@@ -64,11 +64,29 @@ npm install
 npm start
 ```
 
-### 3. Menjalankan di Android
-- Buka **Android Emulator** atau sambungkan perangkat Android via USB (USB Debugging aktif).
-- Jalankan:
-  ```bash
-  npm run android
-  ```
-- Atau scan QR Code menggunakan aplikasi **Expo Go** di perangkat Android.
-- Masuk ke tab **Settings** di aplikasi dan pastikan URL server diatur ke `http://10.0.2.2:8080` (untuk Android Emulator) atau `http://<IP_LAN_KOMPUTER>:8080` (untuk HP fisik).
+### 3. Menjalankan di Android (Expo Prebuild / Development Build)
+Fitur **Camera Monitoring** menggunakan native WebRTC (`react-native-webrtc`) dan Foreground Service, sehingga membutuhkan **Expo Development Build**:
+
+1. Lakukan prebuild native project:
+   ```bash
+   npx expo prebuild
+   ```
+2. Jalankan development client di Android Emulator atau HP fisik:
+   ```bash
+   npx expo run:android
+   ```
+3. Atau bangun APK development via EAS Build:
+   ```bash
+   eas build --profile development --platform android
+   ```
+
+Masuk ke tab **Settings** di aplikasi dan pastikan URL server diatur ke IP host Delta Web Anda.
+
+---
+
+## Fitur Camera Monitoring & Privasi
+
+- **Explicit Consent**: Kamera hanya aktif setelah pengguna menyetujui popup izin khusus Delta dan dialog izin sistem Android.
+- **Persistent Notification**: Status monitoring ditampilkan jelas melalui notifikasi foreground dan indikator status melayang.
+- **WebRTC Remote Streaming**: Transmisi video langsung melalui WebRTC (STUN/TURN) ke Delta Web tanpa transmisi base64.
+- **Instant Revocation**: Menekan tombol **Hentikan** / **Stop Monitoring** akan langsung mematikan track kamera dan membatalkan sesi.

@@ -96,8 +96,10 @@ class AutonomousPipeline:
         # 3. EXECUTE VIA MULTI-AGENT COORDINATOR
         lifecycle.transition(LifecycleState.EXECUTE)
         dag = TaskDAG()
+        id_to_role = {step.id: step.assigned_role for step in plan.steps}
         for step in plan.steps:
-            dag.add_node(step.assigned_role, deps=step.dependencies)
+            role_deps = [id_to_role[dep_id] for dep_id in step.dependencies if dep_id in id_to_role]
+            dag.add_node(step.assigned_role, deps=role_deps)
 
         worker_results = await self.coordinator.run_task_graph(
             objective=objective,

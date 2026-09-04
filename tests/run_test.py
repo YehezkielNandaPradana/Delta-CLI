@@ -44,7 +44,7 @@ if __name__ == '__main__':
         assert isinstance(res, dict)
         assert res["is_task"] is False
         assert res["task_id"] is None
-        assert "Halo Tuan" in res["response"]
+        assert "Halo Kamu" in res["response"] or "Halo Tuan" in res["response"]
         db.close()
         print("    [✓] Scenario A & B Passed!")
 

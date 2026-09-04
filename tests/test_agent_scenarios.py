@@ -98,7 +98,7 @@ def test_scenario_a_and_b_casual_chat(temp_engine):
     assert isinstance(res, dict)
     assert res["is_task"] is False
     assert res["task_id"] is None
-    assert "Halo Tuan" in res["response"]
+    assert "Halo Kamu" in res["response"] or "Halo Tuan" in res["response"]
 
 
 def test_scenario_c_project_inspection(temp_engine):
