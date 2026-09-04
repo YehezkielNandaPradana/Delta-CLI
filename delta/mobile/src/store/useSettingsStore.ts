@@ -6,7 +6,7 @@ import { AntigravityAccount, ConnectionMode } from '../types/cloud';
 const STORAGE_KEY = '@delta_settings';
 
 // Sensible defaults based on execution platform
-const DEFAULT_HOST = Platform.OS === 'android' ? 'http://192.168.1.6:8080' : 'http://localhost:8080';
+const DEFAULT_HOST = Platform.OS === 'android' ? 'http://192.168.1.6:8000' : 'http://localhost:8000';
 const DEFAULT_ROUTER_HOST = 'https://rurpq7a.abc-tunnel.us/v1';
 const DEFAULT_9ROUTER_KEY = 'sk-13295da0418e0160-d4rojh-3ca28d24';
 const DEFAULT_CLOUD_MODEL = 'ag/gemini-3.7-flash-high';

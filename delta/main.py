@@ -400,7 +400,7 @@ def run_web_chat(cwd: Optional[str] = None) -> None:
 
     engine = create_engine(cwd=cwd)
 
-    start_web_server(engine=engine, host="127.0.0.1", port=8000)
+    start_web_server(engine=engine, host="0.0.0.0", port=8000)
 def execute_direct(engine: DeltaEngine, cmd: str, cmd_args: list) -> None:
 
     """Execute a command directly and exit."""

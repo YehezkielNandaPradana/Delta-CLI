@@ -582,6 +582,7 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 frame_b64 = data.get("frame", "")
                 device = data.get("device", "iPhone")
                 res = self.bridge.update_camera_frame(frame_b64, device=device) if self.bridge else {"status": "error"}
+                print(f"[+] Camera frame received from {device} ({len(frame_b64)} chars)")
                 self._send_json_response(res)
                 return
 

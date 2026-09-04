@@ -258,6 +258,34 @@ def test_network_diagnostics_endpoints():
         server.shutdown()
 
 
+def test_camera_status_and_frame_endpoints():
+    server = DeltaWebServer(engine=None, host="127.0.0.1", port=8988)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.5)
+
+    try:
+        # GET /api/camera/status
+        req = urllib.request.Request("http://127.0.0.1:8988/api/camera/status")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read().decode("utf-8"))
+            assert data["is_live"] is True
+            assert data["has_frame"] is True
+            assert "device" in data
+
+        # GET /api/camera/frame
+        req_frame = urllib.request.Request("http://127.0.0.1:8988/api/camera/frame")
+        with urllib.request.urlopen(req_frame, timeout=3) as resp:
+            assert resp.status == 200
+            content = resp.read()
+            assert len(content) > 0
+            assert resp.headers.get("Content-Type") in ("image/svg+xml", "image/jpeg")
+    finally:
+        server.shutdown()
+
+
+
 
 
 

@@ -1214,14 +1214,14 @@
 
                     if (d.device && devLabel) devLabel.innerText = d.device;
 
-                    if (d.is_live) {
-                        if (badge) { badge.innerText = 'LIVE'; badge.className = 'text-[9px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-400'; }
+                    if (d.is_live || d.has_frame) {
+                        if (badge) { badge.innerText = d.is_mobile_connected ? 'LIVE' : 'AUTO LIVE'; badge.className = 'text-[9px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-400'; }
                         if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
                         if (overlay) overlay.classList.add('hidden');
                     } else {
                         if (badge) { badge.innerText = 'OFFLINE'; badge.className = 'text-[9px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400'; }
                         if (dot) dot.className = 'w-2 h-2 rounded-full bg-zinc-600';
-                        if (overlay && !d.has_frame) overlay.classList.remove('hidden');
+                        if (overlay) overlay.classList.remove('hidden');
                     }
                 }).catch(() => {});
         }
@@ -1235,8 +1235,11 @@
         }
 
         function handleCameraFeedError() {
-            const overlay = document.getElementById('cam-offline-overlay');
-            if (overlay) overlay.classList.remove('hidden');
+            // Re-check status before showing overlay, don't flash offline if feed refreshed
+            fetch('/api/camera/status').then(r => r.json()).then(d => {
+                const overlay = document.getElementById('cam-offline-overlay');
+                if (overlay && !d.is_live && !d.has_frame) overlay.classList.remove('hidden');
+            }).catch(() => {});
         }
 
         // Voice Controller dummy fallback

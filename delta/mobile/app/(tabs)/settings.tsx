@@ -351,12 +351,12 @@ export default function SettingsScreen() {
                     </View>
                     <Text style={[styles.formLabelTitle, { color: colors.textPrimary }]}>Host Backend Server</Text>
                   </View>
-                  <Text style={[styles.badgePort, { color: colors.textMuted }]}>PORT 8080</Text>
+                  <Text style={[styles.badgePort, { color: colors.textMuted }]}>PORT 8000</Text>
                 </View>
                 <TextInput
                   value={inputServerUrl}
                   onChangeText={setInputServerUrl}
-                  placeholder="http://192.168.1.6:8080"
+                  placeholder="http://192.168.1.6:8000"
                   placeholderTextColor={colors.textMuted}
                   style={[
                     styles.textInputModern,
