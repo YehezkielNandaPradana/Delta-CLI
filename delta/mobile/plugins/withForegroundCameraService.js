@@ -82,19 +82,26 @@ function withForegroundCameraService(config) {
 
     // Register CameraForegroundPackage in MainApplication
     let mainAppContent = config.modResults.contents;
-    const packageImport = 'import com.deltasec.mobile.service.CameraForegroundPackage;';
-    const packageAdd = 'packages.add(new CameraForegroundPackage());';
 
+    // Fix: Package declaration must remain at the very top before any imports
+    const packageImport = 'import com.deltasec.mobile.service.CameraForegroundPackage;';
     if (!mainAppContent.includes(packageImport)) {
-      mainAppContent = packageImport + '\n' + mainAppContent;
+      if (mainAppContent.includes('package com.deltasec.mobile')) {
+        mainAppContent = mainAppContent.replace(
+          'package com.deltasec.mobile',
+          'package com.deltasec.mobile\n\n' + packageImport
+        );
+      } else {
+        mainAppContent = packageImport + '\n' + mainAppContent;
+      }
     }
 
-    if (!mainAppContent.includes('new CameraForegroundPackage()')) {
-      // Look for getPackages() list
-      if (mainAppContent.includes('PackageList(this).getPackages();')) {
+    // Kotlin getPackages syntax: PackageList(this).packages.apply { add(...) } or mutable list
+    if (!mainAppContent.includes('CameraForegroundPackage()')) {
+      if (mainAppContent.includes('PackageList(this).packages')) {
         mainAppContent = mainAppContent.replace(
-          'PackageList(this).getPackages();',
-          'PackageList(this).getPackages();\n            packages.add(new CameraForegroundPackage());'
+          'PackageList(this).packages',
+          'PackageList(this).packages.toMutableList().apply { add(CameraForegroundPackage()) }'
         );
       }
     }

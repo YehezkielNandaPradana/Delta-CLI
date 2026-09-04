@@ -43,7 +43,12 @@ jobs:
 
       - name: Build Android Release APK
         working-directory: delta/mobile/android
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        run: |
+          ./gradlew assembleDebug --stacktrace --no-daemon || {
+            echo "=== GRADLE BUILD FAILED ==="
+            find app/build/reports -name "*.txt" -o -name "*.html" 2>/dev/null | xargs cat 2>/dev/null || true
+            exit 1
+          }
 
       - name: Rename & Upload APK Artifact
         uses: actions/upload-artifact@v4
