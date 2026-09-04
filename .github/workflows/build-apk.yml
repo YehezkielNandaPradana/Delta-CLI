@@ -44,7 +44,7 @@ jobs:
       - name: Build Android Release APK
         working-directory: delta/mobile/android
         run: |
-          ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee gradle_build.log || {
+          ./gradlew assembleRelease --stacktrace --no-daemon 2>&1 | tee gradle_build.log || {
             echo "=== RECENT GRADLE FAILURE LOGS ==="
             tail -n 120 gradle_build.log
             exit 1
@@ -57,8 +57,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Delta-Agent-APK
-          path: |
-            delta/mobile/android/app/build/outputs/apk/debug/*.apk
-            delta/mobile/android/app/build/outputs/apk/**/*.apk
-            delta/mobile/**/*.apk
+          path: delta/mobile/android/app/build/outputs/apk/release/*.apk
           retention-days: 14
