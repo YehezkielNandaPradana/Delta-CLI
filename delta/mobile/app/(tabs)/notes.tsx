@@ -6,10 +6,10 @@ import {
   ScrollView,
   FlatList,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColors } from '../../src/theme/theme';
@@ -120,8 +120,11 @@ export default function NotesScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <PageTransition style={styles.container}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: colors.bgPrimary }]}
+      edges={['top']}
+    >
+      <PageTransition style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         {/* Standard Unified Header */}
         <Header
           title="Notes"
@@ -375,6 +378,9 @@ export default function NotesScreen() {
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },

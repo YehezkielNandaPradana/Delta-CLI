@@ -83,7 +83,7 @@ export const SkillsManagerModal: React.FC<SkillsManagerModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.backdrop}>
           <BlurBackdrop intensity={50} />
@@ -102,15 +102,22 @@ export const SkillsManagerModal: React.FC<SkillsManagerModalProps> = ({
                 <View
                   style={[
                     styles.dragBar,
-                    { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' },
+                    { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.2)' },
                   ]}
                 />
                 <View style={styles.titleRow}>
                   <View style={styles.titleWithIcon}>
-                    <Ionicons name="construct-outline" size={17} color={colors.textPrimary} />
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>
-                      Skill Coding Delta
-                    </Text>
+                    <View style={[styles.iconBoxMini, { backgroundColor: isDark ? '#262626' : '#EAEAEA' }]}>
+                      <Ionicons name="construct-outline" size={16} color={colors.textPrimary} />
+                    </View>
+                    <View>
+                      <Text style={[styles.title, { color: colors.textPrimary }]}>
+                        Skill Coding & Desain Delta
+                      </Text>
+                      <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+                        Skill aktif diinject ke AI untuk asistensi coding & arsitektur
+                      </Text>
+                    </View>
                   </View>
                   <TouchableOpacity
                     onPress={onClose}
@@ -119,26 +126,29 @@ export const SkillsManagerModal: React.FC<SkillsManagerModalProps> = ({
                     <Feather name="x" size={15} color={colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
-                <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-                  Skill aktif akan otomatis dibaca saat pertanyaan relevan.
-                </Text>
               </View>
 
               <ScrollView
                 style={styles.contentScroll}
                 contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={true}
               >
                 {/* Add Custom Skill Button / Form */}
                 {!isAdding ? (
                   <TouchableOpacity
                     onPress={() => setIsAdding(true)}
-                    style={[styles.addSkillBtn, { backgroundColor: isDark ? '#262626' : '#E5E5E5', borderColor: colors.border }]}
+                    style={[
+                      styles.addSkillBtn,
+                      {
+                        backgroundColor: isDark ? '#262626' : '#EAEAEA',
+                        borderColor: colors.border,
+                      },
+                    ]}
                     activeOpacity={0.7}
                   >
                     <Ionicons name="add-circle-outline" size={16} color={colors.textPrimary} />
                     <Text style={[styles.addSkillText, { color: colors.textPrimary }]}>
-                      + Tambah Custom Skill
+                      + Tambah Custom Skill Coding
                     </Text>
                   </TouchableOpacity>
                 ) : (
@@ -255,7 +265,7 @@ export const SkillsManagerModal: React.FC<SkillsManagerModalProps> = ({
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 style={styles.deleteBtn}
                               >
-                                <Ionicons name="trash-outline" size={13} color={colors.error} />
+                                <Ionicons name="trash-outline" size={14} color={colors.error} />
                               </TouchableOpacity>
                             )}
                           </View>
@@ -282,24 +292,36 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    width: '100%',
+    height: Platform.OS === 'ios' ? '82%' : '85%',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     borderWidth: 1,
     borderBottomWidth: 0,
-    maxHeight: '85%',
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.28,
+        shadowRadius: 18,
+      },
+      android: {
+        elevation: 16,
+      },
+    }),
   },
   header: {
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 10,
+    paddingBottom: 8,
   },
   dragBar: {
     width: 36,
     height: 4,
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   titleRow: {
     flexDirection: 'row',
@@ -311,15 +333,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  iconBoxMini: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    fontSize: 17,
+    fontSize: 16.5,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 11.5,
-    marginTop: 2,
+    fontSize: 11,
+    marginTop: 1,
   },
   closeBtn: {
     width: 28,
@@ -334,7 +365,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingTop: 6,
+    paddingBottom: Platform.OS === 'ios' ? 44 : 36,
     gap: 12,
   },
   addSkillBtn: {
@@ -453,7 +485,7 @@ const styles = StyleSheet.create({
   },
   skillRight: {
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   deleteBtn: {
     padding: 2,
