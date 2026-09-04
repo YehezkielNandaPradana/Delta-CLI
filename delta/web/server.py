@@ -1112,7 +1112,7 @@ class ThreadingDeltaWebServer(ThreadingMixIn, HTTPServer):
 
 DeltaWebServer = ThreadingDeltaWebServer
 
-def start_web_server(engine: Optional[Any] = None, host: str = "0.0.0.0", port: int = 8080, open_browser: bool = False):
+def start_web_server(engine: Optional[Any] = None, host: str = "0.0.0.0", port: int = 8080, open_browser: bool = False, auto_tunnel: bool = True):
     if engine is None:
         try:
             from delta.main import create_engine
@@ -1123,6 +1123,22 @@ def start_web_server(engine: Optional[Any] = None, host: str = "0.0.0.0", port: 
     server = ThreadingDeltaWebServer(engine, host, port)
     url = f"http://localhost:{port}"
     print(f"[*] Delta Web & Mobile API server running at {url} (listening on {host}:{port})")
+
+    # Otomatis nyalakan Cloudflare Public Quick Tunnel jika auto_tunnel aktif
+    if auto_tunnel:
+        try:
+            from delta.utils.tunnel_manager import start_cloudflare_tunnel, is_cloudflared_available, auto_download_cloudflared
+            if not is_cloudflared_available():
+                print("[*] Mengunduh cloudflared untuk publik tunnel...")
+                auto_download_cloudflared()
+            t_res = start_cloudflare_tunnel(port=port)
+            t_url = t_res.get("url")
+            if t_url:
+                print(f"[+] PUBLIC TUNNEL ONLINE: {t_url}")
+                print(f"[+] HP dapat membuka atau terhubung dari jaringan mana pun melalui URL di atas.")
+        except Exception as te:
+            print(f"[-] Cloudflare auto-tunnel note: {te}")
+
     if open_browser:
         from delta.web.launcher import launch_delta_browser
         launch_delta_browser(url=url)
