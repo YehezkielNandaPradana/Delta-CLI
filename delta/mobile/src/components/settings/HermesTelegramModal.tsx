@@ -41,6 +41,7 @@ export const HermesTelegramModal: React.FC<HermesTelegramModalProps> = ({ visibl
   const [autoForward, setAutoForward] = useState(telegramAutoForward);
   const [isTesting, setIsTesting] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [isDetectingId, setIsDetectingId] = useState(false);
   const [botName, setBotName] = useState<string | null>(null);
 
   React.useEffect(() => {
@@ -72,6 +73,28 @@ export const HermesTelegramModal: React.FC<HermesTelegramModalProps> = ({ visibl
       }
     } finally {
       setIsTesting(false);
+    }
+  };
+
+  const handleDetectChatId = async () => {
+    if (!tokenInput.trim()) {
+      Alert.alert('Perhatian', 'Isi Bot Token terlebih dahulu.');
+      return;
+    }
+    setIsDetectingId(true);
+    if (hapticEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+
+    try {
+      const res = await hermesTelegramService.detectChatId(tokenInput.trim());
+      if (res.success && res.chatId) {
+        setChatIdInput(res.chatId);
+        if (hapticEnabled) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        Alert.alert('Chat ID Ditemukan!', `Chat ID: ${res.chatId}\nUser: @${res.fromUser}\nOtomatis diisikan ke form.`);
+      } else {
+        Alert.alert('Peringatan', res.error || 'Gagal mendeteksi Chat ID.');
+      }
+    } finally {
+      setIsDetectingId(false);
     }
   };
 
@@ -196,7 +219,14 @@ export const HermesTelegramModal: React.FC<HermesTelegramModalProps> = ({ visibl
 
           {/* Chat ID Input */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>CHAT ID TELEGRAM</Text>
+            <View style={styles.chatIdLabelRow}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>CHAT ID TELEGRAM</Text>
+              <TouchableOpacity onPress={handleDetectChatId} disabled={isDetectingId}>
+                <Text style={[styles.detectBtnText, { color: '#0088cc' }]}>
+                  {isDetectingId ? 'Mendeteksi...' : '🔍 Deteksi Otomatis'}
+                </Text>
+              </TouchableOpacity>
+            </View>
             <View style={[styles.inputContainer, { backgroundColor: colors.bgSurface, borderColor: colors.border }]}>
               <Ionicons name="chatbubble-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
               <TextInput
@@ -222,7 +252,7 @@ export const HermesTelegramModal: React.FC<HermesTelegramModalProps> = ({ visibl
               </TouchableOpacity>
             </View>
             <Text style={[styles.fieldHint, { color: colors.textMuted }]}>
-              User ID atau Group ID Telegram Anda (bisa didapatkan melalui @userinfobot di Telegram).
+              Buka bot Anda di Telegram dan ketik /start. Lalu klik "Deteksi Otomatis" di atas agar Chat ID terisi otomatis.
             </Text>
           </View>
 
@@ -326,6 +356,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,
+  },
+  chatIdLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  detectBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   inputContainer: {
     flexDirection: 'row',

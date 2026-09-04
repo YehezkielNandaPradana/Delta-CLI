@@ -115,6 +115,13 @@ class HermesTelegramService {
         return { success: true, messageId: data.result.message_id };
       }
 
+      if (data.description && data.description.includes('chat not found')) {
+        return {
+          success: false,
+          error: `Chat ID "${chatId}" tidak ditemukan oleh bot. Pastikan Anda sudah membuka bot di Telegram dan menekan /start atau mengirim pesan terlebih dahulu ke bot, lalu gunakan tombol "Deteksi Otomatis" di pengaturan.`,
+        };
+      }
+
       // If Markdown fails, fallback to sending plain text
       if (options?.parseMode) {
         return this.sendMessage(text, { ...options, parseMode: undefined });
@@ -168,6 +175,30 @@ class HermesTelegramService {
       return { success: false, error: err.message };
     }
   }
+  /**
+   * Fetch recent chat ID automatically from incoming bot messages if user doesn't know their chat ID
+   */
+  async detectChatId(token?: string): Promise<{ success: boolean; chatId?: string; fromUser?: string; error?: string }> {
+    const res = await this.getUpdates(undefined, token);
+    if (!res.success) return { success: false, error: res.error };
+
+    const updates = res.updates || [];
+    for (let i = updates.length - 1; i >= 0; i--) {
+      const msg = updates[i].message;
+      if (msg && msg.chat && msg.chat.id) {
+        return {
+          success: true,
+          chatId: String(msg.chat.id),
+          fromUser: msg.from?.username || msg.from?.first_name || 'User',
+        };
+      }
+    }
+    return {
+      success: false,
+      error: 'Belum ada pesan masuk di bot Telegram Anda. Buka bot di Telegram, tekan /start atau kirim pesan "halo", lalu coba deteksi lagi.',
+    };
+  }
+
   /**
    * Send chat prompt directly to Hermes Bot and wait for reply via Telegram getUpdates
    */
