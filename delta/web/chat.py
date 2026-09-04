@@ -478,9 +478,8 @@ CHAT_TEMPLATE = """
             // Convert markdown to HTML with Delta's personality styling
             let html = escapeHtml(text);
 
-            // Style specific elements
-            html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--accent-green); font-weight: 600;">\$1</strong>');
-            html = html.replace(/\*(.*?)\*/g, '<em style="color: var(--accent-cyan);">\$1</em>');
+            html = html.replace(/\\*\\*(.*?)\\*\\*/g, '<strong style="color: var(--accent-green); font-weight: 600;">$1</strong>');
+            html = html.replace(/\\*(.*?)\\*/g, '<em style="color: var(--accent-cyan);">$1</em>');
             html = html.replace(/`(.*?)`/g, '<code style="background: rgba(0,212,255,0.1); color: var(--accent-cyan); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono);">$1</code>');
             html = html.replace(/\n/g, '<br>');
 

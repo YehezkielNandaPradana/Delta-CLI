@@ -19,6 +19,7 @@ class FailureClassification(str, Enum):
 
 @dataclass
 class TestFailure:
+    __test__ = False
     test_id: str
     framework: str = "pytest"
     file: Optional[str] = None

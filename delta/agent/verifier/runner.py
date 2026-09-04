@@ -8,6 +8,7 @@ from pathlib import Path
 
 @dataclass
 class TestRunResult:
+    __test__ = False
     passed_count: int
     failed_count: int
     passed_tests: List[str] = field(default_factory=list)
