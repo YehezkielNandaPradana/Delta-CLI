@@ -43,7 +43,7 @@ jobs:
 
       - name: Build Android Release APK
         working-directory: delta/mobile/android
-        run: ./gradlew assembleRelease assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Rename & Upload APK Artifact
         uses: actions/upload-artifact@v4
