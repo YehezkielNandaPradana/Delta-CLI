@@ -44,21 +44,18 @@ jobs:
       - name: Build Android Release APK
         working-directory: delta/mobile/android
         run: |
-          ./gradlew assembleRelease --stacktrace --no-daemon 2>&1 | tee gradle_build.log || {
-            echo "=== RECENT GRADLE FAILURE LOGS ==="
-            tail -n 120 gradle_build.log
-            exit 1
-          }
-          echo "=== LOCATING GENERATED APKS ==="
-          pwd
-          mkdir -p ../dist_apk
-          find . -name "*.apk" -exec cp {} ../dist_apk/ \;
-          ls -la ../dist_apk/
+          ./gradlew assembleRelease --stacktrace --no-daemon
+
+      - name: Locate and Collect APK
+        run: |
+          mkdir -p apk_output
+          find delta/mobile/android/app/build/outputs/ -type f -name "*.apk" -exec cp -v {} apk_output/ \;
+          ls -lh apk_output/
 
       - name: Rename & Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Delta-Agent-APK
-          path: delta/mobile/dist_apk/*.apk
+          path: apk_output/*.apk
           if-no-files-found: error
           retention-days: 14
