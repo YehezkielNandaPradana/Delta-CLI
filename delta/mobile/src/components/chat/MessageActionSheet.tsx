@@ -20,6 +20,7 @@ interface MessageActionSheetProps {
   onCopy: (text: string) => void;
   onSaveNote: (text: string, isUser: boolean) => void;
   onQuote: (text: string) => void;
+  onForwardTelegram?: (text: string) => void;
   onDelete: (id: string) => void;
 }
 
@@ -30,6 +31,7 @@ export const MessageActionSheet: React.FC<MessageActionSheetProps> = ({
   onCopy,
   onSaveNote,
   onQuote,
+  onForwardTelegram,
   onDelete,
 }) => {
   const { colors, isDark } = useThemeColors();
@@ -139,6 +141,27 @@ export const MessageActionSheet: React.FC<MessageActionSheetProps> = ({
                 </TouchableOpacity>
 
                 <View style={[styles.separator, { backgroundColor: colors.border }]} />
+
+                {/* 3.5 Forward to Telegram */}
+                {onForwardTelegram && (
+                  <>
+                    <TouchableOpacity
+                      onPress={() => {
+                        onForwardTelegram(message.text);
+                        onClose();
+                      }}
+                      style={styles.actionItem}
+                      activeOpacity={0.6}
+                    >
+                      <Text style={[styles.actionLabel, { color: '#0088cc' }]}>
+                        Forward ke Hermes Bot
+                      </Text>
+                      <Ionicons name="paper-plane-outline" size={17} color="#0088cc" />
+                    </TouchableOpacity>
+
+                    <View style={[styles.separator, { backgroundColor: colors.border }]} />
+                  </>
+                )}
 
                 {/* 4. Delete */}
                 <TouchableOpacity

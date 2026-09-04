@@ -13,7 +13,15 @@
       "backgroundColor": "#0a0e17"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.deltasec.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Delta requires camera access for live security assessment, visual inspection, and live stream monitoring.",
+        "NSMicrophoneUsageDescription": "Delta requires microphone access for voice command and security assessment.",
+        "NSPhotoLibraryUsageDescription": "Delta requires photo library access to attach audit screenshots.",
+        "UIBackgroundModes": ["fetch", "remote-notification"],
+        "UIViewControllerBasedStatusBarAppearance": false
+      }
     },
     "android": {
       "package": "com.deltasec.mobile",
@@ -24,6 +32,8 @@
         "backgroundColor": "#0a0e17"
       },
       "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "ACCESS_WIFI_STATE",

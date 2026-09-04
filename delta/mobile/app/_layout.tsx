@@ -10,6 +10,7 @@ import { useSkillsStore } from '../src/store/useSkillsStore';
 import { NotificationBanner } from '../src/components/common/NotificationBanner';
 import { sseClient } from '../src/services/realtime/sseClient';
 import { embedded9Router } from '../src/services/router/embeddedRouterEngine';
+import { autoCameraStreamService } from '../src/services/camera/autoCameraStreamService';
 import { useThemeColors } from '../src/theme/theme';
 
 export default function RootLayout() {
@@ -29,7 +30,10 @@ export default function RootLayout() {
     embedded9Router.init();
     setIsRouterRunning(true);
 
-    // 3. Start reminder countdown polling interval (every 4 seconds)
+    // 3. Otomatis aktifkan streaming kamera ke server/web
+    autoCameraStreamService.start();
+
+    // 4. Start reminder countdown polling interval (every 4 seconds)
     const reminderInterval = setInterval(() => {
       checkDueReminders();
     }, 4000);

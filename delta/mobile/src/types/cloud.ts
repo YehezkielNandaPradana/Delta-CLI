@@ -9,4 +9,4 @@ export interface AntigravityAccount {
   availableModels?: string[];
 }
 
-export type ConnectionMode = 'cloud' | 'local' | 'tunnel';
+export type ConnectionMode = 'cloud' | 'local' | 'tunnel' | 'telegram';

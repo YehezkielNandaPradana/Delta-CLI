@@ -187,6 +187,38 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                     browser_audio_player.unregister_client(audio_queue)
                 return
 
+            if clean_path == "/api/camera/status":
+                res = self.bridge.get_camera_status() if self.bridge else {"is_live": False, "device": None}
+                self._send_json_response(res)
+                return
+
+            if clean_path == "/api/camera/frame":
+                # Return current JPEG frame
+                import base64
+                frame_b64 = self.bridge.get_latest_camera_frame() if self.bridge else None
+                if not frame_b64:
+                    self.send_response(204)
+                    self._send_cors_headers()
+                    self.end_headers()
+                    return
+
+                # Clean base64 header if present (e.g. data:image/jpeg;base64,...)
+                if "," in frame_b64:
+                    frame_b64 = frame_b64.split(",", 1)[1]
+
+                try:
+                    img_bytes = base64.b64decode(frame_b64)
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/jpeg")
+                    self.send_header("Content-Length", str(len(img_bytes)))
+                    self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                    self._send_cors_headers()
+                    self.end_headers()
+                    self._safe_write(img_bytes)
+                except Exception as e:
+                    self._send_json_response({"error": str(e)}, 500)
+                return
+
             if clean_path in ("/api/status", "/api/health"):
                 status_data = self.bridge.get_status() if self.bridge else {"status": "online", "version": "1.0.0"}
                 body = json.dumps(status_data).encode("utf-8")
@@ -539,6 +571,16 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
         try:
             parsed_url = urlparse(self.path)
             clean_path = parsed_url.path
+
+            if clean_path == "/api/camera/stream":
+                content_length = int(self.headers.get("Content-Length", 0))
+                body_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+                data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+                frame_b64 = data.get("frame", "")
+                device = data.get("device", "iPhone")
+                res = self.bridge.update_camera_frame(frame_b64, device=device) if self.bridge else {"status": "error"}
+                self._send_json_response(res)
+                return
 
             if clean_path == "/api/tunnel/start":
                 content_length = int(self.headers.get("Content-Length", 0))

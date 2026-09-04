@@ -96,10 +96,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setText('');
   };
 
-  const currentDisplayModel = connectionMode === 'cloud' ? cloudModel : activeModel;
+  const currentDisplayModel =
+    connectionMode === 'telegram'
+      ? 'Hermes Telegram'
+      : connectionMode === 'cloud'
+      ? cloudModel
+      : activeModel;
 
   const cleanModelLabel = (model: string) => {
     if (!model) return 'AI Model';
+    if (model === 'Hermes Telegram') return 'Hermes Bot';
     const name = model.includes('/') ? model.split('/')[1] : model;
     return name.length > 16 ? `${name.slice(0, 15)}…` : name;
   };

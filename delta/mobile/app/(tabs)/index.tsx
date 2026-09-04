@@ -14,6 +14,7 @@ import { useSettingsStore } from '../../src/store/useSettingsStore';
 import { useConnectionStore } from '../../src/store/useConnectionStore';
 import { useNotesStore } from '../../src/store/useNotesStore';
 import { sendChatMessage, cancelExecution } from '../../src/services/api/chatApi';
+import { hermesTelegramService } from '../../src/services/telegram/hermesTelegramService';
 import { getRouterStatus } from '../../src/services/api/systemApi';
 import { useThemeColors } from '../../src/theme/theme';
 import { ChatMessage } from '../../src/types/chat';
@@ -80,7 +81,8 @@ export default function ChatScreen() {
   };
 
   const handleSend = async (text: string) => {
-    if (connectionMode === 'cloud') {
+    const currentMode = useSettingsStore.getState().connectionMode;
+    if (currentMode === 'cloud' || currentMode === 'telegram') {
       await executeSend(text);
       return;
     }
@@ -134,6 +136,31 @@ export default function ChatScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }
     Alert.alert('Tersimpan ke Catatan', `"${title}"`);
+  };
+
+  const handleForwardTelegram = async (text: string) => {
+    const { telegramBotToken, telegramChatId } = useSettingsStore.getState();
+    if (!telegramBotToken || !telegramChatId) {
+      Alert.alert(
+        'Telegram Belum Diatur',
+        'Silakan atur Bot Token & Chat ID Telegram di menu Settings > Hermes Bot Telegram.'
+      );
+      return;
+    }
+
+    if (hapticEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+
+    const res = await hermesTelegramService.sendMessage(text, { parseMode: 'Markdown' });
+    if (res.success) {
+      if (hapticEnabled) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      }
+      Alert.alert('Berhasil Terkirim', 'Pesan telah diforward ke Hermes Bot Telegram Anda.');
+    } else {
+      Alert.alert('Gagal Mengirim', res.error || 'Terjadi kesalahan saat mengirim ke Telegram.');
+    }
   };
 
   const handleQuoteMessage = (text: string) => {
@@ -212,6 +239,7 @@ export default function ChatScreen() {
           onCopy={handleCopyText}
           onSaveNote={handleSaveNoteFromAction}
           onQuote={handleQuoteMessage}
+          onForwardTelegram={handleForwardTelegram}
           onDelete={handleDeleteMessage}
         />
       </PageTransition>

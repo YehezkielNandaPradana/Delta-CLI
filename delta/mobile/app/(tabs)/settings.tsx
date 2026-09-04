@@ -19,6 +19,7 @@ import { PageTransition } from '../../src/components/common/PageTransition';
 import { RouterAlertModal } from '../../src/components/chat/RouterAlertModal';
 import { AccountManagerModal } from '../../src/components/settings/AccountManagerModal';
 import { SkillsManagerModal } from '../../src/components/settings/SkillsManagerModal';
+import { HermesTelegramModal } from '../../src/components/settings/HermesTelegramModal';
 import { useSettingsStore, ThemeMode } from '../../src/store/useSettingsStore';
 import { useSkillsStore } from '../../src/store/useSkillsStore';
 import { test9RouterPing } from '../../src/services/api/systemApi';
@@ -56,6 +57,7 @@ export default function SettingsScreen() {
   const [inputRouterHostUrl, setInputRouterHostUrl] = useState(routerHostUrl);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showSkillsModal, setShowSkillsModal] = useState(false);
+  const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [showRouterModal, setShowRouterModal] = useState(false);
   const [isTestingPing, setIsTestingPing] = useState(false);
   const [pingResult, setPingResult] = useState<{ success: boolean; latency?: number; text?: string } | null>(null);
@@ -137,11 +139,22 @@ export default function SettingsScreen() {
                 <View
                   style={[
                     styles.statusDot,
-                    { backgroundColor: connectionMode === 'cloud' ? '#22C55E' : '#3B82F6' },
+                    {
+                      backgroundColor:
+                        connectionMode === 'telegram'
+                          ? '#0088cc'
+                          : connectionMode === 'cloud'
+                          ? '#22C55E'
+                          : '#3B82F6',
+                    },
                   ]}
                 />
                 <Text style={[styles.heroStatusValue, { color: colors.textPrimary }]}>
-                  {connectionMode === 'cloud' ? 'Cloud Router' : 'CLI Local'}
+                  {connectionMode === 'telegram'
+                    ? 'Hermes Telegram'
+                    : connectionMode === 'cloud'
+                    ? 'Cloud Router'
+                    : 'CLI Local'}
                 </Text>
               </View>
             </View>
@@ -172,160 +185,287 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* SECTION 1: KONEKSI & JARINGAN */}
+          {/* SECTION 1: KONEKSI EKSKLUSIF */}
           <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
-            KONEKSI & JARINGAN
+            PILIHAN KONEKSI ENGINE (HANYA SATU AKTIF)
           </Text>
 
           <View style={[styles.groupCard, { backgroundColor: colors.bgSurface, borderColor: colors.border }]}>
-            {/* Mode Cloud / Direct */}
-            <View style={styles.rowItem}>
+            {/* OPSI 1: Telegram Hermes Bot */}
+            <TouchableOpacity
+              onPress={() => setConnectionMode('telegram')}
+              style={[
+                styles.clickableRow,
+                connectionMode === 'telegram' && {
+                  backgroundColor: isDark ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.06)',
+                },
+              ]}
+              activeOpacity={0.7}
+            >
               <View style={styles.rowLeft}>
-                <View style={[styles.iconBox, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7' }]}>
-                  <Ionicons name="cloud-outline" size={17} color={colors.textPrimary} />
+                <View
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: connectionMode === 'telegram' ? '#0088cc' : (isDark ? '#1C1C1E' : '#F2F2F7') },
+                  ]}
+                >
+                  <Ionicons
+                    name="paper-plane"
+                    size={17}
+                    color={connectionMode === 'telegram' ? '#ffffff' : '#0088cc'}
+                  />
                 </View>
                 <View style={styles.rowTextCol}>
-                  <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Mode Cloud / 9Router</Text>
+                  <Text style={[styles.rowTitle, { color: colors.textPrimary, fontWeight: connectionMode === 'telegram' ? '700' : '600' }]}>
+                    Hermes Bot Telegram
+                  </Text>
                   <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
-                    {connectionMode === 'cloud'
-                      ? 'Langsung via Google AI & Router Gateway'
-                      : 'Terhubung ke Local CLI Backend'}
+                    Eksklusif ke Bot Telegram Anda (Nonaktifkan server lain)
                   </Text>
                 </View>
               </View>
-              <Switch
-                value={connectionMode === 'cloud'}
-                onValueChange={(val) => setConnectionMode(val ? 'cloud' : 'local')}
-                trackColor={{ false: isDark ? '#2C2C2E' : '#E5E5EA', true: colors.textPrimary }}
-                thumbColor={isDark ? '#000000' : '#FFFFFF'}
+              <Ionicons
+                name={connectionMode === 'telegram' ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={connectionMode === 'telegram' ? '#0088cc' : colors.textMuted}
               />
-            </View>
+            </TouchableOpacity>
 
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-            {/* Server Backend Host */}
-            <View style={styles.formRow}>
-              <View style={styles.formRowHeader}>
-                <View style={styles.formLabelGroup}>
-                  <View style={[styles.iconBoxMini, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7' }]}>
-                    <Ionicons name="server-outline" size={13} color={colors.textPrimary} />
-                  </View>
-                  <Text style={[styles.formLabelTitle, { color: colors.textPrimary }]}>Host Backend Server</Text>
+            {/* OPSI 2: Mode Cloud / 9Router */}
+            <TouchableOpacity
+              onPress={() => setConnectionMode('cloud')}
+              style={[
+                styles.clickableRow,
+                connectionMode === 'cloud' && {
+                  backgroundColor: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.06)',
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <View
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: connectionMode === 'cloud' ? '#22C55E' : (isDark ? '#1C1C1E' : '#F2F2F7') },
+                  ]}
+                >
+                  <Ionicons
+                    name="cloud-outline"
+                    size={17}
+                    color={connectionMode === 'cloud' ? '#ffffff' : colors.textPrimary}
+                  />
                 </View>
-                <Text style={[styles.badgePort, { color: colors.textMuted }]}>PORT 8080</Text>
-              </View>
-              <TextInput
-                value={inputServerUrl}
-                onChangeText={setInputServerUrl}
-                placeholder="http://192.168.1.6:8080"
-                placeholderTextColor={colors.textMuted}
-                style={[
-                  styles.textInputModern,
-                  {
-                    color: colors.textPrimary,
-                    borderColor: colors.border,
-                    backgroundColor: isDark ? '#0A0A0A' : '#FAFAFA',
-                  },
-                ]}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-            {/* Custom 9Router Host IP / Tunnel */}
-            <View style={styles.formRow}>
-              <View style={styles.formRowHeader}>
-                <View style={styles.formLabelGroup}>
-                  <View style={[styles.iconBoxMini, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7' }]}>
-                    <Ionicons name="git-network-outline" size={13} color={colors.textPrimary} />
-                  </View>
-                  <Text style={[styles.formLabelTitle, { color: colors.textPrimary }]}>9Router Host / Tunnel URL</Text>
-                </View>
-                <View style={styles.portPingRow}>
-                  {pingResult && (
-                    <View
-                      style={[
-                        styles.pingBadge,
-                        {
-                          backgroundColor: pingResult.success
-                            ? isDark
-                              ? 'rgba(34, 197, 94, 0.15)'
-                              : '#DCFCE7'
-                            : isDark
-                            ? 'rgba(239, 68, 68, 0.15)'
-                            : '#FEE2E2',
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.pingBadgeText,
-                          { color: pingResult.success ? '#22C55E' : '#EF4444' },
-                        ]}
-                      >
-                        {pingResult.text}
-                      </Text>
-                    </View>
-                  )}
-                  <Text style={[styles.badgePort, { color: colors.textMuted }]}>TUNNEL/20128</Text>
+                <View style={styles.rowTextCol}>
+                  <Text style={[styles.rowTitle, { color: colors.textPrimary, fontWeight: connectionMode === 'cloud' ? '700' : '600' }]}>
+                    Cloud Router / 9Router
+                  </Text>
+                  <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
+                    Langsung via Google AI & Router Gateway
+                  </Text>
                 </View>
               </View>
-              <TextInput
-                value={inputRouterHostUrl}
-                onChangeText={setInputRouterHostUrl}
-                placeholder="https://rurpq7a.abc-tunnel.us/v1"
-                placeholderTextColor={colors.textMuted}
-                style={[
-                  styles.textInputModern,
-                  {
-                    color: colors.textPrimary,
-                    borderColor: colors.border,
-                    backgroundColor: isDark ? '#0A0A0A' : '#FAFAFA',
-                  },
-                ]}
-                autoCapitalize="none"
-                autoCorrect={false}
+              <Ionicons
+                name={connectionMode === 'cloud' ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={connectionMode === 'cloud' ? '#22C55E' : colors.textMuted}
               />
-            </View>
+            </TouchableOpacity>
 
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-            {/* Integrated Action Buttons */}
-            <View style={styles.btnRow}>
+            {/* OPSI 3: CLI Local Server */}
+            <TouchableOpacity
+              onPress={() => setConnectionMode('local')}
+              style={[
+                styles.clickableRow,
+                connectionMode === 'local' && {
+                  backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.06)',
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <View
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: connectionMode === 'local' ? '#3B82F6' : (isDark ? '#1C1C1E' : '#F2F2F7') },
+                  ]}
+                >
+                  <Ionicons
+                    name="server-outline"
+                    size={17}
+                    color={connectionMode === 'local' ? '#ffffff' : colors.textPrimary}
+                  />
+                </View>
+                <View style={styles.rowTextCol}>
+                  <Text style={[styles.rowTitle, { color: colors.textPrimary, fontWeight: connectionMode === 'local' ? '700' : '600' }]}>
+                    Local CLI Backend
+                  </Text>
+                  <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
+                    Terhubung ke Host Local Server Delta
+                  </Text>
+                </View>
+              </View>
+              <Ionicons
+                name={connectionMode === 'local' ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={connectionMode === 'local' ? '#3B82F6' : colors.textMuted}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* DETAIL KONEKSI SESUAI MODE YANG AKTIF */}
+          {connectionMode === 'telegram' ? (
+            <View style={[styles.groupCard, { backgroundColor: colors.bgSurface, borderColor: colors.border, marginTop: 12 }]}>
               <TouchableOpacity
-                onPress={handleTestPing}
-                disabled={isTestingPing}
-                style={[
-                  styles.secondaryActionBtn,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7',
-                  },
-                ]}
+                onPress={() => setShowTelegramModal(true)}
+                style={styles.clickableRow}
                 activeOpacity={0.7}
               >
-                {isTestingPing ? (
-                  <ActivityIndicator size="small" color={colors.textPrimary} />
-                ) : (
-                  <>
-                    <Ionicons name="flash-outline" size={14} color={colors.textPrimary} />
-                    <Text style={[styles.btnText, { color: colors.textPrimary }]}>Test Ping</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleSaveHost}
-                style={[styles.primaryActionBtn, { backgroundColor: colors.textPrimary }]}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="checkmark-sharp" size={15} color={colors.bgPrimary} />
-                <Text style={[styles.btnText, { color: colors.bgPrimary }]}>Simpan Perubahan</Text>
+                <View style={styles.rowLeft}>
+                  <View style={[styles.iconBox, { backgroundColor: 'rgba(0, 136, 204, 0.15)' }]}>
+                    <Ionicons name="settings-outline" size={17} color="#0088cc" />
+                  </View>
+                  <View style={styles.rowTextCol}>
+                    <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>
+                      Pengaturan Token & Chat ID Hermes
+                    </Text>
+                    <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
+                      {useSettingsStore.getState().telegramBotToken ? 'Bot terhubung & siap digunakan' : 'Klik untuk isi Bot Token'}
+                    </Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
-          </View>
+          ) : (
+            <View style={[styles.groupCard, { backgroundColor: colors.bgSurface, borderColor: colors.border, marginTop: 12 }]}>
+              {/* Server Backend Host */}
+              <View style={styles.formRow}>
+                <View style={styles.formRowHeader}>
+                  <View style={styles.formLabelGroup}>
+                    <View style={[styles.iconBoxMini, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7' }]}>
+                      <Ionicons name="server-outline" size={13} color={colors.textPrimary} />
+                    </View>
+                    <Text style={[styles.formLabelTitle, { color: colors.textPrimary }]}>Host Backend Server</Text>
+                  </View>
+                  <Text style={[styles.badgePort, { color: colors.textMuted }]}>PORT 8080</Text>
+                </View>
+                <TextInput
+                  value={inputServerUrl}
+                  onChangeText={setInputServerUrl}
+                  placeholder="http://192.168.1.6:8080"
+                  placeholderTextColor={colors.textMuted}
+                  style={[
+                    styles.textInputModern,
+                    {
+                      color: colors.textPrimary,
+                      borderColor: colors.border,
+                      backgroundColor: isDark ? '#0A0A0A' : '#FAFAFA',
+                    },
+                  ]}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              {/* Custom 9Router Host IP / Tunnel */}
+              <View style={styles.formRow}>
+                <View style={styles.formRowHeader}>
+                  <View style={styles.formLabelGroup}>
+                    <View style={[styles.iconBoxMini, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7' }]}>
+                      <Ionicons name="git-network-outline" size={13} color={colors.textPrimary} />
+                    </View>
+                    <Text style={[styles.formLabelTitle, { color: colors.textPrimary }]}>9Router Host / Tunnel URL</Text>
+                  </View>
+                  <View style={styles.portPingRow}>
+                    {pingResult && (
+                      <View
+                        style={[
+                          styles.pingBadge,
+                          {
+                            backgroundColor: pingResult.success
+                              ? isDark
+                                ? 'rgba(34, 197, 94, 0.15)'
+                                : '#DCFCE7'
+                              : isDark
+                              ? 'rgba(239, 68, 68, 0.15)'
+                              : '#FEE2E2',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.pingBadgeText,
+                            { color: pingResult.success ? '#22C55E' : '#EF4444' },
+                          ]}
+                        >
+                          {pingResult.text}
+                        </Text>
+                      </View>
+                    )}
+                    <Text style={[styles.badgePort, { color: colors.textMuted }]}>TUNNEL/20128</Text>
+                  </View>
+                </View>
+                <TextInput
+                  value={inputRouterHostUrl}
+                  onChangeText={setInputRouterHostUrl}
+                  placeholder="https://rurpq7a.abc-tunnel.us/v1"
+                  placeholderTextColor={colors.textMuted}
+                  style={[
+                    styles.textInputModern,
+                    {
+                      color: colors.textPrimary,
+                      borderColor: colors.border,
+                      backgroundColor: isDark ? '#0A0A0A' : '#FAFAFA',
+                    },
+                  ]}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              {/* Integrated Action Buttons */}
+              <View style={styles.btnRow}>
+                <TouchableOpacity
+                  onPress={handleTestPing}
+                  disabled={isTestingPing}
+                  style={[
+                    styles.secondaryActionBtn,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7',
+                    },
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  {isTestingPing ? (
+                    <ActivityIndicator size="small" color={colors.textPrimary} />
+                  ) : (
+                    <>
+                      <Ionicons name="flash-outline" size={14} color={colors.textPrimary} />
+                      <Text style={[styles.btnText, { color: colors.textPrimary }]}>Test Ping</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleSaveHost}
+                  style={[styles.primaryActionBtn, { backgroundColor: colors.textPrimary }]}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="checkmark-sharp" size={15} color={colors.bgPrimary} />
+                  <Text style={[styles.btnText, { color: colors.bgPrimary }]}>Simpan Perubahan</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {/* SECTION 2: AKUN & EKSTENSI */}
           <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
@@ -628,6 +768,11 @@ export default function SettingsScreen() {
         <SkillsManagerModal
           visible={showSkillsModal}
           onClose={() => setShowSkillsModal(false)}
+        />
+
+        <HermesTelegramModal
+          visible={showTelegramModal}
+          onClose={() => setShowTelegramModal(false)}
         />
 
         <RouterAlertModal

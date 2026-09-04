@@ -26,6 +26,7 @@ interface NoteEditorModalProps {
   onClose: () => void;
   onAIAction: (action: NoteAIAction, note: Note) => void;
   onMoveFolder: (note: Note) => void;
+  onSendTelegram?: (note: Note) => void;
 }
 
 export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
@@ -34,6 +35,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   onClose,
   onAIAction,
   onMoveFolder,
+  onSendTelegram,
 }) => {
   const { colors } = useThemeColors();
   const { notes, updateNote, deleteNote, togglePin, duplicateNote } = useNotesStore();
@@ -372,6 +374,9 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
             onTogglePin={() => togglePin(note.id)}
             onMoveFolder={() => onMoveFolder(note)}
             onDuplicate={() => duplicateNote(note.id)}
+            onSendTelegram={() => {
+              if (onSendTelegram) onSendTelegram(note);
+            }}
             onDelete={() => {
               deleteNote(note.id);
               onClose();

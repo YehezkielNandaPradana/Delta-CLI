@@ -3,6 +3,7 @@ import { useSettingsStore } from '../../store/useSettingsStore';
 import { embedded9Router } from '../router/embeddedRouterEngine';
 import { noteAgentBridge } from '../notes/noteAgentBridge';
 import { useReminderStore } from '../../store/useReminderStore';
+import { hermesTelegramService } from '../telegram/hermesTelegramService';
 
 export interface ChatResponse {
   output?: string;
@@ -86,7 +87,19 @@ export async function sendChatMessage(
 
   let result: ChatResponse;
 
-  if (connectionMode === 'cloud') {
+  if (connectionMode === 'telegram') {
+    // Mode Eksklusif Telegram: hanya menghubungi Telegram Hermes Bot
+    const tgRes = await hermesTelegramService.chatWithHermes(message);
+    if (tgRes.success) {
+      result = {
+        response: tgRes.response || 'Pesan terkirim ke Telegram Hermes Bot.',
+      };
+    } else {
+      result = {
+        error: tgRes.error || 'Gagal berkomunikasi dengan Telegram Hermes Bot.',
+      };
+    }
+  } else if (connectionMode === 'cloud') {
     const selectedModel = cloudModel || activeModel || 'AntigravityCombo';
     const activeAccount = getActiveAccount();
     result = await embedded9Router.routeCompletion(message, selectedModel, activeAccount);
@@ -108,6 +121,16 @@ export async function sendChatMessage(
     const processed = await processEmbeddedActions(rawText);
     if (result.response) result.response = processed;
     if (result.output) result.output = processed;
+  }
+
+  // Auto-forward to Telegram Hermes Bot if configured and enabled
+  const finalOutput = result.response || result.output || '';
+  const { telegramAutoForward, telegramBotToken, telegramChatId } = useSettingsStore.getState();
+  if (telegramAutoForward && telegramBotToken && telegramChatId && finalOutput && !result.error) {
+    hermesTelegramService.sendMessage(
+      `🤖 *Delta AI Response*\n\n_Prompt:_ ${message.slice(0, 100)}\n\n${finalOutput}`,
+      { parseMode: 'Markdown' }
+    ).catch(() => {});
   }
 
   return result;

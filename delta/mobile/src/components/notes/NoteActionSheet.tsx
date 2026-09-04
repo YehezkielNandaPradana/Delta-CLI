@@ -20,6 +20,7 @@ interface NoteActionSheetProps {
   onTogglePin: () => void;
   onMoveFolder: () => void;
   onDuplicate: () => void;
+  onSendTelegram?: () => void;
   onDelete: () => void;
 }
 
@@ -31,6 +32,7 @@ export const NoteActionSheet: React.FC<NoteActionSheetProps> = ({
   onTogglePin,
   onMoveFolder,
   onDuplicate,
+  onSendTelegram,
   onDelete,
 }) => {
   const { colors } = useThemeColors();
@@ -168,6 +170,21 @@ export const NoteActionSheet: React.FC<NoteActionSheetProps> = ({
                     Duplicate Note
                   </Text>
                 </TouchableOpacity>
+
+                {onSendTelegram && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      onClose();
+                      onSendTelegram();
+                    }}
+                    style={[styles.menuRow, { borderBottomColor: colors.border }]}
+                  >
+                    <Ionicons name="paper-plane-outline" size={16} color="#0088cc" />
+                    <Text style={[styles.menuRowText, { color: '#0088cc' }]}>
+                      Kirim ke Hermes Telegram Bot
+                    </Text>
+                  </TouchableOpacity>
+                )}
 
                 <TouchableOpacity
                   onPress={() => {

@@ -38,6 +38,11 @@ export interface SettingsState {
   activeAccountId: string;
   cloudModel: string;
 
+  // Telegram Hermes Bot Integration
+  telegramBotToken: string;
+  telegramChatId: string;
+  telegramAutoForward: boolean;
+
   // Actions
   setServerUrl: (url: string) => Promise<void>;
   setTunnelUrl: (url: string) => Promise<void>;
@@ -47,6 +52,9 @@ export interface SettingsState {
   setTheme: (theme: ThemeMode) => Promise<void>;
   setConnectionMode: (mode: ConnectionMode) => Promise<void>;
   setCloudModel: (model: string) => Promise<void>;
+  setTelegramBotToken: (token: string) => Promise<void>;
+  setTelegramChatId: (chatId: string) => Promise<void>;
+  setTelegramAutoForward: (enabled: boolean) => Promise<void>;
   addAccount: (account: Omit<AntigravityAccount, 'id'>) => Promise<string>;
   updateAccount: (id: string, updates: Partial<AntigravityAccount>) => Promise<void>;
   deleteAccount: (id: string) => Promise<void>;
@@ -69,6 +77,9 @@ const persistState = async (state: SettingsState) => {
       accounts: state.accounts,
       activeAccountId: state.activeAccountId,
       cloudModel: state.cloudModel,
+      telegramBotToken: state.telegramBotToken,
+      telegramChatId: state.telegramChatId,
+      telegramAutoForward: state.telegramAutoForward,
     };
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch (e) {
@@ -89,6 +100,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   accounts: [DEFAULT_9ROUTER_ACCOUNT],
   activeAccountId: DEFAULT_9ROUTER_ACCOUNT.id,
   cloudModel: DEFAULT_CLOUD_MODEL,
+
+  telegramBotToken: '',
+  telegramChatId: '',
+  telegramAutoForward: false,
 
   setServerUrl: async (url: string) => {
     const cleanUrl = url.trim().replace(/\/+$/, '');
@@ -130,6 +145,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setCloudModel: async (model: string) => {
     set({ cloudModel: model });
+    await persistState(get());
+  },
+
+  setTelegramBotToken: async (token: string) => {
+    set({ telegramBotToken: token.trim() });
+    await persistState(get());
+  },
+
+  setTelegramChatId: async (chatId: string) => {
+    set({ telegramChatId: chatId.trim() });
+    await persistState(get());
+  },
+
+  setTelegramAutoForward: async (enabled: boolean) => {
+    set({ telegramAutoForward: enabled });
     await persistState(get());
   },
 
@@ -201,6 +231,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           accounts: savedAccounts.length > 0 ? savedAccounts : [DEFAULT_9ROUTER_ACCOUNT],
           activeAccountId: parsed.activeAccountId || (savedAccounts[0]?.id || DEFAULT_9ROUTER_ACCOUNT.id),
           cloudModel: parsed.cloudModel || DEFAULT_CLOUD_MODEL,
+          telegramBotToken: parsed.telegramBotToken || '',
+          telegramChatId: parsed.telegramChatId || '',
+          telegramAutoForward: parsed.telegramAutoForward !== undefined ? parsed.telegramAutoForward : false,
           isLoaded: true,
         });
       } else {

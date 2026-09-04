@@ -1605,6 +1605,34 @@ Provide a structured, deep, highly technical plan formatted with clear Markdown 
 
         return {"status": "ok", "message": "VTuber settings updated successfully"}
 
+    # Camera Stream State
+    _latest_camera_frame: Optional[str] = None
+    _latest_camera_timestamp: float = 0.0
+    _camera_device_info: Dict[str, Any] = {}
+
+    def update_camera_frame(self, frame_b64: str, device: Optional[str] = None, timestamp: Optional[float] = None) -> Dict[str, Any]:
+        """Update live camera frame incoming from Delta Mobile."""
+        EngineBridge._latest_camera_frame = frame_b64
+        EngineBridge._latest_camera_timestamp = timestamp or time.time()
+        if device:
+            EngineBridge._camera_device_info = {"device": device, "last_seen": EngineBridge._latest_camera_timestamp}
+        return {"status": "ok", "timestamp": EngineBridge._latest_camera_timestamp}
+
+    def get_camera_status(self) -> Dict[str, Any]:
+        """Get live status of mobile camera feed."""
+        now = time.time()
+        is_live = (now - EngineBridge._latest_camera_timestamp) < 5.0 and EngineBridge._latest_camera_frame is not None
+        return {
+            "is_live": is_live,
+            "last_frame_age_sec": round(now - EngineBridge._latest_camera_timestamp, 2) if EngineBridge._latest_camera_timestamp > 0 else None,
+            "device": EngineBridge._camera_device_info.get("device", "iPhone / Mobile Device"),
+            "has_frame": EngineBridge._latest_camera_frame is not None
+        }
+
+    def get_latest_camera_frame(self) -> Optional[str]:
+        """Return base64 encoded latest frame string."""
+        return EngineBridge._latest_camera_frame
+
     @property
     def config(self) -> Any:
         if self.engine and hasattr(self.engine, "config"):

@@ -25,6 +25,8 @@ import { MoveFolderModal } from '../../src/components/notes/MoveFolderModal';
 import { NewItemSheet } from '../../src/components/notes/NewItemSheet';
 import { Note, NoteAIAction } from '../../src/types/notes';
 import { sendChatMessage } from '../../src/services/api/chatApi';
+import { hermesTelegramService } from '../../src/services/telegram/hermesTelegramService';
+import { useSettingsStore } from '../../src/store/useSettingsStore';
 
 export default function NotesScreen() {
   const router = useRouter();
@@ -72,6 +74,33 @@ export default function NotesScreen() {
     const newNote = await createNote();
     setSelectedNoteId(newNote.id);
     setEditorVisible(true);
+  };
+
+  const handleSendNoteToTelegram = async (note: Note) => {
+    const { telegramBotToken, telegramChatId } = useSettingsStore.getState();
+    if (!telegramBotToken || !telegramChatId) {
+      Alert.alert(
+        'Telegram Belum Dikonfigurasi',
+        'Silakan masukkan Bot Token & Chat ID di menu Settings > Hermes Bot Telegram terlebih dahulu.'
+      );
+      return;
+    }
+
+    try {
+      const res = await hermesTelegramService.sendNote({
+        title: note.title || 'Untitled Note',
+        content: note.content || '',
+        tags: note.tags,
+      });
+
+      if (res.success) {
+        Alert.alert('Terkirim ke Telegram', `Catatan "${note.title}" berhasil dikirim ke Hermes Bot.`);
+      } else {
+        Alert.alert('Gagal Mengirim Catatan', res.error || 'Terjadi kesalahan.');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Gagal mengirim catatan ke Telegram.');
+    }
   };
 
   const handleAIAction = async (action: NoteAIAction, note: Note) => {
@@ -329,6 +358,7 @@ export default function NotesScreen() {
         }}
         onAIAction={handleAIAction}
         onMoveFolder={(note) => setMoveFolderNote(note)}
+        onSendTelegram={handleSendNoteToTelegram}
       />
 
       {/* Note Action Sheet (Long press / More menu) */}
@@ -347,6 +377,9 @@ export default function NotesScreen() {
         }}
         onDuplicate={() => {
           if (actionSheetNote) duplicateNote(actionSheetNote.id);
+        }}
+        onSendTelegram={() => {
+          if (actionSheetNote) handleSendNoteToTelegram(actionSheetNote);
         }}
         onDelete={() => {
           if (actionSheetNote) deleteNote(actionSheetNote.id);
