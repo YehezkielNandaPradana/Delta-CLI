@@ -542,8 +542,8 @@
                         <button onclick="navigate('#/execution')" class="text-xs text-zinc-400 hover:text-zinc-200 font-mono">← Back to Chat</button>
                     </div>
                     <div class="flex-1 rounded-xl bg-[#111115] border border-white/[0.08] flex flex-col items-center justify-center relative overflow-hidden p-3">
-                        <img id="live-camera-feed" class="max-h-full max-w-full rounded-lg object-contain border border-white/[0.05] shadow-2xl" src="/api/camera/frame" alt="Mobile Optical Feed" onerror="handleCameraFeedError()" />
-                        <div id="cam-offline-overlay" class="absolute inset-0 bg-[#0c0c10]/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3 hidden">
+                        <img id="live-camera-feed" class="w-full h-full max-h-[500px] rounded-lg object-contain border border-white/[0.05] shadow-2xl bg-black" src="/api/camera/frame" alt="Mobile Optical Feed" onerror="handleCameraFeedError()" />
+                        <div id="cam-offline-overlay" style="display: none;" class="absolute inset-0 bg-[#0c0c10]/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3">
                             <div class="w-12 h-12 rounded-full bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-xl">
                                 📹
                             </div>
@@ -1217,11 +1217,12 @@
                     if (d.is_live || d.has_frame) {
                         if (badge) { badge.innerText = d.is_mobile_connected ? 'LIVE' : 'AUTO LIVE'; badge.className = 'text-[9px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-400'; }
                         if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
-                        if (overlay) overlay.classList.add('hidden');
+                        // Jangan sembunyikan gambar, pastikan overlay offline tertutup jika ada frame
+                        if (overlay) overlay.style.display = 'none';
                     } else {
                         if (badge) { badge.innerText = 'OFFLINE'; badge.className = 'text-[9px] px-1.5 py-0.5 rounded font-mono bg-zinc-800 text-zinc-400'; }
                         if (dot) dot.className = 'w-2 h-2 rounded-full bg-zinc-600';
-                        if (overlay) overlay.classList.remove('hidden');
+                        if (overlay && !d.has_frame) overlay.style.display = 'flex';
                     }
                 }).catch(() => {});
         }
@@ -1238,7 +1239,7 @@
             // Re-check status before showing overlay, don't flash offline if feed refreshed
             fetch('/api/camera/status').then(r => r.json()).then(d => {
                 const overlay = document.getElementById('cam-offline-overlay');
-                if (overlay && !d.is_live && !d.has_frame) overlay.classList.remove('hidden');
+                if (overlay && !d.is_live && !d.has_frame) overlay.style.display = 'flex';
             }).catch(() => {});
         }
 

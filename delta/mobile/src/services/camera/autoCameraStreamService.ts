@@ -22,8 +22,8 @@ class AutoCameraStreamService {
     this.streamInterval = setInterval(async () => {
       try {
         const state = useSettingsStore.getState();
-        // Gunakan tunnelUrl publik (Cloudflare/Ngrok/9Router) terlebih dahulu agar HP di mana pun (data seluler/WiFi lain) bisa terhubung ke web
-        let serverUrl = state.tunnelUrl || state.serverUrl || 'http://192.168.1.6:8000';
+        // Server URL tujuan: gunakan serverUrl lokal (http://192.168.1.6:8000) atau tunnel jika diset
+        let serverUrl = state.serverUrl || 'http://192.168.1.6:8000';
         serverUrl = serverUrl.replace(/\/v1\/?$/, '').replace(/\/+$/, '');
 
         const timeStr = new Date().toISOString();
