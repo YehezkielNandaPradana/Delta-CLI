@@ -193,23 +193,26 @@ class DeltaRequestHandler(SimpleHTTPRequestHandler):
                 return
 
             if clean_path == "/api/camera/frame":
-                # Return current JPEG frame
+                # Return current frame (SVG or JPEG)
                 import base64
-                frame_b64 = self.bridge.get_latest_camera_frame() if self.bridge else None
-                if not frame_b64:
+                frame_raw = self.bridge.get_latest_camera_frame() if self.bridge else None
+                if not frame_raw:
                     self.send_response(204)
                     self._send_cors_headers()
                     self.end_headers()
                     return
 
-                # Clean base64 header if present (e.g. data:image/jpeg;base64,...)
-                if "," in frame_b64:
-                    frame_b64 = frame_b64.split(",", 1)[1]
+                mime_type = "image/jpeg"
+                if "image/svg+xml" in frame_raw or "<svg" in frame_raw:
+                    mime_type = "image/svg+xml"
+
+                if "," in frame_raw:
+                    frame_raw = frame_raw.split(",", 1)[1]
 
                 try:
-                    img_bytes = base64.b64decode(frame_b64)
+                    img_bytes = base64.b64decode(frame_raw)
                     self.send_response(200)
-                    self.send_header("Content-Type", "image/jpeg")
+                    self.send_header("Content-Type", mime_type)
                     self.send_header("Content-Length", str(len(img_bytes)))
                     self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
                     self._send_cors_headers()
