@@ -50,12 +50,15 @@ jobs:
             exit 1
           }
           echo "=== LOCATING GENERATED APKS ==="
-          find app/build/outputs -type f -name "*.apk" || true
+          pwd
+          find . -name "*.apk"
 
       - name: Rename & Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Delta-Agent-APK
-          path: delta/mobile/android/app/build/outputs/apk/**/*.apk
-          if-no-files-found: error
+          path: |
+            delta/mobile/android/app/build/outputs/apk/debug/*.apk
+            delta/mobile/android/app/build/outputs/apk/**/*.apk
+            delta/mobile/**/*.apk
           retention-days: 14
