@@ -31,15 +31,18 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
 }) => {
   const { colors, isDark } = useThemeColors();
 
-  // Wave / Pulse animations for 3 dots
+  // Wave / Pulse animations for 3 dots in header
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
   const orbScale = useRef(new Animated.Value(1)).current;
   const shimmerAnim = useRef(new Animated.Value(0.4)).current;
 
-  // Toggle expandable tree state
-  const [showTree, setShowTree] = useState(false);
+  // Running node pulse halo animation (Hermes Workspace style)
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  // Toggle expandable tree state - default true so user sees live execution tree
+  const [showTree, setShowTree] = useState(true);
 
   useEffect(() => {
     // Staggered bounce for wave dots
@@ -102,11 +105,30 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
       ])
     );
 
+    // Running pulse halo loop
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1100,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0,
+          duration: 1100,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
     anim1.start();
     anim2.start();
     anim3.start();
     orbPulse.start();
     shimmer.start();
+    pulseLoop.start();
 
     return () => {
       anim1.stop();
@@ -114,6 +136,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
       anim3.stop();
       orbPulse.stop();
       shimmer.stop();
+      pulseLoop.stop();
     };
   }, []);
 
@@ -124,6 +147,18 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
   };
 
   const realSteps = steps.filter((s) => s.kind !== 'root');
+  const runningCount = realSteps.filter((s) => s.status === 'running').length;
+  const doneCount = realSteps.filter((s) => s.status === 'completed').length;
+
+  // Interpolated halo scale & opacity for active running items
+  const haloScale = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 2.2],
+  });
+  const haloOpacity = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.65, 0],
+  });
 
   return (
     <View style={styles.wrapper}>
@@ -161,6 +196,23 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
           <Text style={[styles.statusText, { color: colors.textPrimary }]} numberOfLines={1}>
             {statusText}
           </Text>
+
+          {/* Hermes Workspace Counter Tag (e.g. 1 running • 2 done) */}
+          {realSteps.length > 0 ? (
+            <View
+              style={[
+                styles.headerCounterPill,
+                {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.headerCounterText, { color: colors.textSecondary }]}>
+                {runningCount > 0 ? `${runningCount} running • ` : ''}{doneCount} done
+              </Text>
+            </View>
+          ) : null}
 
           {/* 3-Dot Fluid Liquid Wave Animation */}
           <View style={styles.dotsRow}>
@@ -201,7 +253,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
             name={showTree ? 'chevron-up' : 'chevron-down'}
             size={14}
             color={colors.textMuted}
-            style={{ marginLeft: 6 }}
+            style={{ marginLeft: 4 }}
           />
         </TouchableOpacity>
 
@@ -224,21 +276,30 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
               </View>
             </View>
 
-            {/* Real Dynamic Sub-Steps Branching */}
+            {/* Real Dynamic Sub-Steps Branching (Hermes Workspace live items) */}
             {realSteps.length > 0 ? (
               realSteps.map((step, idx) => {
                 const isLast = idx === realSteps.length - 1;
                 const isRunning = step.status === 'running';
+                const isCompleted = step.status === 'completed';
                 const isFailed = step.status === 'failed';
 
                 let stepTitle = step.label || step.id;
                 let stepSub = '';
                 if (step.command) {
                   stepTitle = `$ ${step.command}`;
+                } else if (step.tool_name?.includes('browser') || step.tool_name?.includes('chromium')) {
+                  stepTitle = `browser: ${step.label || 'navigating...'}`;
+                } else if (step.tool_name?.includes('search')) {
+                  stepTitle = `search: ${step.label || 'query...'}`;
                 } else if (step.file_path) {
                   const fname = step.file_path.split(/[/\\]/).pop();
-                  stepTitle = `${step.tool_name || 'Tool'}: ${fname}`;
+                  stepTitle = `${step.tool_name || 'file'}: ${fname}`;
                   stepSub = step.file_path;
+                }
+
+                if (step.output_preview && !stepSub) {
+                  stepSub = step.output_preview.split('\n')[0].slice(0, 80);
                 }
 
                 const dur = formatDuration(step.duration_ms);
@@ -246,18 +307,56 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
                 return (
                   <View key={step.id || idx.toString()} style={styles.treeNode}>
                     <View style={styles.nodeBranch}>
-                      <View
-                        style={[
-                          styles.subDot,
-                          {
-                            backgroundColor: isRunning
-                              ? colors.textPrimary
-                              : isFailed
-                              ? colors.error
-                              : colors.textMuted,
-                          },
-                        ]}
-                      />
+                      {/* Active running halo pulse */}
+                      {isRunning ? (
+                        <View style={styles.haloContainer}>
+                          <Animated.View
+                            style={[
+                              styles.runningHalo,
+                              {
+                                backgroundColor: colors.textPrimary,
+                                transform: [{ scale: haloScale }],
+                                opacity: haloOpacity,
+                              },
+                            ]}
+                          />
+                          <View
+                            style={[
+                              styles.subDot,
+                              {
+                                backgroundColor: colors.textPrimary,
+                                marginTop: 0,
+                              },
+                            ]}
+                          />
+                        </View>
+                      ) : isCompleted ? (
+                        <View
+                          style={[
+                            styles.subDotDone,
+                            {
+                              backgroundColor: isDark ? 'rgba(0, 217, 146, 0.2)' : 'rgba(5, 150, 105, 0.15)',
+                              borderColor: isDark ? '#00D992' : '#059669',
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="checkmark"
+                            size={8}
+                            color={isDark ? '#00D992' : '#059669'}
+                          />
+                        </View>
+                      ) : (
+                        <View
+                          style={[
+                            styles.subDot,
+                            {
+                              backgroundColor: isFailed ? colors.error : colors.textMuted,
+                            },
+                          ]}
+                        />
+                      )}
+
                       {!isLast && (
                         <View style={[styles.verticalLine, { backgroundColor: colors.border }]} />
                       )}
@@ -277,11 +376,59 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
                         >
                           {stepTitle}
                         </Text>
-                        {dur ? (
-                          <Text style={[styles.nodeDuration, { color: colors.textMuted }]}>
-                            {dur}
-                          </Text>
-                        ) : null}
+
+                        {/* Status Pills (running... / done / error) */}
+                        <View style={styles.statusPillGroup}>
+                          {isRunning ? (
+                            <View
+                              style={[
+                                styles.pillBadge,
+                                { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' },
+                              ]}
+                            >
+                              <Text style={[styles.pillText, { color: colors.textPrimary }]}>
+                                running...
+                              </Text>
+                            </View>
+                          ) : isCompleted ? (
+                            <View
+                              style={[
+                                styles.pillBadge,
+                                {
+                                  backgroundColor: isDark
+                                    ? 'rgba(0, 217, 146, 0.12)'
+                                    : 'rgba(5, 150, 105, 0.1)',
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.pillText,
+                                  { color: isDark ? '#00D992' : '#059669' },
+                                ]}
+                              >
+                                done
+                              </Text>
+                            </View>
+                          ) : isFailed ? (
+                            <View
+                              style={[
+                                styles.pillBadge,
+                                { backgroundColor: 'rgba(239, 68, 68, 0.12)' },
+                              ]}
+                            >
+                              <Text style={[styles.pillText, { color: colors.error }]}>
+                                failed
+                              </Text>
+                            </View>
+                          ) : null}
+
+                          {dur ? (
+                            <Text style={[styles.nodeDuration, { color: colors.textMuted }]}>
+                              {dur}
+                            </Text>
+                          ) : null}
+                        </View>
                       </View>
 
                       {stepSub ? (
@@ -294,15 +441,39 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
                 );
               })
             ) : (
-              /* Live Realtime Thinking Branch Node */
+              /* Live Realtime Thinking Branch Node (Unchanged from original screenshot) */
               <View style={styles.treeNode}>
                 <View style={styles.nodeBranch}>
-                  <View style={[styles.subDot, { backgroundColor: colors.textPrimary }]} />
+                  <View style={styles.haloContainer}>
+                    <Animated.View
+                      style={[
+                        styles.runningHalo,
+                        {
+                          backgroundColor: colors.textPrimary,
+                          transform: [{ scale: haloScale }],
+                          opacity: haloOpacity,
+                        },
+                      ]}
+                    />
+                    <View style={[styles.subDot, { backgroundColor: colors.textPrimary, marginTop: 0 }]} />
+                  </View>
                 </View>
                 <View style={styles.nodeBody}>
-                  <Text style={[styles.nodeStepTitle, { color: colors.textPrimary, fontWeight: '700' }]}>
-                    Reasoning & Synthesizing Response...
-                  </Text>
+                  <View style={styles.nodeTitleRow}>
+                    <Text style={[styles.nodeStepTitle, { color: colors.textPrimary, fontWeight: '700' }]}>
+                      Reasoning & Synthesizing Response...
+                    </Text>
+                    <View
+                      style={[
+                        styles.pillBadge,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' },
+                      ]}
+                    >
+                      <Text style={[styles.pillText, { color: colors.textPrimary }]}>
+                        running...
+                      </Text>
+                    </View>
+                  </View>
                   <Text style={[styles.nodeSub, { color: colors.textMuted }]}>
                     Active model streaming response tokens
                   </Text>
@@ -358,6 +529,18 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     flex: 1,
   },
+  headerCounterPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginRight: 4,
+  },
+  headerCounterText: {
+    fontSize: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontWeight: '500',
+  },
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -390,11 +573,33 @@ const styles = StyleSheet.create({
     borderRadius: 3.5,
     marginTop: 4,
   },
+  haloContainer: {
+    width: 14,
+    height: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  runningHalo: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
   subDot: {
     width: 5,
     height: 5,
     borderRadius: 2.5,
     marginTop: 5,
+  },
+  subDotDone: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 3,
   },
   verticalLine: {
     width: 1.5,
@@ -421,6 +626,22 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     flex: 1,
     marginRight: 6,
+  },
+  statusPillGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  pillBadge: {
+    paddingHorizontal: 5.5,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  pillText: {
+    fontSize: 9.5,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   nodeSub: {
     fontSize: 10.5,

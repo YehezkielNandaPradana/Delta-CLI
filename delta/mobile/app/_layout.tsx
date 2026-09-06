@@ -49,9 +49,107 @@ export default function RootLayout() {
     }
 
     const unsubscribe = sseClient.subscribe((event) => {
+      // 1. Direct AgentStep payload from agent_step_*
       if (event.type.startsWith('agent_step_') && event.payload?.step) {
         updateStep(event.payload.step);
       }
+
+      // 2. Realtime Tool Start (npm/pip install, web search, browser, file, etc.)
+      if (event.type === 'tool_start' && event.tool) {
+        const inputData = event.input || {};
+        let label = event.tool;
+        const cmd = inputData.command || event.command;
+        const filePath = inputData.path || inputData.file_path || event.path;
+        let kind: any = 'tool';
+
+        if (event.tool === 'execute_command' && cmd) {
+          label = `$ ${cmd}`;
+          kind = 'command';
+        } else if (event.tool.includes('browser') || event.tool.includes('chromium')) {
+          label = `browser: ${inputData.url || inputData.action || 'navigating...'}`;
+        } else if (event.tool.includes('search')) {
+          label = `search: "${inputData.query || ''}"`;
+          kind = 'search';
+        } else if (filePath) {
+          const fname = filePath.split(/[/\\]/).pop();
+          label = `${event.tool}: ${fname}`;
+        }
+
+        const stepId = event.step_id || `tool_${event.tool}_${Date.now()}`;
+        updateStep({
+          id: stepId,
+          task_id: event.task_id || 'root',
+          execution_id: event.execution_id || 'exec',
+          kind,
+          label,
+          status: 'running',
+          tool_name: event.tool,
+          command: cmd,
+          file_path: filePath,
+          created_at: event.timestamp || Date.now() / 1000,
+          started_at: event.timestamp || Date.now() / 1000,
+        });
+      }
+
+      // 3. Realtime Tool Result
+      if (event.type === 'tool_result' && event.tool) {
+        const activeSteps = useChatStore.getState().activeSteps;
+        const matching = Object.values(activeSteps).reverse().find(
+          (s) => s.tool_name === event.tool && s.status === 'running'
+        );
+        const stepId = matching?.id || event.step_id || `tool_${event.tool}_${Date.now()}`;
+        const started = matching?.started_at ? matching.started_at * 1000 : undefined;
+        const dur = event.duration_ms || (started ? Date.now() - started : undefined);
+
+        updateStep({
+          id: stepId,
+          task_id: event.task_id || 'root',
+          execution_id: event.execution_id || 'exec',
+          kind: matching?.kind || 'tool',
+          label: matching?.label || event.tool,
+          command: matching?.command,
+          file_path: matching?.file_path,
+          tool_name: event.tool,
+          status: event.success !== false ? 'completed' : 'failed',
+          duration_ms: dur,
+          completed_at: Date.now() / 1000,
+          output_preview: typeof event.output === 'string' ? event.output : undefined,
+        });
+      }
+
+      // 4. Command Lifecycle
+      if (event.type === 'command_start' && event.command) {
+        const stepId = event.step_id || `cmd_${Date.now()}`;
+        updateStep({
+          id: stepId,
+          task_id: event.task_id || 'root',
+          execution_id: event.execution_id || 'exec',
+          kind: 'command',
+          label: `$ ${event.command}`,
+          command: event.command,
+          status: 'running',
+          created_at: event.timestamp || Date.now() / 1000,
+          started_at: event.timestamp || Date.now() / 1000,
+        });
+      } else if (event.type === 'command_completed' && event.command) {
+        const activeSteps = useChatStore.getState().activeSteps;
+        const matching = Object.values(activeSteps).reverse().find(
+          (s) => s.command === event.command && s.status === 'running'
+        );
+        const stepId = matching?.id || event.step_id || `cmd_${Date.now()}`;
+        updateStep({
+          id: stepId,
+          task_id: event.task_id || 'root',
+          execution_id: event.execution_id || 'exec',
+          kind: 'command',
+          label: `$ ${event.command}`,
+          command: event.command,
+          status: event.exit_code === 0 ? 'completed' : 'failed',
+          duration_ms: matching?.started_at ? Date.now() - matching.started_at * 1000 : undefined,
+          completed_at: Date.now() / 1000,
+        });
+      }
+
       if (event.status_text) {
         setActiveStatusText(event.status_text);
       }
