@@ -9,7 +9,7 @@
 import { Platform } from 'react-native';
 import { AntigravityAccount } from '../../types/cloud';
 import { ChatResponse } from '../api/chatApi';
-import { DELTA_SYSTEM_PROMPT, KNOWN_GOOGLE_MODELS } from '../api/directCloudClient';
+import { DELTA_SYSTEM_PROMPT, NAZZA_SYSTEM_PROMPT, KNOWN_GOOGLE_MODELS } from '../api/directCloudClient';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { useSkillsStore } from '../../store/useSkillsStore';
 
@@ -242,10 +242,15 @@ export class Embedded9Router {
     const cleanBaseUrl = (baseUrl || 'http://127.0.0.1:20128/v1').replace(/\/+$/, '');
     const url = cleanBaseUrl.endsWith('/v1') ? `${cleanBaseUrl}/chat/completions` : `${cleanBaseUrl}/v1/chat/completions`;
 
+    const activeAgent = useSettingsStore.getState().activeAgent || 'nazza';
+    const effectiveSystemPrompt = activeAgent === 'nazza' ? NAZZA_SYSTEM_PROMPT : DELTA_SYSTEM_PROMPT;
+    const dynamicSkillContext = useSkillsStore.getState().getActiveSkillPrompts(message);
+    const fullSystemPrompt = `${effectiveSystemPrompt}${dynamicSkillContext}`;
+
     const payload = {
-      model: modelName || 'ag/gemini-3.7-flash-high',
+      model: modelName || (activeAgent === 'nazza' ? 'AntigravityCombo' : 'ag/gemini-3.7-flash-high'),
       messages: [
-        { role: 'system', content: DELTA_SYSTEM_PROMPT },
+        { role: 'system', content: fullSystemPrompt },
         { role: 'user', content: message },
       ],
       temperature: 0.7,

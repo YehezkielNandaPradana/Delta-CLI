@@ -10,3 +10,6 @@ export interface AntigravityAccount {
 }
 
 export type ConnectionMode = 'cloud' | 'local' | 'tunnel' | 'telegram';
+
+export type AgentId = 'nazza' | 'delta';
+

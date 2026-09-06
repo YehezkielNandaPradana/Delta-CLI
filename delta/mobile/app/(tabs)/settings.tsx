@@ -27,8 +27,9 @@ import { AntigravityAccount } from '../../src/types/cloud';
 import { useThemeColors } from '../../src/theme/theme';
 
 const CLOUD_MODEL_PRESETS = [
-  { name: 'ag/gemini-3.7-flash-high', description: 'Antigravity Dynamic Router Pipeline', tag: 'ROUTER' },
+  { name: 'AntigravityCombo', description: 'Nazza Agent Hybrid Executor (ThinkPad)', tag: 'NAZZA' },
   { name: 'ag/gemini-3.8-flash-high', description: 'Next-Gen Ultra Fast 3.8 Reasoning', tag: 'TURBO' },
+  { name: 'ag/gemini-3.7-flash-high', description: 'Antigravity Dynamic Router Pipeline', tag: 'ROUTER' },
   { name: 'gemini-1.5-pro', description: 'Deep Cybersecurity Reasoning & Analysis', tag: 'PRO' },
   { name: 'gemini-1.5-flash', description: 'High Stability & Generous Quota', tag: 'FREE' },
 ];
@@ -42,12 +43,14 @@ export default function SettingsScreen() {
     theme,
     connectionMode,
     cloudModel,
+    activeAgent,
     setServerUrl,
     setRouterHostUrl,
     setHapticEnabled,
     setTheme,
     setConnectionMode,
     setCloudModel,
+    setActiveAgent,
     addAccount,
     updateAccount,
     getActiveAccount,
@@ -111,6 +114,21 @@ export default function SettingsScreen() {
       Haptics.selectionAsync().catch(() => {});
     }
     setCloudModel(modelName);
+  };
+
+  const handleSelectAgent = async (agent: 'nazza' | 'delta') => {
+    if (hapticEnabled) {
+      Haptics.selectionAsync().catch(() => {});
+    }
+    await setActiveAgent(agent);
+    if (agent === 'nazza') {
+      await setCloudModel('AntigravityCombo');
+    } else {
+      await setCloudModel('ag/gemini-3.8-flash-high');
+    }
+    if (connectionMode !== 'cloud') {
+      await setConnectionMode('cloud');
+    }
   };
 
   const handleSaveAccount = async (accData: Omit<AntigravityAccount, 'id'>, editId?: string) => {
@@ -467,6 +485,113 @@ export default function SettingsScreen() {
             </View>
           )}
 
+          {/* SECTION: PILIHAN AGEN 9ROUTER (DELTA & NAZZA) */}
+          <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
+            PILIHAN AGEN 9ROUTER (RESPONSE ENGINE)
+          </Text>
+
+          <View style={[styles.groupCard, { backgroundColor: colors.bgSurface, borderColor: colors.border }]}>
+            {/* Opsi 1: Nazza (ThinkPad PC) */}
+            <TouchableOpacity
+              onPress={() => handleSelectAgent('nazza')}
+              style={[
+                styles.clickableRow,
+                activeAgent === 'nazza' && {
+                  backgroundColor: isDark ? 'rgba(0, 136, 204, 0.1)' : 'rgba(0, 136, 204, 0.06)',
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <View
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: activeAgent === 'nazza' ? '#0088cc' : (isDark ? '#1C1C1E' : '#F2F2F7') },
+                  ]}
+                >
+                  <Ionicons
+                    name="laptop-outline"
+                    size={17}
+                    color={activeAgent === 'nazza' ? '#ffffff' : colors.textPrimary}
+                  />
+                </View>
+                <View style={styles.rowTextCol}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.rowTitle, { color: colors.textPrimary, fontWeight: activeAgent === 'nazza' ? '700' : '600' }]}>
+                      Nazza (ThinkPad PC)
+                    </Text>
+                    {activeAgent === 'nazza' && (
+                      <View style={[styles.presetTagBadge, { backgroundColor: 'rgba(0, 136, 204, 0.2)' }]}>
+                        <Text style={[styles.presetTagText, { color: '#0088cc' }]}>
+                          AKTIF
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
+                    AntigravityCombo • Eksekutor Laptop Windows 11 via 9Router
+                  </Text>
+                </View>
+              </View>
+              <Ionicons
+                name={activeAgent === 'nazza' ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={activeAgent === 'nazza' ? '#0088cc' : colors.textMuted}
+              />
+            </TouchableOpacity>
+
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            {/* Opsi 2: Delta (HP Moto g45) */}
+            <TouchableOpacity
+              onPress={() => handleSelectAgent('delta')}
+              style={[
+                styles.clickableRow,
+                activeAgent === 'delta' && {
+                  backgroundColor: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.06)',
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <View
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: activeAgent === 'delta' ? '#22C55E' : (isDark ? '#1C1C1E' : '#F2F2F7') },
+                  ]}
+                >
+                  <Ionicons
+                    name="phone-portrait-outline"
+                    size={17}
+                    color={activeAgent === 'delta' ? '#ffffff' : colors.textPrimary}
+                  />
+                </View>
+                <View style={styles.rowTextCol}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={[styles.rowTitle, { color: colors.textPrimary, fontWeight: activeAgent === 'delta' ? '700' : '600' }]}>
+                      Delta (HP Moto g45)
+                    </Text>
+                    {activeAgent === 'delta' && (
+                      <View style={[styles.presetTagBadge, { backgroundColor: 'rgba(34, 197, 94, 0.2)' }]}>
+                        <Text style={[styles.presetTagText, { color: '#22C55E' }]}>
+                          AKTIF
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>
+                    Gemini 3.8 Flash • Logika & Asisten Mobile via 9Router
+                  </Text>
+                </View>
+              </View>
+              <Ionicons
+                name={activeAgent === 'delta' ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={activeAgent === 'delta' ? '#22C55E' : colors.textMuted}
+              />
+            </TouchableOpacity>
+          </View>
+
           {/* SECTION 2: AKUN & EKSTENSI */}
           <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>
             AKUN & EKSTENSI
@@ -744,7 +869,7 @@ export default function SettingsScreen() {
             {/* Version */}
             <View style={styles.rowItem}>
               <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>Versi Aplikasi</Text>
-              <Text style={[styles.rowValueMuted, { color: colors.textMuted }]}>1.0.0 (Build 2026)</Text>
+              <Text style={[styles.rowValueMuted, { color: colors.textMuted }]}>v1.1.0 (9Router Nazza)</Text>
             </View>
 
             <View style={[styles.divider, { backgroundColor: colors.border }]} />

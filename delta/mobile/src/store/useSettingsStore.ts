@@ -1,15 +1,15 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { AntigravityAccount, ConnectionMode } from '../types/cloud';
+import { AntigravityAccount, ConnectionMode, AgentId } from '../types/cloud';
 
 const STORAGE_KEY = '@delta_settings';
 
 // Sensible defaults based on execution platform
 const DEFAULT_HOST = Platform.OS === 'android' ? 'http://192.168.1.6:8000' : 'http://localhost:8000';
 const DEFAULT_ROUTER_HOST = 'https://rurpq7a.abc-tunnel.us/v1';
-const DEFAULT_9ROUTER_KEY = 'sk-13295da0418e0160-d4rojh-3ca28d24';
-const DEFAULT_CLOUD_MODEL = 'ag/gemini-3.7-flash-high';
+const DEFAULT_9ROUTER_KEY = '«redacted:sk-…»';
+const DEFAULT_CLOUD_MODEL = 'AntigravityCombo';
 
 const DEFAULT_9ROUTER_ACCOUNT: AntigravityAccount = {
   id: 'acc_9router_default',
@@ -37,6 +37,7 @@ export interface SettingsState {
   accounts: AntigravityAccount[];
   activeAccountId: string;
   cloudModel: string;
+  activeAgent: AgentId;
 
   // Telegram Hermes Bot Integration
   telegramBotToken: string;
@@ -52,6 +53,7 @@ export interface SettingsState {
   setTheme: (theme: ThemeMode) => Promise<void>;
   setConnectionMode: (mode: ConnectionMode) => Promise<void>;
   setCloudModel: (model: string) => Promise<void>;
+  setActiveAgent: (agent: AgentId) => Promise<void>;
   setTelegramBotToken: (token: string) => Promise<void>;
   setTelegramChatId: (chatId: string) => Promise<void>;
   setTelegramAutoForward: (enabled: boolean) => Promise<void>;
@@ -77,6 +79,7 @@ const persistState = async (state: SettingsState) => {
       accounts: state.accounts,
       activeAccountId: state.activeAccountId,
       cloudModel: state.cloudModel,
+      activeAgent: state.activeAgent,
       telegramBotToken: state.telegramBotToken,
       telegramChatId: state.telegramChatId,
       telegramAutoForward: state.telegramAutoForward,
@@ -100,6 +103,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   accounts: [DEFAULT_9ROUTER_ACCOUNT],
   activeAccountId: DEFAULT_9ROUTER_ACCOUNT.id,
   cloudModel: DEFAULT_CLOUD_MODEL,
+  activeAgent: 'nazza',
 
   telegramBotToken: '',
   telegramChatId: '',
@@ -145,6 +149,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setCloudModel: async (model: string) => {
     set({ cloudModel: model });
+    await persistState(get());
+  },
+
+  setActiveAgent: async (agent: AgentId) => {
+    set({ activeAgent: agent });
     await persistState(get());
   },
 
@@ -231,6 +240,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           accounts: savedAccounts.length > 0 ? savedAccounts : [DEFAULT_9ROUTER_ACCOUNT],
           activeAccountId: parsed.activeAccountId || (savedAccounts[0]?.id || DEFAULT_9ROUTER_ACCOUNT.id),
           cloudModel: parsed.cloudModel || DEFAULT_CLOUD_MODEL,
+          activeAgent: (parsed.activeAgent === 'delta' || parsed.activeAgent === 'nazza') ? parsed.activeAgent : 'nazza',
           telegramBotToken: parsed.telegramBotToken || '',
           telegramChatId: parsed.telegramChatId || '',
           telegramAutoForward: parsed.telegramAutoForward !== undefined ? parsed.telegramAutoForward : false,

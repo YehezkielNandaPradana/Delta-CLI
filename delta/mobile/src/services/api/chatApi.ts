@@ -83,7 +83,7 @@ export async function sendChatMessage(
   message: string,
   executionId?: string
 ): Promise<ChatResponse> {
-  const { connectionMode, cloudModel, activeModel, getActiveAccount } = useSettingsStore.getState();
+  const { connectionMode, cloudModel, activeModel, getActiveAccount, activeAgent } = useSettingsStore.getState();
 
   let result: ChatResponse;
 
@@ -100,7 +100,8 @@ export async function sendChatMessage(
       };
     }
   } else if (connectionMode === 'cloud') {
-    const selectedModel = cloudModel || activeModel || 'AntigravityCombo';
+    const defaultModel = activeAgent === 'nazza' ? 'AntigravityCombo' : 'ag/gemini-3.7-flash-high';
+    const selectedModel = cloudModel || activeModel || defaultModel;
     const activeAccount = getActiveAccount();
     result = await embedded9Router.routeCompletion(message, selectedModel, activeAccount);
   } else {
