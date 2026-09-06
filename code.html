@@ -3,682 +3,455 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Delta CLI — Autonomous Cyber Security Workspace</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
-    
-    <script id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              background: "#09090B",
-              surface: "#0F1115",
-              "surface-panel": "#121418",
-              "surface-card": "#16191E",
-              "surface-popover": "#1C1F26",
-              "surface-active": "#222630",
-              outline: "#262A32",
-              "outline-subtle": "rgba(255, 255, 255, 0.07)",
-              "outline-active": "#3A404D",
-              "on-background": "#EDEDED",
-              "on-surface": "#E1E4EA",
-              "on-surface-variant": "#8B929E",
-              "on-surface-muted": "#525866",
-              primary: "#00D992",
-              "primary-dim": "rgba(0, 217, 146, 0.12)",
-              "primary-glow": "rgba(0, 217, 146, 0.25)",
-              secondary: "#2CCBEE",
-              "secondary-dim": "rgba(44, 203, 238, 0.12)",
-              warning: "#F59E0B",
-              "warning-dim": "rgba(245, 158, 11, 0.12)",
-              error: "#EF4444",
-              "error-dim": "rgba(239, 68, 68, 0.12)"
-            },
-            fontFamily: {
-              sans: ["Geist", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
-              mono: ["JetBrains Mono", "monospace"]
-            },
-            borderRadius: {
-              xs: "2px",
-              sm: "4px",
-              DEFAULT: "6px",
-              md: "6px",
-              lg: "8px",
-              full: "9999px"
-            },
-            transitionTimingFunction: {
-              spring: "cubic-bezier(0.16, 1, 0.3, 1)"
-            }
-          }
-        }
-      }
-    </script>
+    <title>delta — security assessment — localhost:20128</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
     <style>
       * {
         box-sizing: border-box;
-        border-color: #262A32;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --bg: #0d0f12;
+        --panel: #121418;
+        --surface: #16191e;
+        --border: #242830;
+        --border-muted: #1c1f26;
+        --text-main: #ebeef2;
+        --text-secondary: #9198a3;
+        --text-muted: #555c66;
+        --status-ok: #3eb882;
+        --status-warn: #d98e41;
       }
       body {
-        font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
-        background-color: #09090B;
-        color: #EDEDED;
+        font-family: 'JetBrains Mono', monospace;
+        background-color: var(--bg);
+        color: var(--text-main);
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+        line-height: 1.45;
         letter-spacing: -0.01em;
         -webkit-font-smoothing: antialiased;
       }
-      .font-code {
-        font-family: 'JetBrains Mono', monospace;
-      }
       
-      /* Crisp 1px hairlines & no blurred slop */
-      ::-webkit-scrollbar {
+      /* 1px clean hairlines */
+      header {
+        height: 40px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        flex-shrink: 0;
+      }
+      .window-dots {
+        display: flex;
+        gap: 8px;
+      }
+      .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: #373c46;
+      }
+      .header-title {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .header-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-secondary);
+        font-size: 11px;
+      }
+      .status-dot {
         width: 6px;
         height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #262A32;
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #3A404D;
+        border-radius: 50%;
+        background: var(--status-ok);
       }
 
-      /* Hardware Accelerated 60 FPS Micro-transitions */
-      .snappy {
-        transition-property: transform, opacity, background-color, border-color, color;
-        transition-duration: 140ms;
-        transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      .btn-press:active {
-        transform: scale(0.975);
+      /* Layout */
+      .workspace {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
       }
       
-      @keyframes popIn {
-        0% { opacity: 0; transform: scale(0.98) translateY(6px); }
-        100% { opacity: 1; transform: scale(1) translateY(0); }
+      /* Sidebar */
+      aside {
+        width: 250px;
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
       }
-      .animate-pop-in {
-        animation: popIn 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      .sidebar-sec-title {
+        padding: 14px 16px 8px;
+        font-size: 11px;
+        color: var(--text-muted);
+        letter-spacing: 0.05em;
+      }
+      .file-tree {
+        list-style: none;
+        padding: 0 8px;
+        flex: 1;
+        overflow-y: auto;
+      }
+      .file-item {
+        padding: 4px 8px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 3px;
+        transition: background 120ms ease;
+      }
+      .file-item:hover {
+        background: var(--surface);
+        color: var(--text-main);
+      }
+      .file-item.active {
+        background: var(--surface);
+        color: var(--text-main);
+        border-left: 2px solid var(--text-main);
+      }
+      .indent-1 { padding-left: 18px; }
+      .indent-2 { padding-left: 32px; }
+
+      /* Main Editor & Split */
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .tab-bar {
+        height: 38px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+      }
+      .tab {
+        padding: 0 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 12px;
+        color: var(--text-muted);
+        border-right: 1px solid var(--border);
+        cursor: pointer;
+      }
+      .tab.active {
+        background: var(--bg);
+        color: var(--text-main);
+        border-top: 2px solid var(--text-secondary);
+      }
+      .breadcrumb {
+        padding: 6px 18px;
+        font-size: 11px;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border-muted);
       }
 
-      @keyframes pulseDot {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.4; transform: scale(0.85); }
+      /* Code Editor */
+      .editor-pane {
+        padding: 12px 18px;
+        height: 48%;
+        overflow-y: auto;
+        font-size: 12px;
+        line-height: 1.7;
       }
-      .pulse-signal {
-        animation: pulseDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      .code-line {
+        display: flex;
+      }
+      .ln {
+        width: 38px;
+        color: var(--text-muted);
+        user-select: none;
+      }
+      .code-text {
+        color: var(--text-secondary);
+        flex: 1;
+      }
+      .kw { color: var(--text-main); font-weight: 500; }
+      .doc { color: var(--text-muted); }
+
+      /* Lower Terminal & Recon Pane */
+      .recon-pane {
+        flex: 1;
+        border-top: 1px solid var(--border);
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+      }
+      .recon-header {
+        height: 34px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 18px;
+        font-size: 11px;
+      }
+      .recon-meta {
+        display: flex;
+        gap: 18px;
+        color: var(--text-muted);
+      }
+
+      /* Booktabs Data Table */
+      .table-container {
+        padding: 12px 18px;
+        flex: 1;
+        overflow-y: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      thead tr {
+        border-top: 1px solid var(--text-secondary);
+        border-bottom: 1px solid var(--border);
+      }
+      th {
+        text-align: left;
+        padding: 6px 8px;
+        color: var(--text-muted);
+        font-weight: 500;
+        font-size: 11px;
+      }
+      td {
+        padding: 7px 8px;
+        color: var(--text-secondary);
+      }
+      tbody tr {
+        border-bottom: 1px solid var(--border-muted);
+      }
+      tbody tr:last-child {
+        border-bottom: 1px solid var(--text-secondary);
+      }
+      .state-open { color: var(--status-ok); font-weight: 600; }
+      .state-closed { color: var(--text-muted); }
+
+      /* Command Input */
+      .cli-input-bar {
+        padding: 10px 18px;
+        background: var(--bg);
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .cli-prompt {
+        color: var(--text-main);
+        font-weight: 600;
+      }
+      .cli-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: var(--text-main);
+        font-family: inherit;
+        font-size: 12px;
+        outline: none;
+      }
+
+      /* Status Bar */
+      footer {
+        height: 26px;
+        background: var(--panel);
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .footer-sec {
+        display: flex;
+        gap: 16px;
+      }
+      .active-branch {
+        color: var(--text-main);
       }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col bg-background text-[13px] leading-snug select-none">
+<body>
 
-    <!-- TOP CONTROL BAR -->
-    <header class="h-11 bg-surface border-b border-outline flex items-center justify-between px-3 shrink-0 z-50">
-        <!-- Left Brand & Search -->
-        <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2 pr-2 border-r border-outline">
-                <span class="w-2 h-2 rounded-full bg-primary pulse-signal"></span>
-                <span class="font-mono font-semibold text-xs tracking-wider text-on-background uppercase">DELTA//OPS</span>
-                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-card text-on-surface-variant border border-outline">v2.0</span>
-            </div>
-
-            <!-- Command Palette Trigger -->
-            <button onclick="toggleModal('command-palette')" class="flex items-center gap-2 bg-surface-panel hover:bg-surface-card border border-outline hover:border-outline-active rounded px-2.5 py-1 text-on-surface-variant hover:text-on-background font-mono text-xs snappy btn-press">
-                <span class="material-symbols-outlined text-[15px]">search</span>
-                <span>Command palette, files, tasks</span>
-                <kbd class="ml-8 text-[10px] bg-surface-card px-1.5 py-0.5 rounded border border-outline text-on-surface-muted font-mono">⌘K</kbd>
-            </button>
+    <!-- Header -->
+    <header>
+        <div class="window-dots">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
         </div>
-
-        <!-- Center Status / Session Indicator -->
-        <div class="hidden md:flex items-center gap-2 font-mono text-xs text-on-surface-variant">
-            <span class="text-on-surface-muted">TARGET:</span>
-            <span class="text-primary font-medium">localhost:20128</span>
-            <span class="text-on-surface-muted">|</span>
-            <span class="text-on-surface-muted">AGENT:</span>
-            <span class="text-on-surface" id="status-header-text">STANDBY</span>
-        </div>
-
-        <!-- Right Quick Controls -->
-        <div class="flex items-center gap-1.5">
-            <!-- Git Branch Pill -->
-            <div class="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-panel border border-outline font-mono text-xs">
-                <span class="material-symbols-outlined text-[14px] text-on-surface-variant">account_tree</span>
-                <span class="text-on-surface">main</span>
-                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-            </div>
-
-            <button onclick="toggleModal('model-modal')" class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-card border border-transparent hover:border-outline text-on-surface-variant hover:text-on-surface snappy btn-press font-mono text-xs">
-                <span class="material-symbols-outlined text-[15px] text-secondary">memory</span>
-                <span id="active-model-name">qwen3.6</span>
-            </button>
-
-            <button onclick="toggleView('tools')" title="Security Tools" class="p-1.5 rounded hover:bg-surface-card text-on-surface-variant hover:text-on-surface snappy btn-press">
-                <span class="material-symbols-outlined text-[18px]">terminal</span>
-            </button>
-
-            <button onclick="toggleModal('settings-modal')" title="Settings" class="p-1.5 rounded hover:bg-surface-card text-on-surface-variant hover:text-on-surface snappy btn-press">
-                <span class="material-symbols-outlined text-[18px]">settings</span>
-            </button>
+        <div class="header-title">delta — security assessment — localhost:20128</div>
+        <div class="header-status">
+            <span class="status-dot"></span>
+            <span>connected</span>
         </div>
     </header>
 
-    <!-- MAIN WORKSPACE LAYOUT -->
-    <div class="flex flex-1 overflow-hidden">
-
-        <!-- LEFT SIDEBAR: Nav & Tree -->
-        <aside class="w-60 bg-surface border-r border-outline flex flex-col shrink-0">
-            <!-- Project Header -->
-            <div class="p-3 border-b border-outline flex items-center justify-between">
-                <div>
-                    <div class="text-[10px] font-mono font-semibold text-on-surface-muted uppercase tracking-wider">WORKSPACE</div>
-                    <div class="font-mono text-xs font-medium text-on-surface flex items-center gap-1.5 mt-0.5">
-                        <span class="material-symbols-outlined text-[14px] text-primary">folder_open</span>
-                        <span>Delta-CLI</span>
-                    </div>
-                </div>
-                <button onclick="triggerNewScan()" title="Quick Scan Target" class="p-1 rounded bg-surface-card hover:bg-surface-active border border-outline text-primary snappy btn-press">
-                    <span class="material-symbols-outlined text-[15px]">add</span>
-                </button>
-            </div>
-
-            <!-- Navigation Links -->
-            <nav class="p-2 space-y-0.5 border-b border-outline">
-                <button onclick="switchView('execution')" id="tab-execution" class="nav-btn w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded bg-surface-card text-on-background font-medium text-xs border border-outline snappy btn-press">
-                    <span class="material-symbols-outlined text-[16px] text-primary">terminal</span>
-                    <span>Live Execution</span>
-                </button>
-                <button onclick="switchView('files')" id="tab-files" class="nav-btn w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-panel font-medium text-xs border border-transparent snappy btn-press">
-                    <span class="material-symbols-outlined text-[16px]">folder</span>
-                    <span>File Tree</span>
-                </button>
-                <button onclick="switchView('tasks')" id="tab-tasks" class="nav-btn w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-panel font-medium text-xs border border-transparent snappy btn-press">
-                    <span class="material-symbols-outlined text-[16px]">account_tree</span>
-                    <span>DAG Pipeline</span>
-                </button>
-                <button onclick="switchView('scanners')" id="tab-scanners" class="nav-btn w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-panel font-medium text-xs border border-transparent snappy btn-press">
-                    <span class="material-symbols-outlined text-[16px]">security</span>
-                    <span>Security Audit</span>
-                </button>
-            </nav>
-
-            <!-- Quick File Tree Explorer -->
-            <div class="flex-1 overflow-y-auto p-2 font-mono text-xs">
-                <div class="text-[10px] font-semibold text-on-surface-muted uppercase px-2 py-1 tracking-wider">PROJECT FILES</div>
-                <div class="space-y-0.5 mt-1">
-                    <div class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-panel cursor-pointer text-on-surface-variant hover:text-on-surface snappy" onclick="previewFile('delta/main.py')">
-                        <span class="material-symbols-outlined text-[14px] text-secondary">code</span>
-                        <span>delta/main.py</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-panel cursor-pointer text-on-surface-variant hover:text-on-surface snappy" onclick="previewFile('delta/agent/runtime.py')">
-                        <span class="material-symbols-outlined text-[14px] text-secondary">code</span>
-                        <span>runtime.py</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-panel cursor-pointer text-on-surface-variant hover:text-on-surface snappy" onclick="previewFile('DESIGN.md')">
-                        <span class="material-symbols-outlined text-[14px] text-primary">description</span>
-                        <span class="text-primary font-medium">DESIGN.md</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-panel cursor-pointer text-on-surface-variant hover:text-on-surface snappy" onclick="previewFile('tests/run_test.py')">
-                        <span class="material-symbols-outlined text-[14px] text-warning">check_circle</span>
-                        <span>run_test.py</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-surface-panel cursor-pointer text-on-surface-variant hover:text-on-surface snappy" onclick="previewFile('pyproject.toml')">
-                        <span class="material-symbols-outlined text-[14px] text-on-surface-muted">settings</span>
-                        <span>pyproject.toml</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Bottom System Status -->
-            <div class="p-3 border-t border-outline bg-surface-panel font-mono text-[11px] text-on-surface-variant flex flex-col gap-1">
-                <div class="flex justify-between items-center">
-                    <span class="text-on-surface-muted">Memory</span>
-                    <span class="text-on-surface">32.4 MB</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-on-surface-muted">Suite</span>
-                    <span class="text-primary">467/467 Passed</span>
-                </div>
-            </div>
+    <!-- Workspace -->
+    <div class="workspace">
+        
+        <!-- Sidebar -->
+        <aside>
+            <div class="sidebar-sec-title">PROJECT</div>
+            <ul class="file-tree">
+                <li class="file-item">▾ delta</li>
+                <li class="file-item indent-1">▾ agent</li>
+                <li class="file-item indent-2">runtime.py</li>
+                <li class="file-item indent-2">pipeline.py</li>
+                <li class="file-item indent-1">▾ core</li>
+                <li class="file-item indent-2 active">scanner.py</li>
+                <li class="file-item indent-2">verifier.py</li>
+                <li class="file-item indent-1">▾ ai</li>
+                <li class="file-item indent-2">personality.py</li>
+                <li class="file-item indent-1">main.py</li>
+                <li class="file-item">▾ reports</li>
+                <li class="file-item indent-1">audit-2026-09.json</li>
+                <li class="file-item">▾ tests</li>
+                <li class="file-item indent-1">test_scanner.py</li>
+                <li class="file-item">DESIGN.md</li>
+                <li class="file-item">pyproject.toml</li>
+            </ul>
         </aside>
 
-        <!-- CENTER MAIN WORKSPACE -->
-        <main class="flex-1 flex flex-col min-w-0 bg-background relative">
-            
-            <!-- Context Header Tabs -->
-            <div class="h-9 bg-surface border-b border-outline flex items-center justify-between px-3 shrink-0">
-                <div class="flex items-center gap-2">
-                    <span class="font-mono text-xs text-on-surface-variant" id="current-view-label">SESSION: autonomous-agent-01</span>
-                    <span class="text-on-surface-muted text-xs">/</span>
-                    <span class="text-[11px] font-mono px-1.5 py-0.2 rounded bg-surface-panel text-primary border border-outline">EXEC_ID: #4902</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="clearTimeline()" class="text-xs text-on-surface-muted hover:text-on-surface font-mono snappy">clear logs</button>
-                </div>
+        <!-- Main Editor & Split Recon Pane -->
+        <main>
+            <!-- Tab bar -->
+            <div class="tab-bar">
+                <div class="tab active">scanner.py <span>×</span></div>
+                <div class="tab">assessment.log <span>×</span></div>
+                <div class="tab">terminal</div>
             </div>
 
-            <!-- Dynamic Viewport Area -->
-            <div id="workspace-viewport" class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-                
-                <!-- Initial Telemetry Card -->
-                <div id="welcome-card" class="p-4 rounded bg-surface-panel border border-outline flex flex-col gap-2">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[18px] text-primary">terminal</span>
-                            <span class="font-mono text-xs font-semibold uppercase text-on-background">Delta Cyber Ops Engine Active</span>
-                        </div>
-                        <span class="text-[10px] font-mono text-on-surface-muted">STANDBY • READY FOR DIRECTIVES</span>
-                    </div>
-                    <p class="text-xs text-on-surface-variant leading-relaxed">
-                        Precision security assessment and autonomous coding platform initialized. Tap any directive or enter your command below to launch automated reconnaissance, AST inspections, or code modifications.
-                    </p>
-                    <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-outline">
-                        <button onclick="submitPrompt('Audit SSL/TLS certificate on target localhost:20128')" class="font-mono text-[11px] px-2 py-1 rounded bg-surface-card hover:bg-surface-active border border-outline text-on-surface snappy btn-press flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[13px] text-secondary">lock</span>
-                            <span>Audit SSL/TLS</span>
-                        </button>
-                        <button onclick="submitPrompt('Run full scanner test suite across 467 tests')" class="font-mono text-[11px] px-2 py-1 rounded bg-surface-card hover:bg-surface-active border border-outline text-on-surface snappy btn-press flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[13px] text-primary">check_circle</span>
-                            <span>Run Test Suite</span>
-                        </button>
-                        <button onclick="submitPrompt('Inspect codebase AST and detect anti-slop violations')" class="font-mono text-[11px] px-2 py-1 rounded bg-surface-card hover:bg-surface-active border border-outline text-on-surface snappy btn-press flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[13px] text-warning">search_check</span>
-                            <span>AST Slop Check</span>
-                        </button>
+            <!-- Breadcrumbs -->
+            <div class="breadcrumb">delta › core › scanner.py › class NetworkScanner › execute_port_scan</div>
+
+            <!-- Code Editor Pane -->
+            <div class="editor-pane">
+                <div class="code-line"><span class="ln">42</span><span class="code-text"><span class="kw">class</span> NetworkScanner:</span></div>
+                <div class="code-line"><span class="ln">43</span><span class="code-text doc">    """High-performance non-blocking port auditor."""</span></div>
+                <div class="code-line"><span class="ln">44</span><span class="code-text"><span class="kw">    def</span> __init__(self, target: str = '127.0.0.1', timeout: float = 1.5):</span></div>
+                <div class="code-line"><span class="ln">45</span><span class="code-text">        self.target = target</span></div>
+                <div class="code-line"><span class="ln">46</span><span class="code-text">        self.timeout = timeout</span></div>
+                <div class="code-line"><span class="ln">47</span><span class="code-text">        self._open_ports: list[int] = []</span></div>
+                <div class="code-line"><span class="ln">48</span><span class="code-text"></span></div>
+                <div class="code-line"><span class="ln">49</span><span class="code-text"><span class="kw">    async def</span> scan_range(self, ports: list[int]) -> list[ScanResult]:</span></div>
+                <div class="code-line"><span class="ln">50</span><span class="code-text">        tasks = [self._probe_socket(p) <span class="kw">for</span> p <span class="kw">in</span> ports]</span></div>
+                <div class="code-line"><span class="ln">51</span><span class="code-text">        results = <span class="kw">await</span> asyncio.gather(*tasks, return_exceptions=True)</span></div>
+                <div class="code-line"><span class="ln">52</span><span class="code-text">        <span class="kw">return</span> [r <span class="kw">for</span> r <span class="kw">in</span> results <span class="kw">if</span> isinstance(r, ScanResult) and r.is_open]</span></div>
+                <div class="code-line"><span class="ln">53</span><span class="code-text"></span></div>
+                <div class="code-line"><span class="ln">54</span><span class="code-text"><span class="kw">    async def</span> _probe_socket(self, port: int) -> ScanResult:</span></div>
+                <div class="code-line"><span class="ln">55</span><span class="code-text">        reader, writer = <span class="kw">await</span> asyncio.open_connection(self.target, port)</span></div>
+                <div class="code-line"><span class="ln">56</span><span class="code-text">        writer.close()</span></div>
+                <div class="code-line"><span class="ln">57</span><span class="code-text">        <span class="kw">await</span> writer.wait_closed()</span></div>
+                <div class="code-line"><span class="ln">58</span><span class="code-text">        <span class="kw">return</span> ScanResult(port=port, is_open=True, protocol='tcp')</span></div>
+            </div>
+
+            <!-- Lower Recon & Terminal Pane -->
+            <div class="recon-pane">
+                <div class="recon-header">
+                    <div>TERMINAL // RECON RESULTS</div>
+                    <div class="recon-meta">
+                        <span>PID 8421</span>
+                        <span>TARGET: 127.0.0.1</span>
+                        <span>LATENCY: 0.2ms</span>
                     </div>
                 </div>
 
-                <!-- Execution Feed Stream -->
-                <div id="execution-feed" class="flex flex-col gap-3 font-mono text-xs"></div>
-            </div>
+                <!-- Structured Booktabs Table -->
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>PORT</th>
+                                <th>STATE</th>
+                                <th>SERVICE</th>
+                                <th>BANNER / IDENTIFIER</th>
+                                <th>PROTOCOL</th>
+                                <th>RESPONSE</th>
+                                <th>VERIFICATION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--text-main);">8022/tcp</td>
+                                <td class="state-open">OPEN</td>
+                                <td>ssh</td>
+                                <td style="color: var(--text-main);">OpenSSH 9.8p1 (Android PRoot)</td>
+                                <td>SSH-2.0</td>
+                                <td>0.24ms</td>
+                                <td>AUTHENTICATED</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--text-main);">11434/tcp</td>
+                                <td class="state-open">OPEN</td>
+                                <td>http</td>
+                                <td style="color: var(--text-main);">Ollama LLM Engine API v0.6.2</td>
+                                <td>HTTP/1.1</td>
+                                <td>0.41ms</td>
+                                <td>STANDBY</td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--text-main);">20128/tcp</td>
+                                <td class="state-open">OPEN</td>
+                                <td>http</td>
+                                <td style="color: var(--text-main);">9Router Local AI Proxy Core</td>
+                                <td>HTTP/1.1</td>
+                                <td>0.19ms</td>
+                                <td>CONNECTED</td>
+                            </tr>
+                            <tr>
+                                <td>443/tcp</td>
+                                <td class="state-closed">CLOSED</td>
+                                <td>-</td>
+                                <td>Connection refused</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>RESET</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-            <!-- FLOATING DOCKED BOTTOM COMMAND BAR -->
-            <div class="p-3 bg-surface border-t border-outline shrink-0">
-                <form id="directive-form" onsubmit="event.preventDefault(); handleFormSubmit()" class="bg-surface-panel border border-outline focus-within:border-primary rounded overflow-hidden snappy">
-                    <div class="flex items-center px-3 py-1.5 border-b border-outline bg-surface">
-                        <span class="text-primary font-mono font-semibold text-xs mr-2">&gt;</span>
-                        <input
-                            type="text"
-                            id="directive-input"
-                            class="w-full bg-transparent border-none text-on-surface font-mono text-xs focus:ring-0 focus:outline-none placeholder-on-surface-muted"
-                            placeholder="Enter security directive, scan target, or code refactor task..."
-                            autocomplete="off"
-                        />
-                        <button type="submit" id="submit-btn" class="ml-2 px-3 py-1 rounded bg-primary hover:bg-primary-glow text-background font-mono text-xs font-semibold flex items-center gap-1 snappy btn-press">
-                            <span>EXEC</span>
-                            <span class="material-symbols-outlined text-[14px]">play_arrow</span>
-                        </button>
-                    </div>
-                    <div class="flex items-center justify-between px-3 py-1 text-[11px] font-mono text-on-surface-muted bg-surface-panel">
-                        <div class="flex items-center gap-3">
-                            <span class="flex items-center gap-1 text-on-surface-variant">
-                                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                <span>Sandbox: Isolated</span>
-                            </span>
-                            <span>Tokens: <span class="text-on-surface" id="token-counter">0 / 128k</span></span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span>Enter to submit • Shift+Enter for newline</span>
-                        </div>
-                    </div>
-                </form>
+                <!-- Interactive Command Input -->
+                <div class="cli-input-bar">
+                    <span class="cli-prompt">$ delta ›</span>
+                    <input type="text" class="cli-input" value="scan localhost:8022 --verify-auth" autofocus />
+                </div>
             </div>
         </main>
-
-        <!-- RIGHT INSPECTOR: Context, Diff & Telemetry -->
-        <aside class="w-72 bg-surface border-l border-outline flex flex-col shrink-0">
-            <div class="p-3 border-b border-outline flex items-center justify-between">
-                <div class="text-[10px] font-mono font-semibold text-on-surface-muted uppercase tracking-wider">TELEMETRY & STATE</div>
-                <span class="w-2 h-2 rounded-full bg-primary"></span>
-            </div>
-
-            <div class="flex-1 overflow-y-auto p-3 space-y-4 font-mono text-xs">
-                <!-- Active Model Card -->
-                <div class="p-2.5 rounded bg-surface-panel border border-outline space-y-1.5">
-                    <div class="text-[10px] text-on-surface-muted uppercase">ENGINE ARCHITECTURE</div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-on-surface-variant">Provider:</span>
-                        <span class="text-on-surface font-semibold">Ollama (Local)</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-on-surface-variant">Model:</span>
-                        <span class="text-primary font-semibold">Qwen 3.6</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-on-surface-variant">Gateway:</span>
-                        <span class="text-on-surface">Port 20128</span>
-                    </div>
-                </div>
-
-                <!-- Active Security Tools -->
-                <div class="space-y-1.5">
-                    <div class="text-[10px] text-on-surface-muted uppercase tracking-wider">LOADED SCAN TOOLS</div>
-                    <div class="p-2 rounded bg-surface-panel border border-outline space-y-1 text-[11px]">
-                        <div class="flex items-center justify-between text-on-surface-variant">
-                            <span class="flex items-center gap-1.5">
-                                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                <span>Network Scanner</span>
-                            </span>
-                            <span class="text-on-surface">TCP/UDP</span>
-                        </div>
-                        <div class="flex items-center justify-between text-on-surface-variant">
-                            <span class="flex items-center gap-1.5">
-                                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                <span>SSL/TLS Validator</span>
-                            </span>
-                            <span class="text-on-surface">PBR-P3</span>
-                        </div>
-                        <div class="flex items-center justify-between text-on-surface-variant">
-                            <span class="flex items-center gap-1.5">
-                                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                                <span>AST Inspector</span>
-                            </span>
-                            <span class="text-on-surface">Python 3.14</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent Git Diff -->
-                <div class="space-y-1.5">
-                    <div class="text-[10px] text-on-surface-muted uppercase tracking-wider">UNCOMMITTED CHANGES</div>
-                    <div class="p-2 rounded bg-surface-panel border border-outline space-y-1.5 text-[11px]">
-                        <div class="flex items-center justify-between text-on-surface">
-                            <span class="truncate">DESIGN.md</span>
-                            <span class="text-primary font-semibold text-[10px] bg-surface-card px-1 py-0.2 rounded border border-outline">MODIFIED</span>
-                        </div>
-                        <div class="flex items-center justify-between text-on-surface">
-                            <span class="truncate">code.html</span>
-                            <span class="text-primary font-semibold text-[10px] bg-surface-card px-1 py-0.2 rounded border border-outline">MODIFIED</span>
-                        </div>
-                        <div class="text-[10px] text-on-surface-muted pt-1 border-t border-outline">
-                            Local uncommitted changes ready. Git push disabled.
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </aside>
     </div>
 
-    <!-- MODAL: COMMAND PALETTE -->
-    <div id="command-palette" class="fixed inset-0 bg-black/60 z-50 flex items-start justify-center pt-20 hidden animate-pop-in" onclick="if(event.target===this) toggleModal('command-palette')">
-        <div class="bg-surface border border-outline rounded-lg w-full max-w-lg overflow-hidden">
-            <div class="p-2.5 border-b border-outline flex items-center gap-2 bg-surface-panel">
-                <span class="material-symbols-outlined text-primary text-[18px]">search</span>
-                <input type="text" id="palette-input" placeholder="Type a command or filter..." class="w-full bg-transparent border-none text-on-surface text-xs font-mono focus:ring-0 focus:outline-none placeholder-on-surface-muted" onkeyup="filterPalette()">
-                <kbd class="text-[10px] bg-surface-card px-1.5 py-0.5 rounded border border-outline text-on-surface-muted font-mono">ESC</kbd>
-            </div>
-            <div class="max-h-72 overflow-y-auto p-1.5 space-y-0.5 font-mono text-xs" id="palette-options">
-                <button onclick="executeFromPalette('Run full security assessment on localhost')" class="w-full text-left p-2 rounded hover:bg-surface-card flex items-center justify-between text-on-surface snappy btn-press">
-                    <span class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[15px] text-primary">radar</span>
-                        <span>Run full security assessment</span>
-                    </span>
-                    <span class="text-[10px] text-on-surface-muted font-mono">↵</span>
-                </button>
-                <button onclick="executeFromPalette('Execute pytest test suite with 467 tests')" class="w-full text-left p-2 rounded hover:bg-surface-card flex items-center justify-between text-on-surface snappy btn-press">
-                    <span class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[15px] text-secondary">checklist</span>
-                        <span>Execute pytest test suite</span>
-                    </span>
-                    <span class="text-[10px] text-on-surface-muted font-mono">↵</span>
-                </button>
-                <button onclick="executeFromPalette('Verify DESIGN.md anti-slop guidelines')" class="w-full text-left p-2 rounded hover:bg-surface-card flex items-center justify-between text-on-surface snappy btn-press">
-                    <span class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[15px] text-warning">palette</span>
-                        <span>Verify DESIGN.md anti-slop guidelines</span>
-                    </span>
-                    <span class="text-[10px] text-on-surface-muted font-mono">↵</span>
-                </button>
-            </div>
+    <!-- Status Bar -->
+    <footer>
+        <div class="footer-sec">
+            <span class="active-branch">main*</span>
+            <span>⊘ 0  ⚠ 0</span>
+            <span>delta-security: v2.0.0</span>
         </div>
-    </div>
-
-    <!-- MODAL: MODEL SELECTOR -->
-    <div id="model-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden animate-pop-in" onclick="if(event.target===this) toggleModal('model-modal')">
-        <div class="bg-surface border border-outline rounded-lg w-full max-w-sm p-4 space-y-3 font-mono">
-            <div class="flex items-center justify-between pb-2 border-b border-outline">
-                <div class="text-xs font-semibold text-on-surface">SELECT INFERENCE MODEL</div>
-                <button onclick="toggleModal('model-modal')" class="text-on-surface-muted hover:text-on-surface">✕</button>
-            </div>
-            <div class="space-y-1.5 text-xs">
-                <div onclick="selectModel('qwen3.6', 'Ollama Local')" class="p-2.5 rounded bg-surface-card border border-primary cursor-pointer flex justify-between items-center snappy">
-                    <div>
-                        <div class="font-semibold text-primary">qwen3.6 (Ollama)</div>
-                        <div class="text-[10px] text-on-surface-muted">Local inference • 0 latency</div>
-                    </div>
-                    <span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
-                </div>
-                <div onclick="selectModel('gemini-1.5-pro', 'Google Gateway')" class="p-2.5 rounded bg-surface-panel hover:bg-surface-card border border-outline cursor-pointer flex justify-between items-center snappy">
-                    <div>
-                        <div class="font-semibold text-on-surface">gemini-1.5-pro</div>
-                        <div class="text-[10px] text-on-surface-muted">Long-context analysis</div>
-                    </div>
-                </div>
-                <div onclick="selectModel('claude-3-7-sonnet', 'Anthropic Router')" class="p-2.5 rounded bg-surface-panel hover:bg-surface-card border border-outline cursor-pointer flex justify-between items-center snappy">
-                    <div>
-                        <div class="font-semibold text-on-surface">claude-3-7-sonnet</div>
-                        <div class="text-[10px] text-on-surface-muted">Autonomous engineering</div>
-                    </div>
-                </div>
-            </div>
+        <div class="footer-sec">
+            <span>Python 3.14.4 (PRoot Linux)</span>
+            <span>Ln 52, Col 14</span>
+            <span>UTF-8</span>
+            <span>LF</span>
         </div>
-    </div>
+    </footer>
 
-    <!-- MODAL: SETTINGS -->
-    <div id="settings-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center hidden animate-pop-in" onclick="if(event.target===this) toggleModal('settings-modal')">
-        <div class="bg-surface border border-outline rounded-lg w-full max-w-sm p-4 space-y-3 font-mono">
-            <div class="flex items-center justify-between pb-2 border-b border-outline">
-                <div class="text-xs font-semibold text-on-surface">WORKSPACE SETTINGS</div>
-                <button onclick="toggleModal('settings-modal')" class="text-on-surface-muted hover:text-on-surface">✕</button>
-            </div>
-            <div class="space-y-2 text-xs">
-                <div class="flex justify-between items-center p-2 rounded bg-surface-panel border border-outline">
-                    <span>Hardware 60 FPS</span>
-                    <span class="text-primary font-semibold">ACTIVE</span>
-                </div>
-                <div class="flex justify-between items-center p-2 rounded bg-surface-panel border border-outline">
-                    <span>Anti-Slop Linting</span>
-                    <span class="text-primary font-semibold">ENFORCED</span>
-                </div>
-                <div class="flex justify-between items-center p-2 rounded bg-surface-panel border border-outline">
-                    <span>Git Remote Push</span>
-                    <span class="text-warning font-semibold">LOCKED (DISABLED)</span>
-                </div>
-                <button onclick="clearTimeline(); toggleModal('settings-modal')" class="w-full py-2 rounded bg-error-dim border border-error/30 text-error hover:bg-error/20 font-semibold snappy btn-press">
-                    Reset Session State
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- RUNTIME LOGIC SCRIPT -->
-    <script>
-        const feed = document.getElementById('execution-feed');
-        const input = document.getElementById('directive-input');
-        const statusHeader = document.getElementById('status-header-text');
-        const tokenCounter = document.getElementById('token-counter');
-        let isRunning = false;
-        let tokenTotal = 0;
-
-        function toggleModal(id) {
-            const modal = document.getElementById(id);
-            modal.classList.toggle('hidden');
-            if (id === 'command-palette' && !modal.classList.contains('hidden')) {
-                setTimeout(() => document.getElementById('palette-input').focus(), 50);
-            }
-        }
-
-        document.addEventListener('keydown', (e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-                e.preventDefault();
-                toggleModal('command-palette');
-            } else if (e.key === 'Escape') {
-                document.querySelectorAll('.fixed.inset-0').forEach(m => m.classList.add('hidden'));
-            }
-        });
-
-        function selectModel(name, provider) {
-            document.getElementById('active-model-name').innerText = name;
-            toggleModal('model-modal');
-            logSystemEvent(`Inference model switched to ${name} (${provider})`);
-        }
-
-        function filterPalette() {
-            const val = document.getElementById('palette-input').value.toLowerCase();
-            document.querySelectorAll('#palette-options button').forEach(b => {
-                b.style.display = b.innerText.toLowerCase().includes(val) ? 'flex' : 'none';
-            });
-        }
-
-        function executeFromPalette(text) {
-            toggleModal('command-palette');
-            submitPrompt(text);
-        }
-
-        function submitPrompt(text) {
-            input.value = text;
-            handleFormSubmit();
-        }
-
-        function clearTimeline() {
-            feed.innerHTML = '';
-            statusHeader.innerText = 'STANDBY';
-            statusHeader.className = 'text-on-surface';
-        }
-
-        function logSystemEvent(msg) {
-            const row = document.createElement('div');
-            row.className = 'p-2 rounded bg-surface-panel border border-outline text-on-surface-variant flex items-center gap-2 animate-pop-in';
-            row.innerHTML = `<span class="material-symbols-outlined text-[14px] text-secondary">info</span><span>${msg}</span>`;
-            feed.appendChild(row);
-            scrollBottom();
-        }
-
-        function scrollBottom() {
-            const vp = document.getElementById('workspace-viewport');
-            vp.scrollTop = vp.scrollHeight;
-        }
-
-        function previewFile(fileName) {
-            logSystemEvent(`Inspected file: ${fileName}`);
-        }
-
-        function triggerNewScan() {
-            submitPrompt('Run quick port scan on 127.0.0.1:8022 (Termux SSH Host)');
-        }
-
-        function switchView(viewName) {
-            document.querySelectorAll('.nav-btn').forEach(b => {
-                b.className = 'nav-btn w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-panel font-medium text-xs border border-transparent snappy btn-press';
-            });
-            const active = document.getElementById(`tab-${viewName}`);
-            if (active) {
-                active.className = 'nav-btn w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded bg-surface-card text-on-background font-medium text-xs border border-outline snappy btn-press';
-            }
-            document.getElementById('current-view-label').innerText = `VIEW: ${viewName.toUpperCase()}`;
-        }
-
-        async function handleFormSubmit() {
-            if (isRunning) return;
-            const directive = input.value.trim();
-            if (!directive) return;
-
-            isRunning = true;
-            input.value = '';
-            statusHeader.innerText = 'EXECUTING';
-            statusHeader.className = 'text-primary font-medium';
-
-            // User Directive Row
-            const userBox = document.createElement('div');
-            userBox.className = 'p-2.5 rounded bg-surface-card border border-outline-active text-on-background flex items-start gap-2.5 animate-pop-in';
-            userBox.innerHTML = `
-                <span class="material-symbols-outlined text-[16px] text-primary mt-0.5">account_circle</span>
-                <div class="flex-1">
-                    <div class="text-[10px] text-on-surface-muted uppercase">USER DIRECTIVE</div>
-                    <div class="font-sans font-medium text-xs text-on-background mt-0.5">${escapeHtml(directive)}</div>
-                </div>
-            `;
-            feed.appendChild(userBox);
-            scrollBottom();
-
-            // Simulate Agent Reasoning & Tool Calls
-            await sleep(400);
-
-            const execBox = document.createElement('div');
-            execBox.className = 'p-3 rounded bg-surface-panel border border-outline space-y-2 animate-pop-in';
-            execBox.innerHTML = `
-                <div class="flex items-center justify-between border-b border-outline pb-1.5">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-primary pulse-signal"></span>
-                        <span class="font-semibold text-primary uppercase text-[11px]">DELTA AGENT RUNTIME</span>
-                    </div>
-                    <span class="text-[10px] text-on-surface-muted">PID #8421 • SANDBOX</span>
-                </div>
-                <div class="space-y-1 text-on-surface-variant text-[11px]" id="step-stream">
-                    <div class="flex items-center gap-2 text-on-surface">
-                        <span class="material-symbols-outlined text-[13px] text-secondary">sync</span>
-                        <span>Formulating DAG execution plan...</span>
-                    </div>
-                </div>
-            `;
-            feed.appendChild(execBox);
-            scrollBottom();
-
-            const stream = execBox.querySelector('#step-stream');
-
-            await sleep(600);
-            stream.innerHTML += `
-                <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-[13px] text-primary">check</span>
-                    <span>Target scoped: 127.0.0.1 • Policy rules verified</span>
-                </div>
-            `;
-            scrollBottom();
-
-            await sleep(700);
-            stream.innerHTML += `
-                <div class="p-2 rounded bg-background border border-outline text-[11px] font-mono text-on-surface">
-                    <div class="text-on-surface-muted text-[10px] uppercase">TOOL INVOCATION: network_scanner</div>
-                    <div class="text-primary mt-0.5">$ delta scan --target 127.0.0.1 --ports 8022,20128,11434</div>
-                    <div class="text-on-surface-variant mt-1">
-                        • Port 8022/tcp: OPEN (Termux OpenSSH 9.8p1)<br/>
-                        • Port 20128/tcp: OPEN (9Router Local AI Gateway)<br/>
-                        • Port 11434/tcp: OPEN (Ollama Engine API)
-                    </div>
-                </div>
-            `;
-            scrollBottom();
-
-            await sleep(800);
-            stream.innerHTML += `
-                <div class="flex items-center gap-2 text-primary font-semibold pt-1">
-                    <span class="material-symbols-outlined text-[14px]">done_all</span>
-                    <span>Assessment completed cleanly. 0 vulnerabilities flagged.</span>
-                </div>
-            `;
-
-            tokenTotal += 342;
-            tokenCounter.innerText = `${tokenTotal.toLocaleString()} / 128k`;
-
-            statusHeader.innerText = 'STANDBY';
-            statusHeader.className = 'text-on-surface';
-            isRunning = false;
-            scrollBottom();
-        }
-
-        function escapeHtml(str) {
-            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
-
-        function sleep(ms) {
-            return new Promise(r => setTimeout(r, ms));
-        }
-    </script>
 </body>
 </html>
